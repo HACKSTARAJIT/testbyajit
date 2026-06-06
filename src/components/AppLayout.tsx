@@ -21,6 +21,7 @@ const navItems = [
   { to: "/subjects", label: "विषय / Subjects", icon: BookOpen },
   { to: "/tests", label: "टेस्ट / Tests", icon: ClipboardList },
   { to: "/results", label: "परिणाम / Results", icon: History },
+  { to: "/profile", label: "प्रोफ़ाइल / Profile", icon: User },
 ];
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
