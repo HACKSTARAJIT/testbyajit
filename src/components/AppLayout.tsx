@@ -9,7 +9,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   BookOpen, LayoutDashboard, FileText, ClipboardList, History,
-  Shield, LogOut, GraduationCap, Menu,
+  Shield, LogOut, GraduationCap, Menu, User,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetTrigger,
@@ -21,6 +21,7 @@ const navItems = [
   { to: "/subjects", label: "विषय / Subjects", icon: BookOpen },
   { to: "/tests", label: "टेस्ट / Tests", icon: ClipboardList },
   { to: "/results", label: "परिणाम / Results", icon: History },
+  { to: "/profile", label: "प्रोफ़ाइल / Profile", icon: User },
 ];
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
@@ -67,7 +68,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-hero">
               <GraduationCap className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-lg font-bold font-display">PrepShala</span>
+            <span className="text-base font-bold font-display leading-tight">Practice Book<br className="hidden sm:block" /> <span className="text-secondary">By Ajit</span></span>
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
@@ -128,7 +129,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <main className="container py-6 animate-fade-in">{children}</main>
       <footer className="border-t py-6 text-center text-sm text-muted-foreground">
         <FileText className="mx-auto mb-1 h-4 w-4" />
-        PrepShala — प्रतियोगी परीक्षा तैयारी मंच
+        Practice Book By Ajit — प्रतियोगी परीक्षा तैयारी मंच
       </footer>
     </div>
   );

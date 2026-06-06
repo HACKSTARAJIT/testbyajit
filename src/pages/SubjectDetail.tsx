@@ -1,20 +1,24 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { getSignedUrl } from "@/lib/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { FileText, ClipboardList, Download, ArrowLeft, BookOpen } from "lucide-react";
+import { FileText, ClipboardList, Download, Eye, ArrowLeft, BookOpen, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SubjectDetail() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [subject, setSubject] = useState<any>(null);
   const [chapters, setChapters] = useState<any[]>([]);
   const [pdfs, setPdfs] = useState<any[]>([]);
   const [tests, setTests] = useState<any[]>([]);
+  const [q, setQ] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -28,16 +32,46 @@ export default function SubjectDetail() {
     })();
   }, [id]);
 
+  const recordView = async (chapterId: string) => {
+    if (!user || !chapterId) return;
+    await supabase.from("chapter_views").upsert(
+      { user_id: user.id, chapter_id: chapterId, viewed_at: new Date().toISOString() },
+      { onConflict: "user_id,chapter_id" }
+    );
+  };
+
   const openPdf = async (path: string) => {
     const url = await getSignedUrl(path);
     if (url) window.open(url, "_blank");
     else toast.error("Could not open file");
   };
 
+  const downloadPdf = async (path: string, title: string) => {
+    const url = await getSignedUrl(path);
+    if (!url) return toast.error("Could not download file");
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${title}.${path.split(".").pop()}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      window.open(url, "_blank");
+    }
+  };
+
   const chapterPdfs = (chId: string) => pdfs.filter((p) => p.chapter_id === chId);
   const chapterTests = (chId: string) => tests.filter((t) => t.chapter_id === chId);
   const generalPdfs = pdfs.filter((p) => !p.chapter_id);
   const generalTests = tests.filter((t) => !t.chapter_id);
+
+  const filteredChapters = chapters.filter((c) =>
+    [c.name, c.name_hi].some((f) => f?.toLowerCase().includes(q.toLowerCase()))
+  );
 
   if (!subject) return null;
 
@@ -57,13 +91,19 @@ export default function SubjectDetail() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-lg">अध्याय / Chapters</CardTitle></CardHeader>
+        <CardHeader className="gap-3">
+          <CardTitle className="text-lg">अध्याय / Chapters</CardTitle>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="pl-9" placeholder="Search chapter... / अध्याय खोजें" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+        </CardHeader>
         <CardContent>
-          {chapters.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">No chapters added yet.</p>
+          {filteredChapters.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">No chapters found.</p>
           ) : (
-            <Accordion type="single" collapsible className="w-full">
-              {chapters.map((ch) => (
+            <Accordion type="single" collapsible className="w-full" onValueChange={(v) => v && recordView(v)}>
+              {filteredChapters.map((ch) => (
                 <AccordionItem key={ch.id} value={ch.id}>
                   <AccordionTrigger>
                     <span className="flex items-center gap-2 text-left">
@@ -72,7 +112,7 @@ export default function SubjectDetail() {
                     </span>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-2">
-                    <MaterialList pdfs={chapterPdfs(ch.id)} tests={chapterTests(ch.id)} onOpen={openPdf} />
+                    <MaterialList pdfs={chapterPdfs(ch.id)} tests={chapterTests(ch.id)} onOpen={openPdf} onDownload={downloadPdf} />
                   </AccordionContent>
                 </AccordionItem>
               ))}
@@ -84,25 +124,30 @@ export default function SubjectDetail() {
       {(generalPdfs.length > 0 || generalTests.length > 0) && (
         <Card>
           <CardHeader><CardTitle className="text-lg">General Material</CardTitle></CardHeader>
-          <CardContent><MaterialList pdfs={generalPdfs} tests={generalTests} onOpen={openPdf} /></CardContent>
+          <CardContent><MaterialList pdfs={generalPdfs} tests={generalTests} onOpen={openPdf} onDownload={downloadPdf} /></CardContent>
         </Card>
       )}
     </div>
   );
 }
 
-function MaterialList({ pdfs, tests, onOpen }: { pdfs: any[]; tests: any[]; onOpen: (p: string) => void; }) {
+function MaterialList({ pdfs, tests, onOpen, onDownload }: {
+  pdfs: any[]; tests: any[]; onOpen: (p: string) => void; onDownload: (p: string, title: string) => void;
+}) {
   if (pdfs.length === 0 && tests.length === 0)
     return <p className="text-sm text-muted-foreground">No material for this section yet.</p>;
   return (
     <div className="space-y-2">
       {pdfs.map((p) => (
-        <div key={p.id} className="flex items-center justify-between rounded-lg border p-3">
+        <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
           <div className="flex items-center gap-2 min-w-0">
             <FileText className="h-4 w-4 shrink-0 text-secondary" />
             <span className="truncate text-sm font-medium">{p.title}</span>
           </div>
-          <Button size="sm" variant="outline" onClick={() => onOpen(p.file_path)}><Download className="mr-1 h-3 w-3" /> View</Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" onClick={() => onOpen(p.file_path)}><Eye className="mr-1 h-3 w-3" /> View</Button>
+            <Button size="sm" variant="outline" onClick={() => onDownload(p.file_path, p.title)}><Download className="mr-1 h-3 w-3" /> Download</Button>
+          </div>
         </div>
       ))}
       {tests.map((t) => (

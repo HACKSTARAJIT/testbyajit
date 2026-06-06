@@ -14,6 +14,7 @@ import Tests from "./pages/Tests.tsx";
 import TestAttempt from "./pages/TestAttempt.tsx";
 import Results from "./pages/Results.tsx";
 import Admin from "./pages/Admin.tsx";
+import Profile from "./pages/Profile.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
           <Route path="/tests" element={withLayout(<Tests />)} />
           <Route path="/test/:id" element={withLayout(<TestAttempt />)} />
           <Route path="/results" element={withLayout(<Results />)} />
+          <Route path="/profile" element={withLayout(<Profile />)} />
           <Route path="/admin" element={<AdminRoute><AppLayout><Admin /></AppLayout></AdminRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
