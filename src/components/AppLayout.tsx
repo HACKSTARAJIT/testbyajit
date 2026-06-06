@@ -129,7 +129,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <main className="container py-6 animate-fade-in">{children}</main>
       <footer className="border-t py-6 text-center text-sm text-muted-foreground">
         <FileText className="mx-auto mb-1 h-4 w-4" />
-        PrepShala — प्रतियोगी परीक्षा तैयारी मंच
+        Practice Book By Ajit — प्रतियोगी परीक्षा तैयारी मंच
       </footer>
     </div>
   );
