@@ -1,0 +1,94 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ClipboardList, Search, Clock, Timer } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+
+export default function Tests() {
+  const [tests, setTests] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [qCounts, setQCounts] = useState<Record<string, number>>({});
+  const [q, setQ] = useState("");
+  const [subject, setSubject] = useState("all");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const [t, s, qs] = await Promise.all([
+        supabase.from("tests").select("*, subjects(name)").order("created_at", { ascending: false }),
+        supabase.from("subjects").select("id,name").order("name"),
+        supabase.from("questions").select("test_id"),
+      ]);
+      setTests(t.data ?? []); setSubjects(s.data ?? []);
+      const map: Record<string, number> = {};
+      (qs.data ?? []).forEach((row: any) => { map[row.test_id] = (map[row.test_id] ?? 0) + 1; });
+      setQCounts(map);
+      setLoading(false);
+    })();
+  }, []);
+
+  const filtered = tests.filter((t) =>
+    (subject === "all" || t.subject_id === subject) &&
+    [t.title, t.description].some((f) => f?.toLowerCase().includes(q.toLowerCase()))
+  );
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">अभ्यास टेस्ट / Practice Tests</h1>
+        <p className="text-muted-foreground">Attempt timed MCQ tests and track your scores.</p>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="pl-9" placeholder="Search tests..." value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <Select value={subject} onValueChange={setSubject}>
+          <SelectTrigger className="sm:w-56"><SelectValue placeholder="All Subjects" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Subjects</SelectItem>
+            {subjects.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {loading ? (
+        <div className="grid gap-4 sm:grid-cols-2">{[1, 2].map((i) => <Skeleton key={i} className="h-32 rounded-xl" />)}</div>
+      ) : filtered.length === 0 ? (
+        <Card><CardContent className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
+          <ClipboardList className="h-10 w-10" /><p>No tests found.</p>
+        </CardContent></Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {filtered.map((t) => (
+            <Card key={t.id} className="flex flex-col transition-shadow hover:shadow-md">
+              <CardContent className="flex flex-1 flex-col p-5">
+                <div className="mb-2 flex items-center gap-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-primary">
+                    <ClipboardList className="h-4 w-4 text-primary-foreground" />
+                  </div>
+                  {t.subjects?.name && <Badge variant="secondary">{t.subjects.name}</Badge>}
+                </div>
+                <h3 className="font-semibold">{t.title}</h3>
+                {t.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t.description}</p>}
+                <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {t.duration_minutes} min</span>
+                  <span className="flex items-center gap-1"><Timer className="h-3 w-3" /> {qCounts[t.id] ?? 0} questions</span>
+                </div>
+                <Button asChild className="mt-4 w-full" disabled={!qCounts[t.id]}>
+                  <Link to={`/test/${t.id}`}>{qCounts[t.id] ? "Start Test" : "No Questions"}</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
