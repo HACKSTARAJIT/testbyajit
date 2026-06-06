@@ -164,7 +164,11 @@ function PdfsTab({ subjects, chapters, pdfs, reload, del }: any) {
     </CardHeader>
     <CardContent className="space-y-2">
       {pdfs.length === 0 && <p className="text-sm text-muted-foreground">No PDFs yet.</p>}
-      {pdfs.map((p: any) => <Row key={p.id} title={p.title} sub={p.subjects?.name} onDelete={() => del("pdfs", p.id)} />)}
+      {pdfs.map((p: any) => (
+        <Row key={p.id} title={p.title} sub={p.subjects?.name} onDelete={() => del("pdfs", p.id)}>
+          <EditPdfDialog pdf={p} subjects={subjects} chapters={chapters} reload={reload} />
+        </Row>
+      ))}
     </CardContent></Card>
   );
 }
