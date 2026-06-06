@@ -14,16 +14,303 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chapters: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          name_hi: string | null
+          sort_order: number
+          subject_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          name_hi?: string | null
+          sort_order?: number
+          subject_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          name_hi?: string | null
+          sort_order?: number
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapters_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdfs: {
+        Row: {
+          chapter_id: string | null
+          created_at: string
+          description: string | null
+          file_path: string
+          id: string
+          subject_id: string | null
+          title: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string
+          description?: string | null
+          file_path: string
+          id?: string
+          subject_id?: string | null
+          title: string
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string
+          description?: string | null
+          file_path?: string
+          id?: string
+          subject_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdfs_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdfs_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      questions: {
+        Row: {
+          correct_option: string
+          created_at: string
+          id: string
+          marks: number
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question_text: string
+          sort_order: number
+          test_id: string
+        }
+        Insert: {
+          correct_option: string
+          created_at?: string
+          id?: string
+          marks?: number
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question_text: string
+          sort_order?: number
+          test_id: string
+        }
+        Update: {
+          correct_option?: string
+          created_at?: string
+          id?: string
+          marks?: number
+          option_a?: string
+          option_b?: string
+          option_c?: string
+          option_d?: string
+          question_text?: string
+          sort_order?: number
+          test_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      results: {
+        Row: {
+          answers: Json | null
+          correct_count: number
+          created_at: string
+          id: string
+          score: number
+          test_id: string
+          time_taken_seconds: number | null
+          total_marks: number
+          total_questions: number
+          user_id: string
+        }
+        Insert: {
+          answers?: Json | null
+          correct_count?: number
+          created_at?: string
+          id?: string
+          score?: number
+          test_id: string
+          time_taken_seconds?: number | null
+          total_marks?: number
+          total_questions?: number
+          user_id: string
+        }
+        Update: {
+          answers?: Json | null
+          correct_count?: number
+          created_at?: string
+          id?: string
+          score?: number
+          test_id?: string
+          time_taken_seconds?: number | null
+          total_marks?: number
+          total_questions?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "results_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subjects: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          name_hi: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          name_hi?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          name_hi?: string | null
+        }
+        Relationships: []
+      }
+      tests: {
+        Row: {
+          chapter_id: string | null
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          id: string
+          subject_id: string | null
+          title: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          subject_id?: string | null
+          title: string
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          subject_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tests_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "student"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +437,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "student"],
+    },
   },
 } as const
