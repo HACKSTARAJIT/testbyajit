@@ -252,8 +252,86 @@ function TestsTab({ subjects, chapters, tests, reload, del }: any) {
     </CardHeader>
     <CardContent className="space-y-2">
       {tests.length === 0 && <p className="text-sm text-muted-foreground">No tests yet.</p>}
-      {tests.map((t: any) => <Row key={t.id} title={t.title} sub={`${t.subjects?.name ?? ""} • ${t.duration_minutes}m`} onDelete={() => del("tests", t.id)} />)}
+      {tests.map((t: any) => (
+        <Row key={t.id} title={t.title} sub={`${t.subjects?.name ?? ""} • ${t.duration_minutes}m`} onDelete={() => del("tests", t.id)}>
+          <EditTestDialog test={t} subjects={subjects} chapters={chapters} reload={reload} />
+        </Row>
+      ))}
     </CardContent></Card>
+  );
+}
+
+function EditPdfDialog({ pdf, subjects, chapters, reload }: any) {
+  const [open, setOpen] = useState(false);
+  const [subjectId, setSubjectId] = useState(pdf.subject_id ?? "");
+  const [chapterId, setChapterId] = useState(pdf.chapter_id ?? "");
+  const [title, setTitle] = useState(pdf.title);
+  const [busy, setBusy] = useState(false);
+  const subjChapters = chapters.filter((c: any) => c.subject_id === subjectId);
+  const save = async () => {
+    if (!subjectId || !title.trim()) return toast.error("Subject & title required");
+    setBusy(true);
+    const { error } = await supabase.from("pdfs").update({ subject_id: subjectId, chapter_id: chapterId || null, title }).eq("id", pdf.id);
+    setBusy(false);
+    if (error) toast.error(error.message); else { toast.success("Updated"); setOpen(false); reload(); }
+  };
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild><Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
+      <DialogContent><DialogHeader><DialogTitle>Edit PDF</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div><Label>Subject</Label><SubjectSelect subjects={subjects} value={subjectId} onChange={(v: string) => { setSubjectId(v); setChapterId(""); }} /></div>
+          <div><Label>Chapter (optional)</Label>
+            <Select value={chapterId} onValueChange={setChapterId}><SelectTrigger><SelectValue placeholder="General" /></SelectTrigger>
+              <SelectContent>{subjChapters.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>
+          </div>
+          <div><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+          <p className="text-xs text-muted-foreground">To replace the file itself, delete and re-upload.</p>
+        </div>
+        <DialogFooter><Button onClick={save} disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditTestDialog({ test, subjects, chapters, reload }: any) {
+  const [open, setOpen] = useState(false);
+  const [subjectId, setSubjectId] = useState(test.subject_id ?? "");
+  const [chapterId, setChapterId] = useState(test.chapter_id ?? "");
+  const [title, setTitle] = useState(test.title);
+  const [duration, setDuration] = useState(String(test.duration_minutes));
+  const [desc, setDesc] = useState(test.description ?? "");
+  const [busy, setBusy] = useState(false);
+  const subjChapters = chapters.filter((c: any) => c.subject_id === subjectId);
+  const save = async () => {
+    if (!subjectId || !title.trim()) return toast.error("Subject & title required");
+    setBusy(true);
+    const { error } = await supabase.from("tests").update({
+      subject_id: subjectId, chapter_id: chapterId || null, title,
+      description: desc || null, duration_minutes: Number(duration),
+    }).eq("id", test.id);
+    setBusy(false);
+    if (error) toast.error(error.message); else { toast.success("Updated"); setOpen(false); reload(); }
+  };
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild><Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
+      <DialogContent><DialogHeader><DialogTitle>Edit Test</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div><Label>Subject</Label><SubjectSelect subjects={subjects} value={subjectId} onChange={(v: string) => { setSubjectId(v); setChapterId(""); }} /></div>
+          <div><Label>Chapter (optional)</Label>
+            <Select value={chapterId} onValueChange={setChapterId}><SelectTrigger><SelectValue placeholder="General" /></SelectTrigger>
+              <SelectContent>{subjChapters.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+            <div><Label>Duration (min)</Label><Input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} /></div>
+          </div>
+          <div><Label>Description</Label><Textarea value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
+        </div>
+        <DialogFooter><Button onClick={save} disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
