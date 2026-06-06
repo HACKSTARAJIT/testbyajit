@@ -3,10 +3,24 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AppLayout } from "@/components/AppLayout";
+import { ProtectedRoute, AdminRoute } from "@/components/RouteGuards";
 import Index from "./pages/Index.tsx";
+import Auth from "./pages/Auth.tsx";
+import Dashboard from "./pages/Dashboard.tsx";
+import Subjects from "./pages/Subjects.tsx";
+import SubjectDetail from "./pages/SubjectDetail.tsx";
+import Tests from "./pages/Tests.tsx";
+import TestAttempt from "./pages/TestAttempt.tsx";
+import Results from "./pages/Results.tsx";
+import Admin from "./pages/Admin.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
+
+const withLayout = (el: JSX.Element) => (
+  <ProtectedRoute><AppLayout>{el}</AppLayout></ProtectedRoute>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -16,7 +30,14 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/dashboard" element={withLayout(<Dashboard />)} />
+          <Route path="/subjects" element={withLayout(<Subjects />)} />
+          <Route path="/subjects/:id" element={withLayout(<SubjectDetail />)} />
+          <Route path="/tests" element={withLayout(<Tests />)} />
+          <Route path="/test/:id" element={withLayout(<TestAttempt />)} />
+          <Route path="/results" element={withLayout(<Results />)} />
+          <Route path="/admin" element={<AdminRoute><AppLayout><Admin /></AppLayout></AdminRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
