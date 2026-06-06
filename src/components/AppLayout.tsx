@@ -9,7 +9,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   BookOpen, LayoutDashboard, FileText, ClipboardList, History,
-  Shield, LogOut, GraduationCap, Menu,
+  Shield, LogOut, GraduationCap, Menu, User,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetTrigger,
