@@ -98,7 +98,8 @@ export default function TestAttempt() {
           <h3 className="font-semibold">Review Answers</h3>
           {questions.map((qn, i) => {
             const userAns = answers[qn.id];
-            const isCorrect = userAns === qn.correct_option;
+            const correctOption = answerKey[qn.id];
+            const isCorrect = userAns === correctOption;
             return (
               <Card key={qn.id}>
                 <CardContent className="p-4">
@@ -110,8 +111,8 @@ export default function TestAttempt() {
                         {["a", "b", "c", "d"].map((opt) => (
                           <div key={opt} className={cn(
                             "rounded px-2 py-1",
-                            opt === qn.correct_option && "bg-success/10 text-success font-medium",
-                            opt === userAns && opt !== qn.correct_option && "bg-destructive/10 text-destructive"
+                            opt === correctOption && "bg-success/10 text-success font-medium",
+                            opt === userAns && opt !== correctOption && "bg-destructive/10 text-destructive"
                           )}>
                             {opt.toUpperCase()}. {qn[`option_${opt}`]}
                           </div>
