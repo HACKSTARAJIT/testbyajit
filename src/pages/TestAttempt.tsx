@@ -50,23 +50,24 @@ export default function TestAttempt() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [test, submitted]);
 
+  const [answerKey, setAnswerKey] = useState<Record<string, string>>({});
+
   const handleSubmit = async () => {
     if (submittedRef.current) return;
     submittedRef.current = true;
-    let score = 0, correct = 0, totalMarks = 0;
-    questions.forEach((qn) => {
-      totalMarks += qn.marks;
-      if (answers[qn.id] === qn.correct_option) { score += qn.marks; correct += 1; }
-    });
     const timeTaken = Math.round((Date.now() - startRef.current) / 1000);
-    const payload = {
-      user_id: user!.id, test_id: id!, score, total_marks: totalMarks,
-      correct_count: correct, total_questions: questions.length,
-      answers, time_taken_seconds: timeTaken,
-    };
-    const { error } = await supabase.from("results").insert(payload);
-    if (error) toast.error("Could not save result");
-    setResult({ score, totalMarks, correct, total: questions.length });
+    const { data, error } = await supabase.functions.invoke("submit-test", {
+      body: { test_id: id, answers, time_taken_seconds: timeTaken },
+    });
+    if (error || !data || data.error) {
+      toast.error("Could not submit test");
+      submittedRef.current = false;
+      return;
+    }
+    const key: Record<string, string> = {};
+    (data.review ?? []).forEach((r: any) => { key[r.id] = r.correct_option; });
+    setAnswerKey(key);
+    setResult({ score: data.score, totalMarks: data.totalMarks, correct: data.correct, total: data.total });
     setSubmitted(true);
   };
 
@@ -97,7 +98,8 @@ export default function TestAttempt() {
           <h3 className="font-semibold">Review Answers</h3>
           {questions.map((qn, i) => {
             const userAns = answers[qn.id];
-            const isCorrect = userAns === qn.correct_option;
+            const correctOption = answerKey[qn.id];
+            const isCorrect = userAns === correctOption;
             return (
               <Card key={qn.id}>
                 <CardContent className="p-4">
@@ -109,8 +111,8 @@ export default function TestAttempt() {
                         {["a", "b", "c", "d"].map((opt) => (
                           <div key={opt} className={cn(
                             "rounded px-2 py-1",
-                            opt === qn.correct_option && "bg-success/10 text-success font-medium",
-                            opt === userAns && opt !== qn.correct_option && "bg-destructive/10 text-destructive"
+                            opt === correctOption && "bg-success/10 text-success font-medium",
+                            opt === userAns && opt !== correctOption && "bg-destructive/10 text-destructive"
                           )}>
                             {opt.toUpperCase()}. {qn[`option_${opt}`]}
                           </div>
