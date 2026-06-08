@@ -11,8 +11,6 @@ import Dashboard from "./pages/Dashboard.tsx";
 import Subjects from "./pages/Subjects.tsx";
 import SubjectDetail from "./pages/SubjectDetail.tsx";
 import Tests from "./pages/Tests.tsx";
-
-import Results from "./pages/Results.tsx";
 import Admin from "./pages/Admin.tsx";
 import Profile from "./pages/Profile.tsx";
 import NotFound from "./pages/NotFound.tsx";
