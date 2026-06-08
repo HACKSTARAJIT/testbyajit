@@ -56,7 +56,7 @@ export default function Profile() {
               <Badge variant={isAdmin ? "default" : "secondary"}>{isAdmin ? "Admin" : "Student"}</Badge>
             </div>
             <p className="text-sm text-muted-foreground">{user?.email}</p>
-            <p className="flex items-center gap-1 text-sm text-muted-foreground"><Trophy className="h-4 w-4" /> {attempts} test attempt(s)</p>
+
           </div>
         </CardContent>
       </Card>
