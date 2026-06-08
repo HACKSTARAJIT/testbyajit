@@ -176,84 +176,46 @@ function PdfsTab({ subjects, chapters, pdfs, reload, del }: any) {
 function TestsTab({ subjects, chapters, tests, reload, del }: any) {
   const [open, setOpen] = useState(false);
   const [subjectId, setSubjectId] = useState(""); const [chapterId, setChapterId] = useState("");
-  const [title, setTitle] = useState(""); const [duration, setDuration] = useState("30"); const [desc, setDesc] = useState("");
-  const [questions, setQuestions] = useState<any[]>([emptyQ()]);
+  const [title, setTitle] = useState(""); const [testLink, setTestLink] = useState(""); const [desc, setDesc] = useState("");
   const [busy, setBusy] = useState(false);
   const subjChapters = chapters.filter((c: any) => c.subject_id === subjectId);
 
-  function emptyQ() { return { question_text: "", option_a: "", option_b: "", option_c: "", option_d: "", correct_option: "a", marks: 1 }; }
-  const updateQ = (i: number, k: string, v: any) => setQuestions((qs) => qs.map((q, idx) => idx === i ? { ...q, [k]: v } : q));
-
   const save = async () => {
     if (!subjectId || !title.trim()) return toast.error("Subject & title required");
-    const valid = questions.filter((q) => q.question_text.trim() && q.option_a && q.option_b);
-    if (valid.length === 0) return toast.error("Add at least one complete question");
+    if (!testLink.trim()) return toast.error("Test link required");
     setBusy(true);
     try {
-      const { data, error } = await supabase.from("tests").insert({
-        subject_id: subjectId, chapter_id: chapterId || null, title, description: desc || null, duration_minutes: Number(duration),
-      }).select().single();
+      const { error } = await supabase.from("tests").insert({
+        subject_id: subjectId, chapter_id: chapterId || null, title, description: desc || null, test_link: testLink.trim(),
+      });
       if (error) throw error;
-      const rows = valid.map((q, i) => ({ ...q, marks: Number(q.marks), test_id: data.id, sort_order: i }));
-      const { error: qErr } = await supabase.from("questions").insert(rows);
-      if (qErr) throw qErr;
-      toast.success("Test created");
-      setTitle(""); setDesc(""); setQuestions([emptyQ()]); setOpen(false); reload();
+      toast.success("Test added");
+      setTitle(""); setTestLink(""); setDesc(""); setOpen(false); reload();
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };
 
   return (
     <Card><CardHeader className="flex-row items-center justify-between">
       <CardTitle className="text-lg">Practice Tests</CardTitle>
-      <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button size="sm"><Plus className="mr-1 h-4 w-4" /> Create</Button></DialogTrigger>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>Create Test with MCQs</DialogTitle></DialogHeader>
+      <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button size="sm"><Plus className="mr-1 h-4 w-4" /> Add</Button></DialogTrigger>
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto"><DialogHeader><DialogTitle>Add Test Link</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div><Label>Subject</Label><SubjectSelect subjects={subjects} value={subjectId} onChange={(v: string) => { setSubjectId(v); setChapterId(""); }} /></div>
-              <div><Label>Chapter (optional)</Label>
-                <Select value={chapterId} onValueChange={setChapterId}><SelectTrigger><SelectValue placeholder="General" /></SelectTrigger>
-                  <SelectContent>{subjChapters.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>
-              </div>
+            <div><Label>Subject</Label><SubjectSelect subjects={subjects} value={subjectId} onChange={(v: string) => { setSubjectId(v); setChapterId(""); }} /></div>
+            <div><Label>Chapter / Topic (optional)</Label>
+              <Select value={chapterId} onValueChange={setChapterId}><SelectTrigger><SelectValue placeholder="General" /></SelectTrigger>
+                <SelectContent>{subjChapters.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-              <div><Label>Duration (min)</Label><Input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} /></div>
-            </div>
+            <div><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+            <div><Label>Test Link</Label><Input type="url" placeholder="https://..." value={testLink} onChange={(e) => setTestLink(e.target.value)} /></div>
             <div><Label>Description</Label><Textarea value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
-
-            <div className="space-y-3">
-              <Label>Questions</Label>
-              {questions.map((q, i) => (
-                <div key={i} className="space-y-2 rounded-lg border p-3">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="secondary">Q{i + 1}</Badge>
-                    {questions.length > 1 && <Button size="icon" variant="ghost" onClick={() => setQuestions((qs) => qs.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
-                  </div>
-                  <Textarea placeholder="Question text" value={q.question_text} onChange={(e) => updateQ(i, "question_text", e.target.value)} />
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {["a", "b", "c", "d"].map((opt) => (
-                      <Input key={opt} placeholder={`Option ${opt.toUpperCase()}`} value={q[`option_${opt}`]} onChange={(e) => updateQ(i, `option_${opt}`, e.target.value)} />
-                    ))}
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <div><Label className="text-xs">Correct</Label>
-                      <Select value={q.correct_option} onValueChange={(v) => updateQ(i, "correct_option", v)}><SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{["a", "b", "c", "d"].map((o) => <SelectItem key={o} value={o}>Option {o.toUpperCase()}</SelectItem>)}</SelectContent></Select>
-                    </div>
-                    <div><Label className="text-xs">Marks</Label><Input type="number" value={q.marks} onChange={(e) => updateQ(i, "marks", e.target.value)} /></div>
-                  </div>
-                </div>
-              ))}
-              <Button variant="outline" size="sm" onClick={() => setQuestions((qs) => [...qs, emptyQ()])}><Plus className="mr-1 h-4 w-4" /> Add Question</Button>
-            </div>
           </div>
-          <DialogFooter><Button onClick={save} disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Create Test</Button></DialogFooter>
+          <DialogFooter><Button onClick={save} disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save</Button></DialogFooter>
         </DialogContent></Dialog>
     </CardHeader>
     <CardContent className="space-y-2">
       {tests.length === 0 && <p className="text-sm text-muted-foreground">No tests yet.</p>}
       {tests.map((t: any) => (
-        <Row key={t.id} title={t.title} sub={`${t.subjects?.name ?? ""} • ${t.duration_minutes}m`} onDelete={() => del("tests", t.id)}>
+        <Row key={t.id} title={t.title} sub={t.subjects?.name} onDelete={() => del("tests", t.id)}>
           <EditTestDialog test={t} subjects={subjects} chapters={chapters} reload={reload} />
         </Row>
       ))}
@@ -299,16 +261,17 @@ function EditTestDialog({ test, subjects, chapters, reload }: any) {
   const [subjectId, setSubjectId] = useState(test.subject_id ?? "");
   const [chapterId, setChapterId] = useState(test.chapter_id ?? "");
   const [title, setTitle] = useState(test.title);
-  const [duration, setDuration] = useState(String(test.duration_minutes));
+  const [testLink, setTestLink] = useState(test.test_link ?? "");
   const [desc, setDesc] = useState(test.description ?? "");
   const [busy, setBusy] = useState(false);
   const subjChapters = chapters.filter((c: any) => c.subject_id === subjectId);
   const save = async () => {
     if (!subjectId || !title.trim()) return toast.error("Subject & title required");
+    if (!testLink.trim()) return toast.error("Test link required");
     setBusy(true);
     const { error } = await supabase.from("tests").update({
       subject_id: subjectId, chapter_id: chapterId || null, title,
-      description: desc || null, duration_minutes: Number(duration),
+      description: desc || null, test_link: testLink.trim(),
     }).eq("id", test.id);
     setBusy(false);
     if (error) toast.error(error.message); else { toast.success("Updated"); setOpen(false); reload(); }
@@ -319,14 +282,12 @@ function EditTestDialog({ test, subjects, chapters, reload }: any) {
       <DialogContent><DialogHeader><DialogTitle>Edit Test</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div><Label>Subject</Label><SubjectSelect subjects={subjects} value={subjectId} onChange={(v: string) => { setSubjectId(v); setChapterId(""); }} /></div>
-          <div><Label>Chapter (optional)</Label>
+          <div><Label>Chapter / Topic (optional)</Label>
             <Select value={chapterId} onValueChange={setChapterId}><SelectTrigger><SelectValue placeholder="General" /></SelectTrigger>
               <SelectContent>{subjChapters.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-            <div><Label>Duration (min)</Label><Input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} /></div>
-          </div>
+          <div><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+          <div><Label>Test Link</Label><Input type="url" placeholder="https://..." value={testLink} onChange={(e) => setTestLink(e.target.value)} /></div>
           <div><Label>Description</Label><Textarea value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
         </div>
         <DialogFooter><Button onClick={save} disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save</Button></DialogFooter>

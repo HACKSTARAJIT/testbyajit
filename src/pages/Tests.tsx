@@ -1,33 +1,28 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Search, Clock, Timer } from "lucide-react";
+import { ClipboardList, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Tests() {
   const [tests, setTests] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
-  const [qCounts, setQCounts] = useState<Record<string, number>>({});
   const [q, setQ] = useState("");
   const [subject, setSubject] = useState("all");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [t, s, qs] = await Promise.all([
+      const [t, s] = await Promise.all([
         supabase.from("tests").select("*, subjects(name)").order("created_at", { ascending: false }),
         supabase.from("subjects").select("id,name").order("name"),
-        supabase.from("questions").select("test_id"),
       ]);
-      setTests(t.data ?? []); setSubjects(s.data ?? []);
-      const map: Record<string, number> = {};
-      (qs.data ?? []).forEach((row: any) => { map[row.test_id] = (map[row.test_id] ?? 0) + 1; });
-      setQCounts(map);
+      setTests((t.data ?? []).filter((row: any) => row.test_link));
+      setSubjects(s.data ?? []);
       setLoading(false);
     })();
   }, []);
@@ -77,12 +72,8 @@ export default function Tests() {
                 </div>
                 <h3 className="font-semibold">{t.title}</h3>
                 {t.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t.description}</p>}
-                <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {t.duration_minutes} min</span>
-                  <span className="flex items-center gap-1"><Timer className="h-3 w-3" /> {qCounts[t.id] ?? 0} questions</span>
-                </div>
-                <Button asChild className="mt-4 w-full" disabled={!qCounts[t.id]}>
-                  <Link to={`/test/${t.id}`}>{qCounts[t.id] ? "Start Test" : "No Questions"}</Link>
+                <Button asChild className="mt-4 w-full">
+                  <a href={t.test_link} target="_blank" rel="noopener noreferrer">Start Test</a>
                 </Button>
               </CardContent>
             </Card>

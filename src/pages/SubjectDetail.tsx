@@ -150,14 +150,15 @@ function MaterialList({ pdfs, tests, onOpen, onDownload }: {
           </div>
         </div>
       ))}
-      {tests.map((t) => (
+      {tests.filter((t) => t.test_link).map((t) => (
         <div key={t.id} className="flex items-center justify-between rounded-lg border p-3">
           <div className="flex items-center gap-2 min-w-0">
             <ClipboardList className="h-4 w-4 shrink-0 text-primary" />
             <span className="truncate text-sm font-medium">{t.title}</span>
-            <Badge variant="secondary">{t.duration_minutes}m</Badge>
           </div>
-          <Button asChild size="sm"><Link to={`/test/${t.id}`}>Start</Link></Button>
+          <Button asChild size="sm">
+            <a href={t.test_link} target="_blank" rel="noopener noreferrer">Start Test</a>
+          </Button>
         </div>
       ))}
     </div>

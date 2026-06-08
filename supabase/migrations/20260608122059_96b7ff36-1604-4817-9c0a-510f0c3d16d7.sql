@@ -1,0 +1,1 @@
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS test_link text;
