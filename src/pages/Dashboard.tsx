@@ -47,7 +47,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {cards.map((c) => (
           <Link key={c.label} to={c.to}>
             <Card className="transition-shadow hover:shadow-md">
@@ -65,15 +65,6 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Trophy className="h-5 w-5 text-secondary" /> Your Average Score</CardTitle></CardHeader>
-        <CardContent>
-          <div className="text-4xl font-bold gradient-text">{stats.avg}%</div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {stats.attempts > 0 ? `Across ${stats.attempts} attempt(s)` : "No tests attempted yet. Start practicing!"}
-          </p>
-        </CardContent>
-      </Card>
 
       {isAdmin && (
         <Card className="border-secondary/40 bg-secondary/5">
