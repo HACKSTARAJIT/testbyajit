@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Clock, BookOpen, Save, ChevronRight, Trophy } from "lucide-react";
+import { Clock, BookOpen, Save, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Profile() {
@@ -16,22 +16,19 @@ export default function Profile() {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [recent, setRecent] = useState<any[]>([]);
-  const [attempts, setAttempts] = useState(0);
 
   useEffect(() => {
     (async () => {
-      const [profile, views, results] = await Promise.all([
+      const [profile, views] = await Promise.all([
         supabase.from("profiles").select("display_name").eq("id", user!.id).maybeSingle(),
         supabase.from("chapter_views")
           .select("viewed_at, chapters(id, name, name_hi, subject_id, subjects(name))")
           .eq("user_id", user!.id)
           .order("viewed_at", { ascending: false })
           .limit(10),
-        supabase.from("results").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
       ]);
       setName(profile.data?.display_name ?? "");
       setRecent(views.data ?? []);
-      setAttempts(results.count ?? 0);
     })();
   }, [user]);
 
@@ -59,7 +56,7 @@ export default function Profile() {
               <Badge variant={isAdmin ? "default" : "secondary"}>{isAdmin ? "Admin" : "Student"}</Badge>
             </div>
             <p className="text-sm text-muted-foreground">{user?.email}</p>
-            <p className="flex items-center gap-1 text-sm text-muted-foreground"><Trophy className="h-4 w-4" /> {attempts} test attempt(s)</p>
+
           </div>
         </CardContent>
       </Card>

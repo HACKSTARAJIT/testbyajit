@@ -4,29 +4,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, ClipboardList, FileText, TrendingUp, ArrowRight, Trophy } from "lucide-react";
+import { BookOpen, ClipboardList, FileText, ArrowRight } from "lucide-react";
 
 export default function Dashboard() {
   const { user, isAdmin } = useAuth();
-  const [stats, setStats] = useState({ subjects: 0, tests: 0, pdfs: 0, attempts: 0, avg: 0 });
+  const [stats, setStats] = useState({ subjects: 0, tests: 0, pdfs: 0 });
   const [name, setName] = useState("");
 
   useEffect(() => {
     (async () => {
-      const [subs, tests, pdfs, results, profile] = await Promise.all([
+      const [subs, tests, pdfs, profile] = await Promise.all([
         supabase.from("subjects").select("id", { count: "exact", head: true }),
         supabase.from("tests").select("id", { count: "exact", head: true }),
         supabase.from("pdfs").select("id", { count: "exact", head: true }),
-        supabase.from("results").select("score,total_marks").eq("user_id", user!.id),
         supabase.from("profiles").select("display_name").eq("id", user!.id).maybeSingle(),
       ]);
-      const attempts = results.data ?? [];
-      const avg = attempts.length
-        ? Math.round(attempts.reduce((a, r) => a + (r.total_marks ? (r.score / r.total_marks) * 100 : 0), 0) / attempts.length)
-        : 0;
       setStats({
         subjects: subs.count ?? 0, tests: tests.count ?? 0, pdfs: pdfs.count ?? 0,
-        attempts: attempts.length, avg,
       });
       setName(profile.data?.display_name ?? "");
     })();
@@ -36,7 +30,6 @@ export default function Dashboard() {
     { label: "Subjects / विषय", value: stats.subjects, icon: BookOpen, to: "/subjects" },
     { label: "Practice Tests", value: stats.tests, icon: ClipboardList, to: "/tests" },
     { label: "Study PDFs", value: stats.pdfs, icon: FileText, to: "/subjects" },
-    { label: "My Attempts", value: stats.attempts, icon: TrendingUp, to: "/results" },
   ];
 
   return (
@@ -54,7 +47,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {cards.map((c) => (
           <Link key={c.label} to={c.to}>
             <Card className="transition-shadow hover:shadow-md">
@@ -72,15 +65,6 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Trophy className="h-5 w-5 text-secondary" /> Your Average Score</CardTitle></CardHeader>
-        <CardContent>
-          <div className="text-4xl font-bold gradient-text">{stats.avg}%</div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {stats.attempts > 0 ? `Across ${stats.attempts} attempt(s)` : "No tests attempted yet. Start practicing!"}
-          </p>
-        </CardContent>
-      </Card>
 
       {isAdmin && (
         <Card className="border-secondary/40 bg-secondary/5">

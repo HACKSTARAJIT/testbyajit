@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  BookOpen, LayoutDashboard, FileText, ClipboardList, History,
+  BookOpen, LayoutDashboard, FileText, ClipboardList,
   Shield, LogOut, GraduationCap, Menu, User,
 } from "lucide-react";
 import {
@@ -20,7 +20,6 @@ const navItems = [
   { to: "/dashboard", label: "होम / Home", icon: LayoutDashboard },
   { to: "/subjects", label: "विषय / Subjects", icon: BookOpen },
   { to: "/tests", label: "टेस्ट / Tests", icon: ClipboardList },
-  { to: "/results", label: "परिणाम / Results", icon: History },
   { to: "/profile", label: "प्रोफ़ाइल / Profile", icon: User },
 ];
 
