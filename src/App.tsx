@@ -34,8 +34,6 @@ const App = () => (
           <Route path="/subjects" element={withLayout(<Subjects />)} />
           <Route path="/subjects/:id" element={withLayout(<SubjectDetail />)} />
           <Route path="/tests" element={withLayout(<Tests />)} />
-          
-          <Route path="/results" element={withLayout(<Results />)} />
           <Route path="/profile" element={withLayout(<Profile />)} />
           <Route path="/admin" element={<AdminRoute><AppLayout><Admin /></AppLayout></AdminRoute>} />
           <Route path="*" element={<NotFound />} />
