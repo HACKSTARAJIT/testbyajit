@@ -19,18 +19,16 @@ export default function Profile() {
 
   useEffect(() => {
     (async () => {
-      const [profile, views, results] = await Promise.all([
+      const [profile, views] = await Promise.all([
         supabase.from("profiles").select("display_name").eq("id", user!.id).maybeSingle(),
         supabase.from("chapter_views")
           .select("viewed_at, chapters(id, name, name_hi, subject_id, subjects(name))")
           .eq("user_id", user!.id)
           .order("viewed_at", { ascending: false })
           .limit(10),
-        supabase.from("results").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
       ]);
       setName(profile.data?.display_name ?? "");
       setRecent(views.data ?? []);
-      setAttempts(results.count ?? 0);
     })();
   }, [user]);
 
