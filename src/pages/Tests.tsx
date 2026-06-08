@@ -73,12 +73,8 @@ export default function Tests() {
                 </div>
                 <h3 className="font-semibold">{t.title}</h3>
                 {t.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t.description}</p>}
-                <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {t.duration_minutes} min</span>
-                  <span className="flex items-center gap-1"><Timer className="h-3 w-3" /> {qCounts[t.id] ?? 0} questions</span>
-                </div>
-                <Button asChild className="mt-4 w-full" disabled={!qCounts[t.id]}>
-                  <Link to={`/test/${t.id}`}>{qCounts[t.id] ? "Start Test" : "No Questions"}</Link>
+                <Button asChild className="mt-4 w-full">
+                  <a href={t.test_link} target="_blank" rel="noopener noreferrer">Start Test</a>
                 </Button>
               </CardContent>
             </Card>
