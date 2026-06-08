@@ -270,6 +270,7 @@ export type Database = {
           duration_minutes: number
           id: string
           subject_id: string | null
+          test_link: string | null
           title: string
         }
         Insert: {
@@ -279,6 +280,7 @@ export type Database = {
           duration_minutes?: number
           id?: string
           subject_id?: string | null
+          test_link?: string | null
           title: string
         }
         Update: {
@@ -288,6 +290,7 @@ export type Database = {
           duration_minutes?: number
           id?: string
           subject_id?: string | null
+          test_link?: string | null
           title?: string
         }
         Relationships: [
