@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Clock, BookOpen, Save, ChevronRight, Trophy } from "lucide-react";
+import { Clock, BookOpen, Save, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Profile() {
