@@ -12,22 +12,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function Tests() {
   const [tests, setTests] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
-  const [qCounts, setQCounts] = useState<Record<string, number>>({});
   const [q, setQ] = useState("");
   const [subject, setSubject] = useState("all");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [t, s, qs] = await Promise.all([
+      const [t, s] = await Promise.all([
         supabase.from("tests").select("*, subjects(name)").order("created_at", { ascending: false }),
         supabase.from("subjects").select("id,name").order("name"),
-        supabase.from("questions").select("test_id"),
       ]);
-      setTests(t.data ?? []); setSubjects(s.data ?? []);
-      const map: Record<string, number> = {};
-      (qs.data ?? []).forEach((row: any) => { map[row.test_id] = (map[row.test_id] ?? 0) + 1; });
-      setQCounts(map);
+      setTests((t.data ?? []).filter((row: any) => row.test_link));
+      setSubjects(s.data ?? []);
       setLoading(false);
     })();
   }, []);
