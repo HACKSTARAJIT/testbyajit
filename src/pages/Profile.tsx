@@ -16,7 +16,6 @@ export default function Profile() {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [recent, setRecent] = useState<any[]>([]);
-  const [attempts, setAttempts] = useState(0);
 
   useEffect(() => {
     (async () => {
