@@ -95,6 +95,15 @@ export default function SubjectDetail() {
         {subject.description && <p className="mt-2 text-sm text-primary-foreground/90">{subject.description}</p>}
       </div>
 
+      {generalPerformance.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg"><BarChart3 className="h-5 w-5 text-primary" /> Performance & Results</CardTitle>
+          </CardHeader>
+          <CardContent><PerformanceList items={generalPerformance} /></CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="gap-3">
           <CardTitle className="text-lg">अध्याय / Chapters</CardTitle>
