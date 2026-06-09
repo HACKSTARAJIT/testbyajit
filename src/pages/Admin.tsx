@@ -176,38 +176,60 @@ function PdfsTab({ subjects, chapters, pdfs, reload, del }: any) {
 function TestsTab({ subjects, chapters, tests, reload, del }: any) {
   const [open, setOpen] = useState(false);
   const [subjectId, setSubjectId] = useState(""); const [chapterId, setChapterId] = useState("");
-  const [title, setTitle] = useState(""); const [testLink, setTestLink] = useState(""); const [desc, setDesc] = useState("");
+  const [parts, setParts] = useState<{ title: string; link: string }[]>([{ title: "Part 1", link: "" }]);
   const [busy, setBusy] = useState(false);
   const subjChapters = chapters.filter((c: any) => c.subject_id === subjectId);
 
+  const setPart = (i: number, field: "title" | "link", value: string) =>
+    setParts((prev) => prev.map((p, idx) => (idx === i ? { ...p, [field]: value } : p)));
+  const addPart = () => setParts((prev) => [...prev, { title: `Part ${prev.length + 1}`, link: "" }]);
+  const removePart = (i: number) => setParts((prev) => prev.filter((_, idx) => idx !== i));
+  const resetForm = () => { setParts([{ title: "Part 1", link: "" }]); setSubjectId(""); setChapterId(""); };
+
   const save = async () => {
-    if (!subjectId || !title.trim()) return toast.error("Subject & title required");
-    if (!testLink.trim()) return toast.error("Test link required");
+    if (!subjectId) return toast.error("Subject required");
+    const valid = parts.filter((p) => p.title.trim() && p.link.trim());
+    if (valid.length === 0) return toast.error("Add at least one part with a title & link");
     setBusy(true);
     try {
-      const { error } = await supabase.from("tests").insert({
-        subject_id: subjectId, chapter_id: chapterId || null, title, description: desc || null, test_link: testLink.trim(),
-      });
+      const { error } = await supabase.from("tests").insert(
+        valid.map((p) => ({
+          subject_id: subjectId, chapter_id: chapterId || null,
+          title: p.title.trim(), test_link: p.link.trim(),
+        }))
+      );
       if (error) throw error;
-      toast.success("Test added");
-      setTitle(""); setTestLink(""); setDesc(""); setOpen(false); reload();
+      toast.success(`${valid.length} test part(s) added`);
+      resetForm(); setOpen(false); reload();
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };
 
   return (
     <Card><CardHeader className="flex-row items-center justify-between">
       <CardTitle className="text-lg">Practice Tests</CardTitle>
-      <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button size="sm"><Plus className="mr-1 h-4 w-4" /> Add</Button></DialogTrigger>
-        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto"><DialogHeader><DialogTitle>Add Test Link</DialogTitle></DialogHeader>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}><DialogTrigger asChild><Button size="sm"><Plus className="mr-1 h-4 w-4" /> Add</Button></DialogTrigger>
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto"><DialogHeader><DialogTitle>Add Test Parts</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Subject</Label><SubjectSelect subjects={subjects} value={subjectId} onChange={(v: string) => { setSubjectId(v); setChapterId(""); }} /></div>
             <div><Label>Chapter / Topic (optional)</Label>
               <Select value={chapterId} onValueChange={setChapterId}><SelectTrigger><SelectValue placeholder="General" /></SelectTrigger>
                 <SelectContent>{subjChapters.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>
             </div>
-            <div><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-            <div><Label>Test Link</Label><Input type="url" placeholder="https://..." value={testLink} onChange={(e) => setTestLink(e.target.value)} /></div>
-            <div><Label>Description</Label><Textarea value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
+            <div className="space-y-3">
+              <Label>Test Parts</Label>
+              {parts.map((p, i) => (
+                <div key={i} className="space-y-2 rounded-lg border p-3">
+                  <div className="flex items-center gap-2">
+                    <Input className="flex-1" placeholder={`Part ${i + 1}`} value={p.title} onChange={(e) => setPart(i, "title", e.target.value)} />
+                    {parts.length > 1 && (
+                      <Button size="icon" variant="ghost" onClick={() => removePart(i)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    )}
+                  </div>
+                  <Input type="url" placeholder="https://... test link" value={p.link} onChange={(e) => setPart(i, "link", e.target.value)} />
+                </div>
+              ))}
+              <Button type="button" size="sm" variant="outline" onClick={addPart}><Plus className="mr-1 h-4 w-4" /> Add Part</Button>
+            </div>
           </div>
           <DialogFooter><Button onClick={save} disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save</Button></DialogFooter>
         </DialogContent></Dialog>
