@@ -150,6 +150,9 @@ function MaterialList({ pdfs, tests, onOpen, onDownload }: {
           </div>
         </div>
       ))}
+      {tests.filter((t) => t.test_link).length > 0 && (
+        <p className="pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Test Parts</p>
+      )}
       {tests.filter((t) => t.test_link).map((t) => (
         <div key={t.id} className="flex items-center justify-between rounded-lg border p-3">
           <div className="flex items-center gap-2 min-w-0">
