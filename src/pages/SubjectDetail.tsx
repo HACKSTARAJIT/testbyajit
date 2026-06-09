@@ -125,7 +125,13 @@ export default function SubjectDetail() {
                       {ch.name_hi && <span className="text-sm text-muted-foreground">/ {ch.name_hi}</span>}
                     </span>
                   </AccordionTrigger>
-                  <AccordionContent className="space-y-2">
+                  <AccordionContent className="space-y-3">
+                    {chapterPerformance(ch.id).length > 0 && (
+                      <div className="space-y-2 rounded-lg bg-muted/40 p-3">
+                        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><BarChart3 className="h-3.5 w-3.5" /> Performance & Results</p>
+                        <PerformanceList items={chapterPerformance(ch.id)} />
+                      </div>
+                    )}
                     <MaterialList pdfs={chapterPdfs(ch.id)} tests={chapterTests(ch.id)} onOpen={openPdf} onDownload={downloadPdf} />
                   </AccordionContent>
                 </AccordionItem>
