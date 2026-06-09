@@ -416,6 +416,8 @@ function EditPerformanceDialog({ item, subjects, chapters, reload }: any) {
     </Dialog>
   );
 }
+
+function SubjectSelect({ subjects, value, onChange }: any) {
   return (
     <Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
       <SelectContent>{subjects.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select>
