@@ -187,3 +187,41 @@ function MaterialList({ pdfs, tests, onOpen, onDownload }: {
     </div>
   );
 }
+
+function PerformanceList({ items }: { items: any[] }) {
+  return (
+    <div className="space-y-3">
+      {items.map((p) => (
+        <PerformanceItem key={p.id} item={p} />
+      ))}
+    </div>
+  );
+}
+
+function PerformanceItem({ item }: { item: any }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (item.image_path) getSignedUrl(item.image_path).then(setUrl);
+  }, [item.image_path]);
+
+  return (
+    <div className="rounded-lg border p-3">
+      {item.title && <p className="mb-2 font-semibold">{item.title}</p>}
+      {item.text_content && (
+        <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">{item.text_content}</pre>
+      )}
+      {url && (
+        <button type="button" onClick={() => setOpen(true)} className="mt-2 block w-full">
+          <img src={url} alt={item.title || "Performance result"} className="w-full rounded-md border transition hover:opacity-90" loading="lazy" />
+        </button>
+      )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-[95vw] border-0 bg-transparent p-0 shadow-none sm:max-w-4xl">
+          {url && <img src={url} alt={item.title || "Performance result"} className="max-h-[90vh] w-full rounded-md object-contain" />}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
