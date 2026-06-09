@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, BookOpen, Layers, FileText, ClipboardList, Loader2, Pencil } from "lucide-react";
+import { Plus, Trash2, BookOpen, Layers, FileText, ClipboardList, Loader2, Pencil, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Admin() {
@@ -18,15 +18,17 @@ export default function Admin() {
   const [chapters, setChapters] = useState<any[]>([]);
   const [tests, setTests] = useState<any[]>([]);
   const [pdfs, setPdfs] = useState<any[]>([]);
+  const [performance, setPerformance] = useState<any[]>([]);
 
   const load = async () => {
-    const [s, c, t, p] = await Promise.all([
+    const [s, c, t, p, perf] = await Promise.all([
       supabase.from("subjects").select("*").order("name"),
       supabase.from("chapters").select("*, subjects(name)").order("created_at"),
       supabase.from("tests").select("*, subjects(name)").order("created_at"),
       supabase.from("pdfs").select("*, subjects(name)").order("created_at"),
+      supabase.from("performance").select("*, subjects(name)").order("created_at"),
     ]);
-    setSubjects(s.data ?? []); setChapters(c.data ?? []); setTests(t.data ?? []); setPdfs(p.data ?? []);
+    setSubjects(s.data ?? []); setChapters(c.data ?? []); setTests(t.data ?? []); setPdfs(p.data ?? []); setPerformance(perf.data ?? []);
   };
   useEffect(() => { load(); }, []);
 
@@ -48,12 +50,14 @@ export default function Admin() {
           <TabsTrigger value="chapters"><Layers className="mr-1 h-4 w-4" /> Chapters</TabsTrigger>
           <TabsTrigger value="pdfs"><FileText className="mr-1 h-4 w-4" /> PDFs</TabsTrigger>
           <TabsTrigger value="tests"><ClipboardList className="mr-1 h-4 w-4" /> Tests</TabsTrigger>
+          <TabsTrigger value="performance"><BarChart3 className="mr-1 h-4 w-4" /> Results</TabsTrigger>
         </TabsList>
 
         <TabsContent value="subjects" className="pt-4"><SubjectsTab subjects={subjects} reload={load} del={del} /></TabsContent>
         <TabsContent value="chapters" className="pt-4"><ChaptersTab subjects={subjects} chapters={chapters} reload={load} del={del} /></TabsContent>
         <TabsContent value="pdfs" className="pt-4"><PdfsTab subjects={subjects} chapters={chapters} pdfs={pdfs} reload={load} del={del} /></TabsContent>
         <TabsContent value="tests" className="pt-4"><TestsTab subjects={subjects} chapters={chapters} tests={tests} reload={load} del={del} /></TabsContent>
+        <TabsContent value="performance" className="pt-4"><PerformanceTab subjects={subjects} chapters={chapters} performance={performance} reload={load} del={del} /></TabsContent>
       </Tabs>
     </div>
   );
@@ -312,6 +316,101 @@ function EditTestDialog({ test, subjects, chapters, reload }: any) {
           <div><Label>Test Link</Label><Input type="url" placeholder="https://..." value={testLink} onChange={(e) => setTestLink(e.target.value)} /></div>
           <div><Label>Description</Label><Textarea value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
         </div>
+        <DialogFooter><Button onClick={save} disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PerformanceForm({ subjects, chapters, subjectId, setSubjectId, chapterId, setChapterId, title, setTitle, text, setText, file, setFile, existingImage }: any) {
+  const subjChapters = chapters.filter((c: any) => c.subject_id === subjectId);
+  return (
+    <div className="space-y-3">
+      <div><Label>Subject</Label><SubjectSelect subjects={subjects} value={subjectId} onChange={(v: string) => { setSubjectId(v); setChapterId(""); }} /></div>
+      <div><Label>Chapter / Topic (optional)</Label>
+        <Select value={chapterId} onValueChange={setChapterId}><SelectTrigger><SelectValue placeholder="General (whole subject)" /></SelectTrigger>
+          <SelectContent>{subjChapters.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>
+      </div>
+      <div><Label>Title (optional)</Label><Input placeholder="e.g. Exam Performance 2025" value={title} onChange={(e: any) => setTitle(e.target.value)} /></div>
+      <div><Label>Performance Text (optional)</Label>
+        <Textarea rows={6} placeholder={"SSC MTS 2025 - 92%\nSSC CPO 2025 - 78%\nDelhi Police 2025 - 80%"} value={text} onChange={(e: any) => setText(e.target.value)} /></div>
+      <div><Label>Result Image (optional)</Label>
+        <Input type="file" accept="image/png,image/jpeg" onChange={(e: any) => setFile(e.target.files?.[0] ?? null)} />
+        {existingImage && !file && <p className="mt-1 text-xs text-muted-foreground">An image is already attached. Choose a file to replace it.</p>}
+      </div>
+      <p className="text-xs text-muted-foreground">Add text, an image, or both.</p>
+    </div>
+  );
+}
+
+function PerformanceTab({ subjects, chapters, performance, reload, del }: any) {
+  const [open, setOpen] = useState(false);
+  const [subjectId, setSubjectId] = useState(""); const [chapterId, setChapterId] = useState("");
+  const [title, setTitle] = useState(""); const [text, setText] = useState("");
+  const [file, setFile] = useState<File | null>(null); const [busy, setBusy] = useState(false);
+  const reset = () => { setSubjectId(""); setChapterId(""); setTitle(""); setText(""); setFile(null); };
+  const save = async () => {
+    if (!subjectId) return toast.error("Subject required");
+    if (!text.trim() && !file) return toast.error("Add performance text or an image");
+    setBusy(true);
+    try {
+      let imagePath: string | null = null;
+      if (file) imagePath = await uploadFile(file, "performance");
+      const { error } = await supabase.from("performance").insert({
+        subject_id: subjectId, chapter_id: chapterId || null,
+        title: title.trim() || null, text_content: text.trim() || null, image_path: imagePath,
+      });
+      if (error) throw error;
+      toast.success("Added"); reset(); setOpen(false); reload();
+    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <Card><CardHeader className="flex-row items-center justify-between">
+      <CardTitle className="text-lg">Performance & Results</CardTitle>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}><DialogTrigger asChild><Button size="sm"><Plus className="mr-1 h-4 w-4" /> Add</Button></DialogTrigger>
+        <DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Add Performance & Results</DialogTitle></DialogHeader>
+          <PerformanceForm subjects={subjects} chapters={chapters} subjectId={subjectId} setSubjectId={setSubjectId} chapterId={chapterId} setChapterId={setChapterId} title={title} setTitle={setTitle} text={text} setText={setText} file={file} setFile={setFile} />
+          <DialogFooter><Button onClick={save} disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save</Button></DialogFooter>
+        </DialogContent></Dialog>
+    </CardHeader>
+    <CardContent className="space-y-2">
+      {performance.length === 0 && <p className="text-sm text-muted-foreground">No performance entries yet.</p>}
+      {performance.map((p: any) => (
+        <Row key={p.id} title={p.title || (p.text_content ? p.text_content.split("\n")[0] : "Result image")} sub={p.subjects?.name} onDelete={() => del("performance", p.id)}>
+          <EditPerformanceDialog item={p} subjects={subjects} chapters={chapters} reload={reload} />
+        </Row>
+      ))}
+    </CardContent></Card>
+  );
+}
+
+function EditPerformanceDialog({ item, subjects, chapters, reload }: any) {
+  const [open, setOpen] = useState(false);
+  const [subjectId, setSubjectId] = useState(item.subject_id ?? "");
+  const [chapterId, setChapterId] = useState(item.chapter_id ?? "");
+  const [title, setTitle] = useState(item.title ?? "");
+  const [text, setText] = useState(item.text_content ?? "");
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    if (!subjectId) return toast.error("Subject required");
+    setBusy(true);
+    try {
+      let imagePath = item.image_path;
+      if (file) imagePath = await uploadFile(file, "performance");
+      const { error } = await supabase.from("performance").update({
+        subject_id: subjectId, chapter_id: chapterId || null,
+        title: title.trim() || null, text_content: text.trim() || null, image_path: imagePath,
+      }).eq("id", item.id);
+      if (error) throw error;
+      toast.success("Updated"); setOpen(false); reload();
+    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild><Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Edit Performance</DialogTitle></DialogHeader>
+        <PerformanceForm subjects={subjects} chapters={chapters} subjectId={subjectId} setSubjectId={setSubjectId} chapterId={chapterId} setChapterId={setChapterId} title={title} setTitle={setTitle} text={text} setText={setText} file={file} setFile={setFile} existingImage={item.image_path} />
         <DialogFooter><Button onClick={save} disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save</Button></DialogFooter>
       </DialogContent>
     </Dialog>

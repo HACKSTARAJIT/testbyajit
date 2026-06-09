@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { FileText, ClipboardList, Download, Eye, ArrowLeft, BookOpen, Search } from "lucide-react";
+import { FileText, ClipboardList, Download, Eye, ArrowLeft, BookOpen, Search, BarChart3 } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 export default function SubjectDetail() {
@@ -18,17 +19,19 @@ export default function SubjectDetail() {
   const [chapters, setChapters] = useState<any[]>([]);
   const [pdfs, setPdfs] = useState<any[]>([]);
   const [tests, setTests] = useState<any[]>([]);
+  const [performance, setPerformance] = useState<any[]>([]);
   const [q, setQ] = useState("");
 
   useEffect(() => {
     (async () => {
-      const [s, c, p, t] = await Promise.all([
+      const [s, c, p, t, perf] = await Promise.all([
         supabase.from("subjects").select("*").eq("id", id).maybeSingle(),
         supabase.from("chapters").select("*").eq("subject_id", id).order("sort_order"),
         supabase.from("pdfs").select("*").eq("subject_id", id).order("created_at", { ascending: false }),
         supabase.from("tests").select("*").eq("subject_id", id).order("created_at", { ascending: false }),
+        supabase.from("performance").select("*").eq("subject_id", id).order("created_at"),
       ]);
-      setSubject(s.data); setChapters(c.data ?? []); setPdfs(p.data ?? []); setTests(t.data ?? []);
+      setSubject(s.data); setChapters(c.data ?? []); setPdfs(p.data ?? []); setTests(t.data ?? []); setPerformance(perf.data ?? []);
     })();
   }, [id]);
 
@@ -66,8 +69,10 @@ export default function SubjectDetail() {
 
   const chapterPdfs = (chId: string) => pdfs.filter((p) => p.chapter_id === chId);
   const chapterTests = (chId: string) => tests.filter((t) => t.chapter_id === chId);
+  const chapterPerformance = (chId: string) => performance.filter((p) => p.chapter_id === chId);
   const generalPdfs = pdfs.filter((p) => !p.chapter_id);
   const generalTests = tests.filter((t) => !t.chapter_id);
+  const generalPerformance = performance.filter((p) => !p.chapter_id);
 
   const filteredChapters = chapters.filter((c) =>
     [c.name, c.name_hi].some((f) => f?.toLowerCase().includes(q.toLowerCase()))
@@ -90,6 +95,15 @@ export default function SubjectDetail() {
         {subject.description && <p className="mt-2 text-sm text-primary-foreground/90">{subject.description}</p>}
       </div>
 
+      {generalPerformance.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg"><BarChart3 className="h-5 w-5 text-primary" /> Performance & Results</CardTitle>
+          </CardHeader>
+          <CardContent><PerformanceList items={generalPerformance} /></CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="gap-3">
           <CardTitle className="text-lg">अध्याय / Chapters</CardTitle>
@@ -111,7 +125,13 @@ export default function SubjectDetail() {
                       {ch.name_hi && <span className="text-sm text-muted-foreground">/ {ch.name_hi}</span>}
                     </span>
                   </AccordionTrigger>
-                  <AccordionContent className="space-y-2">
+                  <AccordionContent className="space-y-3">
+                    {chapterPerformance(ch.id).length > 0 && (
+                      <div className="space-y-2 rounded-lg bg-muted/40 p-3">
+                        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><BarChart3 className="h-3.5 w-3.5" /> Performance & Results</p>
+                        <PerformanceList items={chapterPerformance(ch.id)} />
+                      </div>
+                    )}
                     <MaterialList pdfs={chapterPdfs(ch.id)} tests={chapterTests(ch.id)} onOpen={openPdf} onDownload={downloadPdf} />
                   </AccordionContent>
                 </AccordionItem>
@@ -164,6 +184,44 @@ function MaterialList({ pdfs, tests, onOpen, onDownload }: {
           </Button>
         </div>
       ))}
+    </div>
+  );
+}
+
+function PerformanceList({ items }: { items: any[] }) {
+  return (
+    <div className="space-y-3">
+      {items.map((p) => (
+        <PerformanceItem key={p.id} item={p} />
+      ))}
+    </div>
+  );
+}
+
+function PerformanceItem({ item }: { item: any }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (item.image_path) getSignedUrl(item.image_path).then(setUrl);
+  }, [item.image_path]);
+
+  return (
+    <div className="rounded-lg border p-3">
+      {item.title && <p className="mb-2 font-semibold">{item.title}</p>}
+      {item.text_content && (
+        <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">{item.text_content}</pre>
+      )}
+      {url && (
+        <button type="button" onClick={() => setOpen(true)} className="mt-2 block w-full">
+          <img src={url} alt={item.title || "Performance result"} className="w-full rounded-md border transition hover:opacity-90" loading="lazy" />
+        </button>
+      )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-[95vw] border-0 bg-transparent p-0 shadow-none sm:max-w-4xl">
+          {url && <img src={url} alt={item.title || "Performance result"} className="max-h-[90vh] w-full rounded-md object-contain" />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
