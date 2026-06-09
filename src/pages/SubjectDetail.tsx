@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { FileText, ClipboardList, Download, Eye, ArrowLeft, BookOpen, Search } from "lucide-react";
+import { FileText, ClipboardList, Download, Eye, ArrowLeft, BookOpen, Search, BarChart3, X } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 export default function SubjectDetail() {
