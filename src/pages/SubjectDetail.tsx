@@ -69,8 +69,10 @@ export default function SubjectDetail() {
 
   const chapterPdfs = (chId: string) => pdfs.filter((p) => p.chapter_id === chId);
   const chapterTests = (chId: string) => tests.filter((t) => t.chapter_id === chId);
+  const chapterPerformance = (chId: string) => performance.filter((p) => p.chapter_id === chId);
   const generalPdfs = pdfs.filter((p) => !p.chapter_id);
   const generalTests = tests.filter((t) => !t.chapter_id);
+  const generalPerformance = performance.filter((p) => !p.chapter_id);
 
   const filteredChapters = chapters.filter((c) =>
     [c.name, c.name_hi].some((f) => f?.toLowerCase().includes(q.toLowerCase()))
