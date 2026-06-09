@@ -19,17 +19,19 @@ export default function SubjectDetail() {
   const [chapters, setChapters] = useState<any[]>([]);
   const [pdfs, setPdfs] = useState<any[]>([]);
   const [tests, setTests] = useState<any[]>([]);
+  const [performance, setPerformance] = useState<any[]>([]);
   const [q, setQ] = useState("");
 
   useEffect(() => {
     (async () => {
-      const [s, c, p, t] = await Promise.all([
+      const [s, c, p, t, perf] = await Promise.all([
         supabase.from("subjects").select("*").eq("id", id).maybeSingle(),
         supabase.from("chapters").select("*").eq("subject_id", id).order("sort_order"),
         supabase.from("pdfs").select("*").eq("subject_id", id).order("created_at", { ascending: false }),
         supabase.from("tests").select("*").eq("subject_id", id).order("created_at", { ascending: false }),
+        supabase.from("performance").select("*").eq("subject_id", id).order("created_at"),
       ]);
-      setSubject(s.data); setChapters(c.data ?? []); setPdfs(p.data ?? []); setTests(t.data ?? []);
+      setSubject(s.data); setChapters(c.data ?? []); setPdfs(p.data ?? []); setTests(t.data ?? []); setPerformance(perf.data ?? []);
     })();
   }, [id]);
 
