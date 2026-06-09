@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, BookOpen, Layers, FileText, ClipboardList, Loader2, Pencil } from "lucide-react";
+import { Plus, Trash2, BookOpen, Layers, FileText, ClipboardList, Loader2, Pencil, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Admin() {
@@ -18,15 +18,17 @@ export default function Admin() {
   const [chapters, setChapters] = useState<any[]>([]);
   const [tests, setTests] = useState<any[]>([]);
   const [pdfs, setPdfs] = useState<any[]>([]);
+  const [performance, setPerformance] = useState<any[]>([]);
 
   const load = async () => {
-    const [s, c, t, p] = await Promise.all([
+    const [s, c, t, p, perf] = await Promise.all([
       supabase.from("subjects").select("*").order("name"),
       supabase.from("chapters").select("*, subjects(name)").order("created_at"),
       supabase.from("tests").select("*, subjects(name)").order("created_at"),
       supabase.from("pdfs").select("*, subjects(name)").order("created_at"),
+      supabase.from("performance").select("*, subjects(name)").order("created_at"),
     ]);
-    setSubjects(s.data ?? []); setChapters(c.data ?? []); setTests(t.data ?? []); setPdfs(p.data ?? []);
+    setSubjects(s.data ?? []); setChapters(c.data ?? []); setTests(t.data ?? []); setPdfs(p.data ?? []); setPerformance(perf.data ?? []);
   };
   useEffect(() => { load(); }, []);
 
