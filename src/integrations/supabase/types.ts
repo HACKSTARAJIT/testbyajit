@@ -123,6 +123,54 @@ export type Database = {
           },
         ]
       }
+      performance: {
+        Row: {
+          chapter_id: string | null
+          created_at: string
+          id: string
+          image_path: string | null
+          subject_id: string | null
+          text_content: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          image_path?: string | null
+          subject_id?: string | null
+          text_content?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          image_path?: string | null
+          subject_id?: string | null
+          text_content?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
