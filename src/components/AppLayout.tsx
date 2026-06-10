@@ -48,6 +48,22 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+function ThemeToggle() {
+  const [dark, setDark] = useState(() =>
+    typeof window !== "undefined" && (localStorage.getItem("theme") === "dark" ||
+      (!localStorage.getItem("theme") && window.matchMedia("(prefers-color-scheme: dark)").matches))
+  );
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }, [dark]);
+  return (
+    <Button variant="ghost" size="icon" onClick={() => setDark((d) => !d)} aria-label="Toggle theme">
+      {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+    </Button>
+  );
+}
+
 export function AppLayout({ children }: { children: ReactNode }) {
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
