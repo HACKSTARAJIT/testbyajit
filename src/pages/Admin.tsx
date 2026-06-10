@@ -84,10 +84,30 @@ function Row({ title, sub, onDelete, children }: any) {
 function SubjectsTab({ subjects, reload, del }: any) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(""); const [nameHi, setNameHi] = useState(""); const [desc, setDesc] = useState("");
+  const [cover, setCover] = useState<File | null>(null);
+  const [pinned, setPinned] = useState(false); const [popular, setPopular] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const reset = () => { setName(""); setNameHi(""); setDesc(""); setCover(null); setPinned(false); setPopular(false); };
   const save = async () => {
     if (!name.trim()) return toast.error("Name required");
-    const { error } = await supabase.from("subjects").insert({ name, name_hi: nameHi || null, description: desc || null });
-    if (error) toast.error(error.message); else { toast.success("Added"); setName(""); setNameHi(""); setDesc(""); setOpen(false); reload(); }
+    setBusy(true);
+    try {
+      let coverUrl: string | null = null;
+      if (cover) {
+        const path = await uploadFile(cover, "covers");
+        coverUrl = await getSignedUrl(path, BUCKET);
+      }
+      const { error } = await supabase.from("subjects").insert({
+        name, name_hi: nameHi || null, description: desc || null,
+        cover_image: coverUrl, is_pinned: pinned, is_popular: popular,
+      } as any);
+      if (error) throw error;
+      toast.success("Added"); reset(); setOpen(false); reload();
+    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+  };
+  const toggle = async (s: any, field: string) => {
+    const { error } = await supabase.from("subjects").update({ [field]: !s[field] } as any).eq("id", s.id);
+    if (error) toast.error(error.message); else reload();
   };
   return (
     <Card><CardHeader className="flex-row items-center justify-between">
@@ -98,16 +118,73 @@ function SubjectsTab({ subjects, reload, del }: any) {
             <div><Label>Name (English)</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
             <div><Label>Name (Hindi)</Label><Input value={nameHi} onChange={(e) => setNameHi(e.target.value)} /></div>
             <div><Label>Description</Label><Textarea value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
+            <div><Label>Cover Image (optional)</Label><Input type="file" accept="image/*" onChange={(e) => setCover(e.target.files?.[0] ?? null)} /></div>
+            <div className="flex items-center justify-between rounded-lg border p-3"><Label>Pin to top</Label><Switch checked={pinned} onCheckedChange={setPinned} /></div>
+            <div className="flex items-center justify-between rounded-lg border p-3"><Label>Mark as Popular</Label><Switch checked={popular} onCheckedChange={setPopular} /></div>
           </div>
-          <DialogFooter><Button onClick={save}>Save</Button></DialogFooter>
+          <DialogFooter><Button onClick={save} disabled={busy}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Save</Button></DialogFooter>
         </DialogContent></Dialog>
     </CardHeader>
     <CardContent className="space-y-2">
       {subjects.length === 0 && <p className="text-sm text-muted-foreground">No subjects yet.</p>}
-      {subjects.map((s: any) => <Row key={s.id} title={s.name} sub={s.name_hi} onDelete={() => del("subjects", s.id)} />)}
+      {subjects.map((s: any) => (
+        <Row key={s.id} title={s.name} sub={s.name_hi} onDelete={() => del("subjects", s.id)}>
+          <Button size="sm" variant={s.is_pinned ? "default" : "outline"} onClick={() => toggle(s, "is_pinned")}>Pin</Button>
+          <Button size="sm" variant={s.is_popular ? "secondary" : "outline"} onClick={() => toggle(s, "is_popular")}>Popular</Button>
+        </Row>
+      ))}
     </CardContent></Card>
   );
 }
+
+function AppTab() {
+  const [release, setRelease] = useState<any | null>(null);
+  const [version, setVersion] = useState("1.0.0");
+  const [notes, setNotes] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = async () => {
+    const { data } = await supabase.from("app_release").select("*").order("updated_at", { ascending: false }).limit(1).maybeSingle();
+    if (data) { setRelease(data); setVersion(data.version ?? "1.0.0"); setNotes(data.notes ?? ""); }
+  };
+  useEffect(() => { load(); }, []);
+
+  const save = async () => {
+    if (!version.trim()) return toast.error("Version required");
+    setBusy(true);
+    try {
+      let file_path = release?.file_path ?? null;
+      let file_size = release?.file_size ?? null;
+      if (file) {
+        file_path = await uploadFile(file, "apk", "app-releases");
+        file_size = file.size;
+      }
+      const payload = { version, notes: notes || null, file_path, file_size } as any;
+      const { error } = release
+        ? await supabase.from("app_release").update(payload).eq("id", release.id)
+        : await supabase.from("app_release").insert(payload);
+      if (error) throw error;
+      toast.success("App release updated"); setFile(null); load();
+    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+  };
+
+  return (
+    <Card><CardHeader><CardTitle className="text-lg">Android App (APK)</CardTitle></CardHeader>
+      <CardContent className="space-y-3">
+        <div><Label>Version</Label><Input value={version} onChange={(e) => setVersion(e.target.value)} placeholder="1.0.0" /></div>
+        <div><Label>Release Notes (optional)</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+        <div><Label>APK File {release?.file_path && "(upload to replace)"}</Label><Input type="file" accept=".apk,application/vnd.android.package-archive" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></div>
+        {release?.file_path && (
+          <p className="text-xs text-muted-foreground">
+            Current: {release.file_size ? `${(release.file_size / 1048576).toFixed(1)} MB` : "uploaded"} • Updated {new Date(release.updated_at).toLocaleString()}
+          </p>
+        )}
+        <Button onClick={save} disabled={busy}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Save Release</Button>
+      </CardContent></Card>
+  );
+}
+
 
 function ChaptersTab({ subjects, chapters, reload, del }: any) {
   const [open, setOpen] = useState(false);
