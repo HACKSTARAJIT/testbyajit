@@ -1,79 +1,215 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getSignedUrl } from "@/lib/storage";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, ClipboardList, FileText, ArrowRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  BookOpen, Search, ChevronRight, Download, Smartphone,
+  Sparkles, Pin, Flame, Layers, FileText, ClipboardList,
+} from "lucide-react";
+import { toast } from "sonner";
+import appIcon from "@/assets/app-icon.png";
+
+interface Subject {
+  id: string;
+  name: string;
+  name_hi: string | null;
+  description: string | null;
+  cover_image: string | null;
+  is_pinned: boolean;
+  is_popular: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Counts { chapters: number; pdfs: number; tests: number }
+
+const fmtSize = (bytes?: number | null) => {
+  if (!bytes) return null;
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+};
+
+const isNew = (iso: string) => Date.now() - new Date(iso).getTime() < 7 * 864e5;
 
 export default function Dashboard() {
-  const { user, isAdmin } = useAuth();
-  const [stats, setStats] = useState({ subjects: 0, tests: 0, pdfs: 0 });
-  const [name, setName] = useState("");
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [counts, setCounts] = useState<Record<string, Counts>>({});
+  const [release, setRelease] = useState<any | null>(null);
+  const [q, setQ] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     (async () => {
-      const [subs, tests, pdfs, profile] = await Promise.all([
-        supabase.from("subjects").select("id", { count: "exact", head: true }),
-        supabase.from("tests").select("id", { count: "exact", head: true }),
-        supabase.from("pdfs").select("id", { count: "exact", head: true }),
-        supabase.from("profiles").select("display_name").eq("id", user!.id).maybeSingle(),
+      const [subs, chapters, pdfs, tests, rel] = await Promise.all([
+        supabase.from("subjects").select("*").order("is_pinned", { ascending: false }).order("sort_order").order("name"),
+        supabase.from("chapters").select("subject_id"),
+        supabase.from("pdfs").select("subject_id"),
+        supabase.from("tests").select("subject_id"),
+        supabase.from("app_release").select("*").order("updated_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
-      setStats({
-        subjects: subs.count ?? 0, tests: tests.count ?? 0, pdfs: pdfs.count ?? 0,
-      });
-      setName(profile.data?.display_name ?? "");
+      const map: Record<string, Counts> = {};
+      const bump = (id: string | null, key: keyof Counts) => {
+        if (!id) return;
+        map[id] = map[id] ?? { chapters: 0, pdfs: 0, tests: 0 };
+        map[id][key] += 1;
+      };
+      (chapters.data ?? []).forEach((r: any) => bump(r.subject_id, "chapters"));
+      (pdfs.data ?? []).forEach((r: any) => bump(r.subject_id, "pdfs"));
+      (tests.data ?? []).forEach((r: any) => bump(r.subject_id, "tests"));
+      setSubjects((subs.data as Subject[]) ?? []);
+      setCounts(map);
+      setRelease(rel.data ?? null);
+      setLoading(false);
     })();
-  }, [user]);
+  }, []);
 
-  const cards = [
-    { label: "Subjects / विषय", value: stats.subjects, icon: BookOpen, to: "/subjects" },
-    { label: "Practice Tests", value: stats.tests, icon: ClipboardList, to: "/tests" },
-    { label: "Study PDFs", value: stats.pdfs, icon: FileText, to: "/subjects" },
-  ];
+  const filtered = useMemo(
+    () => subjects.filter((s) =>
+      [s.name, s.name_hi, s.description].some((f) => f?.toLowerCase().includes(q.toLowerCase()))
+    ),
+    [subjects, q]
+  );
+
+  const handleDownload = async () => {
+    if (!release?.file_path) {
+      toast.error("APK अभी उपलब्ध नहीं है / App not available yet");
+      return;
+    }
+    setDownloading(true);
+    const url = await getSignedUrl(release.file_path, "app-releases");
+    setDownloading(false);
+    if (!url) { toast.error("Download failed, try again"); return; }
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `practice-book-by-ajit-${release.version ?? "app"}.apk`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl bg-gradient-hero p-6 text-primary-foreground shadow-md md:p-8">
-        <h1 className="text-2xl font-bold md:text-3xl">नमस्ते {name || "Student"} 👋</h1>
-        <p className="mt-1 text-primary-foreground/90">
-          अपने अध्याय पढ़ें और अभ्यास टेस्ट दें / Study chapters & take practice tests.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Button asChild variant="secondary"><Link to="/subjects">Browse Subjects <ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
-          <Button asChild variant="outline" className="bg-transparent text-primary-foreground border-primary-foreground/40 hover:bg-primary-foreground/10">
-            <Link to="/tests">Take a Test</Link>
+      {/* Hero header */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-hero p-6 text-primary-foreground shadow-lg md:p-8">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-primary-foreground/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-12 -left-8 h-40 w-40 rounded-full bg-secondary/30 blur-2xl" />
+        <div className="relative flex items-center gap-4">
+          <img src={appIcon} alt="Practice Book By Ajit app logo" width={56} height={56} className="h-14 w-14 rounded-2xl bg-primary-foreground/15 p-1 backdrop-blur" />
+          <div>
+            <h1 className="text-2xl font-bold leading-tight md:text-3xl">Practice Book By Ajit</h1>
+            <p className="text-sm text-primary-foreground/85">प्रीमियम स्टडी लाइब्रेरी — सभी विषय एक जगह</p>
+          </div>
+        </div>
+      </section>
+
+      {/* APK download section */}
+      <Card className="border-secondary/30 bg-gradient-to-br from-secondary/10 to-primary/5">
+        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-warm text-secondary-foreground shadow-md">
+              <Smartphone className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="flex items-center gap-2 font-semibold">📱 Practice Book By Ajit App</p>
+              <p className="text-xs text-muted-foreground">
+                Version {release?.version ?? "1.0.0"}
+                {fmtSize(release?.file_size) && ` • ${fmtSize(release?.file_size)}`}
+                {release?.updated_at && ` • Updated ${new Date(release.updated_at).toLocaleDateString()}`}
+              </p>
+            </div>
+          </div>
+          <Button onClick={handleDownload} disabled={downloading} size="lg" className="w-full bg-gradient-warm shadow-md hover:opacity-90 sm:w-auto">
+            <Download className="mr-1 h-5 w-5" /> {downloading ? "Preparing..." : "Download Android App"}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Sticky search + count */}
+      <div className="sticky top-16 z-30 -mx-1 space-y-3 bg-background/80 px-1 py-2 backdrop-blur-lg">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="h-11 rounded-2xl pl-9 shadow-sm" placeholder="Search subjects... / विषय खोजें" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          <div className="flex shrink-0 items-center gap-2 rounded-2xl border bg-card px-4 py-2 shadow-sm">
+            <BookOpen className="h-4 w-4 text-primary" />
+            <div className="leading-none">
+              <div className="text-lg font-bold">{subjects.length}</div>
+              <div className="text-[10px] text-muted-foreground">Subjects</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {cards.map((c) => (
-          <Link key={c.label} to={c.to}>
-            <Card className="transition-shadow hover:shadow-md">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted">
-                  <c.icon className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{c.value}</div>
-                  <div className="text-xs text-muted-foreground">{c.label}</div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      {/* Subjects grid */}
+      {loading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-36 rounded-3xl" />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <Card><CardContent className="flex flex-col items-center gap-2 py-14 text-center text-muted-foreground">
+          <BookOpen className="h-10 w-10" />
+          <p>{q ? "कोई विषय नहीं मिला / No matching subjects" : "No subjects yet. Please check back soon!"}</p>
+        </CardContent></Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((s) => {
+            const c = counts[s.id] ?? { chapters: 0, pdfs: 0, tests: 0 };
+            return (
+              <Link key={s.id} to={`/subjects/${s.id}`} className="group animate-fade-in">
+                <Card className="h-full overflow-hidden rounded-3xl border bg-card/70 backdrop-blur transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+                  <CardContent className="flex h-full flex-col gap-3 p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-gradient-primary shadow-md">
+                        {s.cover_image ? (
+                          <img src={s.cover_image} alt={s.name} loading="lazy" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <BookOpen className="h-6 w-6 text-primary-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex flex-wrap gap-1">
+                          {s.is_pinned && <Badge className="gap-1 bg-primary/15 text-primary"><Pin className="h-3 w-3" /> Pinned</Badge>}
+                          {s.is_popular && <Badge className="gap-1 bg-secondary/15 text-secondary"><Flame className="h-3 w-3" /> Popular</Badge>}
+                          {isNew(s.created_at) && <Badge className="gap-1 bg-accent/15 text-accent"><Sparkles className="h-3 w-3" /> New</Badge>}
+                        </div>
+                        <h3 className="truncate font-semibold leading-tight">{s.name}</h3>
+                        {s.name_hi && <p className="truncate text-sm text-muted-foreground">{s.name_hi}</p>}
+                      </div>
+                      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                    </div>
 
-
-      {isAdmin && (
-        <Card className="border-secondary/40 bg-secondary/5">
-          <CardContent className="flex items-center justify-between p-4">
-            <div><p className="font-medium">You are an Admin</p><p className="text-sm text-muted-foreground">Manage subjects, materials and tests.</p></div>
-            <Button asChild variant="secondary"><Link to="/admin">Open Admin</Link></Button>
-          </CardContent>
-        </Card>
+                    <div className="mt-auto grid grid-cols-3 gap-2 border-t pt-3 text-center">
+                      <Stat icon={Layers} value={c.chapters} label="Chapters" />
+                      <Stat icon={FileText} value={c.pdfs} label="PDFs" />
+                      <Stat icon={ClipboardList} value={c.tests} label="Tests" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
       )}
+    </div>
+  );
+}
+
+function Stat({ icon: Icon, value, label }: { icon: any; value: number; label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <Icon className="h-4 w-4 text-muted-foreground" />
+      <span className="text-sm font-bold">{value}</span>
+      <span className="text-[10px] text-muted-foreground">{label}</span>
     </div>
   );
 }
