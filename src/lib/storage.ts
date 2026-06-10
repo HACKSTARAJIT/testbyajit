@@ -10,8 +10,8 @@ export async function uploadFile(file: File, folder = "pdfs"): Promise<string> {
   return path;
 }
 
-export async function getSignedUrl(path: string): Promise<string | null> {
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
+export async function getSignedUrl(path: string, bucket: string = BUCKET): Promise<string | null> {
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60);
   if (error) return null;
   return data.signedUrl;
 }
