@@ -2,10 +2,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const BUCKET = "study-materials";
 
-export async function uploadFile(file: File, folder = "pdfs"): Promise<string> {
+export async function uploadFile(file: File, folder = "pdfs", bucket: string = BUCKET): Promise<string> {
   const ext = file.name.split(".").pop();
   const path = `${folder}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from(BUCKET).upload(path, file);
+  const { error } = await supabase.storage.from(bucket).upload(path, file);
   if (error) throw error;
   return path;
 }
