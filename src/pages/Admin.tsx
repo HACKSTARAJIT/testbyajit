@@ -95,7 +95,8 @@ function SubjectsTab({ subjects, reload, del }: any) {
       let coverUrl: string | null = null;
       if (cover) {
         const path = await uploadFile(cover, "covers");
-        coverUrl = await getSignedUrl(path, BUCKET);
+        const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 3650);
+        coverUrl = data?.signedUrl ?? null;
       }
       const { error } = await supabase.from("subjects").insert({
         name, name_hi: nameHi || null, description: desc || null,
