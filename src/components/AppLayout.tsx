@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   BookOpen, LayoutDashboard, FileText, ClipboardList,
-  Shield, LogOut, GraduationCap, Menu, User,
+  Shield, LogOut, GraduationCap, Menu, User, Moon, Sun,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetTrigger,
@@ -48,6 +48,22 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+function ThemeToggle() {
+  const [dark, setDark] = useState(() =>
+    typeof window !== "undefined" && (localStorage.getItem("theme") === "dark" ||
+      (!localStorage.getItem("theme") && window.matchMedia("(prefers-color-scheme: dark)").matches))
+  );
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }, [dark]);
+  return (
+    <Button variant="ghost" size="icon" onClick={() => setDark((d) => !d)} aria-label="Toggle theme">
+      {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+    </Button>
+  );
+}
+
 export function AppLayout({ children }: { children: ReactNode }) {
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
@@ -83,6 +99,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
