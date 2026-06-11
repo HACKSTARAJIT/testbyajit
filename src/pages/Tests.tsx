@@ -93,7 +93,7 @@ export default function Tests() {
                   );
                 })()}
                 <TestTracker
-                  test={{ id: t.id, title: t.title, test_link: t.test_link }}
+                  test={{ id: t.id, title: t.title, test_link: t.test_link, subject_id: t.subject_id, chapter_id: t.chapter_id }}
                   attempts={attempts.filter((a) => a.test_id === t.id)}
                   onSaved={loadAttempts}
                   triggerClassName="mt-4 w-full"

@@ -462,6 +462,73 @@ export type Database = {
         }
         Relationships: []
       }
+      wrong_questions: {
+        Row: {
+          chapter_id: string | null
+          created_at: string
+          explanation: string | null
+          id: string
+          image_path: string
+          note: string | null
+          priority: string
+          status: string
+          subject_id: string | null
+          test_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          image_path: string
+          note?: string | null
+          priority?: string
+          status?: string
+          subject_id?: string | null
+          test_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          image_path?: string
+          note?: string | null
+          priority?: string
+          status?: string
+          subject_id?: string | null
+          test_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wrong_questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wrong_questions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wrong_questions_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -197,7 +197,7 @@ function MaterialList({ pdfs, tests, onOpen, onDownload, attempts, onAttemptSave
               Last Score: {s.last ?? "—"} · Best Score: {s.best ?? "—"} · Attempts: {s.count}
             </p>
             <TestTracker
-              test={{ id: t.id, title: t.title, test_link: t.test_link }}
+              test={{ id: t.id, title: t.title, test_link: t.test_link, subject_id: t.subject_id, chapter_id: t.chapter_id }}
               attempts={mine}
               onSaved={onAttemptSaved}
               triggerClassName="w-full"

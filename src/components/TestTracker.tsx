@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { ExternalLink, History, Save, Trophy, Clock, ListChecks } from "lucide-react";
 import { toast } from "sonner";
+import { AddWrongQuestionDialog } from "@/components/AddWrongQuestionDialog";
 
 export type Attempt = {
   id: string;
@@ -33,7 +34,7 @@ export function attemptStats(attempts: Attempt[]) {
 export function TestTracker({
   test, attempts, onSaved, triggerClassName,
 }: {
-  test: { id: string; title: string; test_link: string };
+  test: { id: string; title: string; test_link: string; subject_id?: string | null; chapter_id?: string | null };
   attempts: Attempt[];
   onSaved: () => void;
   triggerClassName?: string;
@@ -112,6 +113,15 @@ export function TestTracker({
             <Button onClick={save} disabled={saving} className="w-full">
               <Save className="mr-1 h-4 w-4" /> {saving ? "Saving..." : "Save Result"}
             </Button>
+          </div>
+
+          <div className="space-y-2 rounded-lg border border-dashed p-3">
+            <p className="text-sm font-semibold">Wrong Questions Notebook</p>
+            <p className="text-xs text-muted-foreground">Save screenshots of questions you got wrong to revise later.</p>
+            <AddWrongQuestionDialog
+              target={{ test_id: test.id, subject_id: test.subject_id, chapter_id: test.chapter_id, title: test.title }}
+              triggerClassName="w-full"
+            />
           </div>
 
           {history.length > 0 && (
