@@ -9,7 +9,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   BookOpen, LayoutDashboard, FileText, ClipboardList,
-  Shield, LogOut, GraduationCap, Menu, User, Moon, Sun,
+  Shield, LogOut, GraduationCap, Menu, User, Moon, Sun, BarChart3,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetTrigger,
@@ -20,6 +20,7 @@ const navItems = [
   { to: "/dashboard", label: "होम / Home", icon: LayoutDashboard },
   { to: "/subjects", label: "विषय / Subjects", icon: BookOpen },
   { to: "/tests", label: "टेस्ट / Tests", icon: ClipboardList },
+  { to: "/analysis", label: "स्कोर / Test Score & Analysis", icon: BarChart3 },
   { to: "/profile", label: "प्रोफ़ाइल / Profile", icon: User },
 ];
 

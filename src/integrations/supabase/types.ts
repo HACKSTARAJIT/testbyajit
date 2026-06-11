@@ -355,6 +355,47 @@ export type Database = {
         }
         Relationships: []
       }
+      test_attempts: {
+        Row: {
+          correct_count: number
+          created_at: string
+          id: string
+          incorrect_count: number
+          marks_obtained: number
+          test_id: string
+          unattempted_count: number
+          user_id: string
+        }
+        Insert: {
+          correct_count?: number
+          created_at?: string
+          id?: string
+          incorrect_count?: number
+          marks_obtained?: number
+          test_id: string
+          unattempted_count?: number
+          user_id: string
+        }
+        Update: {
+          correct_count?: number
+          created_at?: string
+          id?: string
+          incorrect_count?: number
+          marks_obtained?: number
+          test_id?: string
+          unattempted_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_attempts_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tests: {
         Row: {
           chapter_id: string | null

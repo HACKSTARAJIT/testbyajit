@@ -1,19 +1,28 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClipboardList, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TestTracker, attemptStats, type Attempt } from "@/components/TestTracker";
 
 export default function Tests() {
+  const { user } = useAuth();
   const [tests, setTests] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [q, setQ] = useState("");
   const [subject, setSubject] = useState("all");
   const [loading, setLoading] = useState(true);
+
+  const loadAttempts = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase.from("test_attempts").select("*").eq("user_id", user.id);
+    setAttempts((data as any) ?? []);
+  }, [user]);
 
   useEffect(() => {
     (async () => {
@@ -23,9 +32,11 @@ export default function Tests() {
       ]);
       setTests((t.data ?? []).filter((row: any) => row.test_link));
       setSubjects(s.data ?? []);
+      await loadAttempts();
       setLoading(false);
     })();
-  }, []);
+  }, [loadAttempts]);
+
 
   const filtered = tests.filter((t) =>
     (subject === "all" || t.subject_id === subject) &&
@@ -72,11 +83,24 @@ export default function Tests() {
                 </div>
                 <h3 className="font-semibold">{t.title}</h3>
                 {t.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t.description}</p>}
-                <Button asChild className="mt-4 w-full">
-                  <a href={t.test_link} target="_blank" rel="noopener noreferrer">Start Test</a>
-                </Button>
+                {(() => {
+                  const mine = attempts.filter((a) => a.test_id === t.id);
+                  const s = attemptStats(mine);
+                  return (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Last Score: {s.last ?? "—"} · Best Score: {s.best ?? "—"} · Attempts: {s.count}
+                    </p>
+                  );
+                })()}
+                <TestTracker
+                  test={{ id: t.id, title: t.title, test_link: t.test_link }}
+                  attempts={attempts.filter((a) => a.test_id === t.id)}
+                  onSaved={loadAttempts}
+                  triggerClassName="mt-4 w-full"
+                />
               </CardContent>
             </Card>
+
           ))}
         </div>
       )}

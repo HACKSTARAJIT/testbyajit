@@ -10,6 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { FileText, ClipboardList, Download, Eye, ArrowLeft, BookOpen, Search, BarChart3 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { TestTracker, attemptStats, type Attempt } from "@/components/TestTracker";
 import { toast } from "sonner";
 
 export default function SubjectDetail() {
@@ -20,7 +21,14 @@ export default function SubjectDetail() {
   const [pdfs, setPdfs] = useState<any[]>([]);
   const [tests, setTests] = useState<any[]>([]);
   const [performance, setPerformance] = useState<any[]>([]);
+  const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [q, setQ] = useState("");
+
+  const loadAttempts = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("test_attempts").select("*").eq("user_id", user.id);
+    setAttempts((data as any) ?? []);
+  };
 
   useEffect(() => {
     (async () => {
@@ -32,8 +40,10 @@ export default function SubjectDetail() {
         supabase.from("performance").select("*").eq("subject_id", id).order("created_at"),
       ]);
       setSubject(s.data); setChapters(c.data ?? []); setPdfs(p.data ?? []); setTests(t.data ?? []); setPerformance(perf.data ?? []);
+      await loadAttempts();
     })();
-  }, [id]);
+  }, [id, user]);
+
 
   const recordView = async (chapterId: string) => {
     if (!user || !chapterId) return;
@@ -132,7 +142,7 @@ export default function SubjectDetail() {
                         <PerformanceList items={chapterPerformance(ch.id)} />
                       </div>
                     )}
-                    <MaterialList pdfs={chapterPdfs(ch.id)} tests={chapterTests(ch.id)} onOpen={openPdf} onDownload={downloadPdf} />
+                    <MaterialList pdfs={chapterPdfs(ch.id)} tests={chapterTests(ch.id)} onOpen={openPdf} onDownload={downloadPdf} attempts={attempts} onAttemptSaved={loadAttempts} />
                   </AccordionContent>
                 </AccordionItem>
               ))}
@@ -144,15 +154,16 @@ export default function SubjectDetail() {
       {(generalPdfs.length > 0 || generalTests.length > 0) && (
         <Card>
           <CardHeader><CardTitle className="text-lg">General Material</CardTitle></CardHeader>
-          <CardContent><MaterialList pdfs={generalPdfs} tests={generalTests} onOpen={openPdf} onDownload={downloadPdf} /></CardContent>
+          <CardContent><MaterialList pdfs={generalPdfs} tests={generalTests} onOpen={openPdf} onDownload={downloadPdf} attempts={attempts} onAttemptSaved={loadAttempts} /></CardContent>
         </Card>
       )}
     </div>
   );
 }
 
-function MaterialList({ pdfs, tests, onOpen, onDownload }: {
+function MaterialList({ pdfs, tests, onOpen, onDownload, attempts, onAttemptSaved }: {
   pdfs: any[]; tests: any[]; onOpen: (p: string) => void; onDownload: (p: string, title: string) => void;
+  attempts: Attempt[]; onAttemptSaved: () => void;
 }) {
   if (pdfs.length === 0 && tests.length === 0)
     return <p className="text-sm text-muted-foreground">No material for this section yet.</p>;
@@ -173,17 +184,28 @@ function MaterialList({ pdfs, tests, onOpen, onDownload }: {
       {tests.filter((t) => t.test_link).length > 0 && (
         <p className="pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Test Parts</p>
       )}
-      {tests.filter((t) => t.test_link).map((t) => (
-        <div key={t.id} className="flex items-center justify-between rounded-lg border p-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <ClipboardList className="h-4 w-4 shrink-0 text-primary" />
-            <span className="truncate text-sm font-medium">{t.title}</span>
+      {tests.filter((t) => t.test_link).map((t) => {
+        const mine = attempts.filter((a) => a.test_id === t.id);
+        const s = attemptStats(mine);
+        return (
+          <div key={t.id} className="space-y-2 rounded-lg border p-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <ClipboardList className="h-4 w-4 shrink-0 text-primary" />
+              <span className="truncate text-sm font-medium">{t.title}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Last Score: {s.last ?? "—"} · Best Score: {s.best ?? "—"} · Attempts: {s.count}
+            </p>
+            <TestTracker
+              test={{ id: t.id, title: t.title, test_link: t.test_link }}
+              attempts={mine}
+              onSaved={onAttemptSaved}
+              triggerClassName="w-full"
+            />
           </div>
-          <Button asChild size="sm">
-            <a href={t.test_link} target="_blank" rel="noopener noreferrer">Start Test</a>
-          </Button>
-        </div>
-      ))}
+        );
+      })}
+
     </div>
   );
 }
