@@ -115,6 +115,15 @@ export function TestTracker({
             </Button>
           </div>
 
+          <div className="space-y-2 rounded-lg border border-dashed p-3">
+            <p className="text-sm font-semibold">Wrong Questions Notebook</p>
+            <p className="text-xs text-muted-foreground">Save screenshots of questions you got wrong to revise later.</p>
+            <AddWrongQuestionDialog
+              target={{ test_id: test.id, subject_id: test.subject_id, chapter_id: test.chapter_id, title: test.title }}
+              triggerClassName="w-full"
+            />
+          </div>
+
           {history.length > 0 && (
             <div className="space-y-2">
               <p className="flex items-center gap-1.5 text-sm font-semibold">
