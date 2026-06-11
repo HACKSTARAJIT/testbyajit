@@ -142,7 +142,7 @@ export default function SubjectDetail() {
                         <PerformanceList items={chapterPerformance(ch.id)} />
                       </div>
                     )}
-                    <MaterialList pdfs={chapterPdfs(ch.id)} tests={chapterTests(ch.id)} onOpen={openPdf} onDownload={downloadPdf} />
+                    <MaterialList pdfs={chapterPdfs(ch.id)} tests={chapterTests(ch.id)} onOpen={openPdf} onDownload={downloadPdf} attempts={attempts} onAttemptSaved={loadAttempts} />
                   </AccordionContent>
                 </AccordionItem>
               ))}
