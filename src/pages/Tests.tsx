@@ -83,11 +83,24 @@ export default function Tests() {
                 </div>
                 <h3 className="font-semibold">{t.title}</h3>
                 {t.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t.description}</p>}
-                <Button asChild className="mt-4 w-full">
-                  <a href={t.test_link} target="_blank" rel="noopener noreferrer">Start Test</a>
-                </Button>
+                {(() => {
+                  const mine = attempts.filter((a) => a.test_id === t.id);
+                  const s = attemptStats(mine);
+                  return (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Last Score: {s.last ?? "—"} · Best Score: {s.best ?? "—"} · Attempts: {s.count}
+                    </p>
+                  );
+                })()}
+                <TestTracker
+                  test={{ id: t.id, title: t.title, test_link: t.test_link }}
+                  attempts={attempts.filter((a) => a.test_id === t.id)}
+                  onSaved={loadAttempts}
+                  triggerClassName="mt-4 w-full"
+                />
               </CardContent>
             </Card>
+
           ))}
         </div>
       )}
