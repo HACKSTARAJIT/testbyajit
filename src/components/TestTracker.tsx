@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { ExternalLink, History, Save, Trophy, Clock, ListChecks } from "lucide-react";
 import { toast } from "sonner";
+import { AddWrongQuestionDialog } from "@/components/AddWrongQuestionDialog";
 
 export type Attempt = {
   id: string;
