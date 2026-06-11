@@ -10,6 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { FileText, ClipboardList, Download, Eye, ArrowLeft, BookOpen, Search, BarChart3 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { TestTracker, attemptStats, type Attempt } from "@/components/TestTracker";
 import { toast } from "sonner";
 
 export default function SubjectDetail() {
