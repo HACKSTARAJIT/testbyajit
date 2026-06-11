@@ -183,17 +183,28 @@ function MaterialList({ pdfs, tests, onOpen, onDownload }: {
       {tests.filter((t) => t.test_link).length > 0 && (
         <p className="pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Test Parts</p>
       )}
-      {tests.filter((t) => t.test_link).map((t) => (
-        <div key={t.id} className="flex items-center justify-between rounded-lg border p-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <ClipboardList className="h-4 w-4 shrink-0 text-primary" />
-            <span className="truncate text-sm font-medium">{t.title}</span>
+      {tests.filter((t) => t.test_link).map((t) => {
+        const mine = attempts.filter((a) => a.test_id === t.id);
+        const s = attemptStats(mine);
+        return (
+          <div key={t.id} className="space-y-2 rounded-lg border p-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <ClipboardList className="h-4 w-4 shrink-0 text-primary" />
+              <span className="truncate text-sm font-medium">{t.title}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Last Score: {s.last ?? "—"} · Best Score: {s.best ?? "—"} · Attempts: {s.count}
+            </p>
+            <TestTracker
+              test={{ id: t.id, title: t.title, test_link: t.test_link }}
+              attempts={mine}
+              onSaved={onAttemptSaved}
+              triggerClassName="w-full"
+            />
           </div>
-          <Button asChild size="sm">
-            <a href={t.test_link} target="_blank" rel="noopener noreferrer">Start Test</a>
-          </Button>
-        </div>
-      ))}
+        );
+      })}
+
     </div>
   );
 }
