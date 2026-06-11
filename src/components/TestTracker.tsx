@@ -34,7 +34,7 @@ export function attemptStats(attempts: Attempt[]) {
 export function TestTracker({
   test, attempts, onSaved, triggerClassName,
 }: {
-  test: { id: string; title: string; test_link: string };
+  test: { id: string; title: string; test_link: string; subject_id?: string | null; chapter_id?: string | null };
   attempts: Attempt[];
   onSaved: () => void;
   triggerClassName?: string;
