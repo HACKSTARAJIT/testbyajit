@@ -21,7 +21,14 @@ export default function SubjectDetail() {
   const [pdfs, setPdfs] = useState<any[]>([]);
   const [tests, setTests] = useState<any[]>([]);
   const [performance, setPerformance] = useState<any[]>([]);
+  const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [q, setQ] = useState("");
+
+  const loadAttempts = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("test_attempts").select("*").eq("user_id", user.id);
+    setAttempts((data as any) ?? []);
+  };
 
   useEffect(() => {
     (async () => {
@@ -33,8 +40,10 @@ export default function SubjectDetail() {
         supabase.from("performance").select("*").eq("subject_id", id).order("created_at"),
       ]);
       setSubject(s.data); setChapters(c.data ?? []); setPdfs(p.data ?? []); setTests(t.data ?? []); setPerformance(perf.data ?? []);
+      await loadAttempts();
     })();
-  }, [id]);
+  }, [id, user]);
+
 
   const recordView = async (chapterId: string) => {
     if (!user || !chapterId) return;
