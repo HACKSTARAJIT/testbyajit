@@ -1,19 +1,28 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClipboardList, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TestTracker, attemptStats, type Attempt } from "@/components/TestTracker";
 
 export default function Tests() {
+  const { user } = useAuth();
   const [tests, setTests] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [q, setQ] = useState("");
   const [subject, setSubject] = useState("all");
   const [loading, setLoading] = useState(true);
+
+  const loadAttempts = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase.from("test_attempts").select("*").eq("user_id", user.id);
+    setAttempts((data as any) ?? []);
+  }, [user]);
 
   useEffect(() => {
     (async () => {
@@ -23,9 +32,11 @@ export default function Tests() {
       ]);
       setTests((t.data ?? []).filter((row: any) => row.test_link));
       setSubjects(s.data ?? []);
+      await loadAttempts();
       setLoading(false);
     })();
-  }, []);
+  }, [loadAttempts]);
+
 
   const filtered = tests.filter((t) =>
     (subject === "all" || t.subject_id === subject) &&
