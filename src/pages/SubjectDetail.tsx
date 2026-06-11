@@ -154,7 +154,7 @@ export default function SubjectDetail() {
       {(generalPdfs.length > 0 || generalTests.length > 0) && (
         <Card>
           <CardHeader><CardTitle className="text-lg">General Material</CardTitle></CardHeader>
-          <CardContent><MaterialList pdfs={generalPdfs} tests={generalTests} onOpen={openPdf} onDownload={downloadPdf} /></CardContent>
+          <CardContent><MaterialList pdfs={generalPdfs} tests={generalTests} onOpen={openPdf} onDownload={downloadPdf} attempts={attempts} onAttemptSaved={loadAttempts} /></CardContent>
         </Card>
       )}
     </div>
