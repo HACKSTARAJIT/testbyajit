@@ -161,8 +161,9 @@ export default function SubjectDetail() {
   );
 }
 
-function MaterialList({ pdfs, tests, onOpen, onDownload }: {
+function MaterialList({ pdfs, tests, onOpen, onDownload, attempts, onAttemptSaved }: {
   pdfs: any[]; tests: any[]; onOpen: (p: string) => void; onDownload: (p: string, title: string) => void;
+  attempts: Attempt[]; onAttemptSaved: () => void;
 }) {
   if (pdfs.length === 0 && tests.length === 0)
     return <p className="text-sm text-muted-foreground">No material for this section yet.</p>;
