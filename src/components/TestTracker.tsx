@@ -40,6 +40,7 @@ export function TestTracker({
   triggerClassName?: string;
 }) {
   const { user } = useAuth();
+  const { guard } = useSaveGate();
   const [open, setOpen] = useState(false);
   const [correct, setCorrect] = useState("");
   const [incorrect, setIncorrect] = useState("");
@@ -53,7 +54,7 @@ export function TestTracker({
   const startTest = () => window.open(test.test_link, "_blank", "noopener,noreferrer");
 
   const save = async () => {
-    if (!user) return toast.error("Please log in to save results");
+    if (!user) return guard();
     if (marks === "") return toast.error("Enter the marks obtained");
     setSaving(true);
     const { error } = await supabase.from("test_attempts").insert({
