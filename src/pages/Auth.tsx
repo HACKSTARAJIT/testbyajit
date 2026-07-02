@@ -20,7 +20,7 @@ const schema = z.object({
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, continueAsGuest } = useAuth();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,6 +29,11 @@ export default function Auth() {
   useEffect(() => {
     if (user) navigate("/dashboard", { replace: true });
   }, [user, navigate]);
+
+  const handleGuest = () => {
+    continueAsGuest();
+    navigate("/dashboard", { replace: true });
+  };
 
   const handleAuth = async (mode: "login" | "signup") => {
     const parsed = schema.safeParse({ email, password, name });
