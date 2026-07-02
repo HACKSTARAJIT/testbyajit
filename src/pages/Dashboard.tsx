@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import appIcon from "@/assets/app-icon.png";
+import { useAuth } from "@/hooks/useAuth";
+import { fetchActivity } from "@/lib/study";
 
 interface Subject {
   id: string;
@@ -45,6 +47,7 @@ export default function Dashboard() {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     (async () => {
