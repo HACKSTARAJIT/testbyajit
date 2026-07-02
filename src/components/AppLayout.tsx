@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   BookOpen, LayoutDashboard, FileText, ClipboardList,
   Shield, LogOut, GraduationCap, Menu, User, Moon, Sun, BarChart3, BookMarked,
+  Star, LayoutGrid, LogIn,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetTrigger,
@@ -22,6 +23,9 @@ const navItems = [
   { to: "/tests", label: "टेस्ट / Tests", icon: ClipboardList },
   { to: "/analysis", label: "स्कोर / Test Score & Analysis", icon: BarChart3 },
   { to: "/wrong-questions", label: "गलत प्रश्न / Wrong Questions", icon: BookMarked },
+  { to: "/bookmarks", label: "बुकमार्क / Bookmarks", icon: BookMarked },
+  { to: "/revision", label: "रिवीजन / Revision List", icon: Star },
+  { to: "/revision-dashboard", label: "रिवीजन डैशबोर्ड / Revision Dashboard", icon: LayoutGrid },
   { to: "/profile", label: "प्रोफ़ाइल / Profile", icon: User },
 ];
 
@@ -67,7 +71,7 @@ function ThemeToggle() {
 }
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, isAdmin, isGuest, signOut } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -75,7 +79,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     navigate("/auth");
   };
 
-  const initials = user?.email?.slice(0, 2).toUpperCase() ?? "ST";
+  const initials = user?.email?.slice(0, 2).toUpperCase() ?? (isGuest ? "GT" : "ST");
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,6 +106,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            {isGuest && !user && (
+              <Button size="sm" onClick={() => navigate("/auth")} className="hidden sm:inline-flex">
+                <LogIn className="mr-1 h-4 w-4" /> Sign In
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
@@ -113,18 +122,27 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <div className="px-2 py-1.5 text-sm text-muted-foreground truncate">{user?.email}</div>
+                <div className="px-2 py-1.5 text-sm text-muted-foreground truncate">
+                  {user?.email ?? (isGuest ? "Guest / अतिथि" : "")}
+                </div>
                 <DropdownMenuSeparator />
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate("/admin")}>
                     <Shield className="mr-2 h-4 w-4" /> Admin Dashboard
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="mr-2 h-4 w-4" /> Logout / लॉगआउट
-                </DropdownMenuItem>
+                {isGuest && !user ? (
+                  <DropdownMenuItem onClick={() => navigate("/auth")}>
+                    <LogIn className="mr-2 h-4 w-4" /> Sign In / Create Account
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" /> Logout / लॉगआउट
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
+
 
             <Sheet>
               <SheetTrigger asChild className="md:hidden">

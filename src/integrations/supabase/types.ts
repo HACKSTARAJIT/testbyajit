@@ -44,6 +44,33 @@ export type Database = {
         }
         Relationships: []
       }
+      bookmarks: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          item_type: string
+          subject_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: string
+          subject_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: string
+          subject_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       chapter_views: {
         Row: {
           chapter_id: string
@@ -107,6 +134,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notes: {
+        Row: {
+          chapter_id: string
+          content: string
+          created_at: string
+          id: string
+          subject_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chapter_id: string
+          content?: string
+          created_at?: string
+          id?: string
+          subject_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chapter_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          subject_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pdf_progress: {
+        Row: {
+          id: string
+          last_page: number
+          pdf_id: string
+          status: string
+          subject_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_page?: number
+          pdf_id: string
+          status?: string
+          subject_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_page?: number
+          pdf_id?: string
+          status?: string
+          subject_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       pdfs: {
         Row: {
@@ -315,6 +402,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      revision_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          item_type: string
+          subject_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: string
+          subject_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: string
+          subject_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      study_activity: {
+        Row: {
+          id: string
+          item_id: string
+          item_type: string
+          opened_at: string
+          subject_id: string | null
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          item_type: string
+          opened_at?: string
+          subject_id?: string | null
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          item_type?: string
+          opened_at?: string
+          subject_id?: string | null
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       subjects: {
         Row: {

@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import appIcon from "@/assets/app-icon.png";
+import { useAuth } from "@/hooks/useAuth";
+import { fetchActivity } from "@/lib/study";
 
 interface Subject {
   id: string;
@@ -41,9 +43,11 @@ export default function Dashboard() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [counts, setCounts] = useState<Record<string, Counts>>({});
   const [release, setRelease] = useState<any | null>(null);
+  const [activity, setActivity] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     (async () => {
@@ -69,6 +73,12 @@ export default function Dashboard() {
       setLoading(false);
     })();
   }, []);
+
+  useEffect(() => {
+    if (!user) { setActivity([]); return; }
+    fetchActivity(user.id).then((a) => setActivity(a.slice(0, 8)));
+  }, [user]);
+
 
   const filtered = useMemo(
     () => subjects.filter((s) =>
@@ -147,6 +157,47 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Continue Studying + Recently Opened (signed-in users) */}
+      {user && activity.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <ChevronRight className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold">Continue Studying / जारी रखें</h2>
+          </div>
+          <Link to={activity[0].subject_id ? `/subjects/${activity[0].subject_id}` : "/subjects"}>
+            <Card className="border-primary/30 bg-primary/5 transition-all hover:shadow-md">
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground capitalize">Last opened {activity[0].item_type}</p>
+                  <p className="truncate font-medium">{activity[0].title ?? "Continue"}</p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </Link>
+
+          {activity.length > 1 && (
+            <>
+              <h2 className="text-sm font-semibold">Recently Opened / हाल ही में</h2>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {activity.slice(1).map((a) => (
+                  <Link key={a.id} to={a.subject_id ? `/subjects/${a.subject_id}` : "/subjects"} className="shrink-0">
+                    <div className="flex w-40 items-center gap-2 rounded-2xl border bg-card px-3 py-2.5 shadow-sm">
+                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate text-xs font-medium">{a.title ?? a.item_type}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
 
       {/* Subjects grid */}
       {loading ? (
