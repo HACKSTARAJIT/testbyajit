@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
 import { ProtectedRoute, AdminRoute } from "@/components/RouteGuards";
+import { SaveGateProvider } from "@/hooks/useSaveGate";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
@@ -13,6 +14,9 @@ import SubjectDetail from "./pages/SubjectDetail.tsx";
 import Tests from "./pages/Tests.tsx";
 import TestAnalysis from "./pages/TestAnalysis.tsx";
 import WrongQuestions from "./pages/WrongQuestions.tsx";
+import Bookmarks from "./pages/Bookmarks.tsx";
+import Revision from "./pages/Revision.tsx";
+import RevisionDashboard from "./pages/RevisionDashboard.tsx";
 import Admin from "./pages/Admin.tsx";
 import Profile from "./pages/Profile.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -29,19 +33,24 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={withLayout(<Dashboard />)} />
-          <Route path="/subjects" element={withLayout(<Subjects />)} />
-          <Route path="/subjects/:id" element={withLayout(<SubjectDetail />)} />
-          <Route path="/tests" element={withLayout(<Tests />)} />
-          <Route path="/analysis" element={withLayout(<TestAnalysis />)} />
-          <Route path="/wrong-questions" element={withLayout(<WrongQuestions />)} />
-          <Route path="/profile" element={withLayout(<Profile />)} />
-          <Route path="/admin" element={<AdminRoute><AppLayout><Admin /></AppLayout></AdminRoute>} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <SaveGateProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard" element={withLayout(<Dashboard />)} />
+            <Route path="/subjects" element={withLayout(<Subjects />)} />
+            <Route path="/subjects/:id" element={withLayout(<SubjectDetail />)} />
+            <Route path="/tests" element={withLayout(<Tests />)} />
+            <Route path="/analysis" element={withLayout(<TestAnalysis />)} />
+            <Route path="/wrong-questions" element={withLayout(<WrongQuestions />)} />
+            <Route path="/bookmarks" element={withLayout(<Bookmarks />)} />
+            <Route path="/revision" element={withLayout(<Revision />)} />
+            <Route path="/revision-dashboard" element={withLayout(<RevisionDashboard />)} />
+            <Route path="/profile" element={withLayout(<Profile />)} />
+            <Route path="/admin" element={<AdminRoute><AppLayout><Admin /></AppLayout></AdminRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </SaveGateProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

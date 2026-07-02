@@ -11,10 +11,10 @@ function FullScreenLoader() {
 }
 
 export function ProtectedRoute({ children }: { children: JSX.Element }) {
-  const { user, loading } = useAuth();
+  const { user, isGuest, loading } = useAuth();
   const location = useLocation();
   if (loading) return <FullScreenLoader />;
-  if (!user) return <Navigate to="/auth" state={{ from: location }} replace />;
+  if (!user && !isGuest) return <Navigate to="/auth" state={{ from: location }} replace />;
   return children;
 }
 
