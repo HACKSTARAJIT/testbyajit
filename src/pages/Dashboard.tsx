@@ -74,6 +74,12 @@ export default function Dashboard() {
     })();
   }, []);
 
+  useEffect(() => {
+    if (!user) { setActivity([]); return; }
+    fetchActivity(user.id).then((a) => setActivity(a.slice(0, 8)));
+  }, [user]);
+
+
   const filtered = useMemo(
     () => subjects.filter((s) =>
       [s.name, s.name_hi, s.description].some((f) => f?.toLowerCase().includes(q.toLowerCase()))
