@@ -6,16 +6,21 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   isAdmin: boolean;
+  isGuest: boolean;
   loading: boolean;
+  continueAsGuest: () => void;
+  exitGuest: () => void;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const GUEST_KEY = "pb_guest";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isGuest, setIsGuest] = useState(() => localStorage.getItem(GUEST_KEY) === "1");
   const [loading, setLoading] = useState(true);
 
   const fetchRole = (userId: string) => {
@@ -35,6 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
+        setIsGuest(false);
+        localStorage.removeItem(GUEST_KEY);
         fetchRole(sess.user.id);
       } else {
         setIsAdmin(false);
@@ -52,13 +59,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const continueAsGuest = () => {
+    localStorage.setItem(GUEST_KEY, "1");
+    setIsGuest(true);
+  };
+
+  const exitGuest = () => {
+    localStorage.removeItem(GUEST_KEY);
+    setIsGuest(false);
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setIsAdmin(false);
+    exitGuest();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isAdmin, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, isAdmin, isGuest, loading, continueAsGuest, exitGuest, signOut }}>
       {children}
     </AuthContext.Provider>
   );
