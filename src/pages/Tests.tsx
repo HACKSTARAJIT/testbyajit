@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Search } from "lucide-react";
+import { ClipboardList, Search, Sparkles, Play } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TestTracker, attemptStats, type Attempt } from "@/components/TestTracker";
 
 export default function Tests() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [tests, setTests] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
