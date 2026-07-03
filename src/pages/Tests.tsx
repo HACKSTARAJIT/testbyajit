@@ -33,7 +33,7 @@ export default function Tests() {
         supabase.from("tests").select("*, subjects(name)").order("created_at", { ascending: false }),
         supabase.from("subjects").select("id,name").order("name"),
       ]);
-      setTests((t.data ?? []).filter((row: any) => row.test_link));
+      setTests((t.data ?? []).filter((row: any) => row.test_link || row.total_questions));
       setSubjects(s.data ?? []);
       await loadAttempts();
       setLoading(false);
