@@ -61,6 +61,7 @@ export default function Admin() {
         <TabsContent value="chapters" className="pt-4"><ChaptersTab subjects={subjects} chapters={chapters} reload={load} del={del} /></TabsContent>
         <TabsContent value="pdfs" className="pt-4"><PdfsTab subjects={subjects} chapters={chapters} pdfs={pdfs} reload={load} del={del} /></TabsContent>
         <TabsContent value="tests" className="pt-4"><TestsTab subjects={subjects} chapters={chapters} tests={tests} reload={load} del={del} /></TabsContent>
+        <TabsContent value="ai" className="pt-4"><AITestGenerator subjects={subjects} chapters={chapters} reload={load} /></TabsContent>
         <TabsContent value="performance" className="pt-4"><PerformanceTab subjects={subjects} chapters={chapters} performance={performance} reload={load} del={del} /></TabsContent>
         <TabsContent value="app" className="pt-4"><AppTab /></TabsContent>
       </Tabs>
