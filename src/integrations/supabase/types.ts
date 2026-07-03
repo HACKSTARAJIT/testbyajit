@@ -310,6 +310,7 @@ export type Database = {
         Row: {
           correct_option: string
           created_at: string
+          explanation: string | null
           id: string
           marks: number
           option_a: string
@@ -323,6 +324,7 @@ export type Database = {
         Insert: {
           correct_option: string
           created_at?: string
+          explanation?: string | null
           id?: string
           marks?: number
           option_a: string
@@ -336,6 +338,7 @@ export type Database = {
         Update: {
           correct_option?: string
           created_at?: string
+          explanation?: string | null
           id?: string
           marks?: number
           option_a?: string
@@ -549,7 +552,10 @@ export type Database = {
           id: string
           subject_id: string | null
           test_link: string | null
+          test_part: string | null
           title: string
+          total_marks: number | null
+          total_questions: number | null
         }
         Insert: {
           chapter_id?: string | null
@@ -559,7 +565,10 @@ export type Database = {
           id?: string
           subject_id?: string | null
           test_link?: string | null
+          test_part?: string | null
           title: string
+          total_marks?: number | null
+          total_questions?: number | null
         }
         Update: {
           chapter_id?: string | null
@@ -569,7 +578,10 @@ export type Database = {
           id?: string
           subject_id?: string | null
           test_link?: string | null
+          test_part?: string | null
           title?: string
+          total_marks?: number | null
+          total_questions?: number | null
         }
         Relationships: [
           {
