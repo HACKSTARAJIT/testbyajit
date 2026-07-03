@@ -52,6 +52,7 @@ export default function Admin() {
           <TabsTrigger value="chapters"><Layers className="mr-1 h-4 w-4" /> Chapters</TabsTrigger>
           <TabsTrigger value="pdfs"><FileText className="mr-1 h-4 w-4" /> PDFs</TabsTrigger>
           <TabsTrigger value="tests"><ClipboardList className="mr-1 h-4 w-4" /> Tests</TabsTrigger>
+          <TabsTrigger value="ai"><Sparkles className="mr-1 h-4 w-4" /> AI Test Generator</TabsTrigger>
           <TabsTrigger value="performance"><BarChart3 className="mr-1 h-4 w-4" /> Results</TabsTrigger>
           <TabsTrigger value="app"><Smartphone className="mr-1 h-4 w-4" /> App (APK)</TabsTrigger>
         </TabsList>
