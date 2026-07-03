@@ -206,6 +206,24 @@ function MaterialList({ pdfs, tests, onOpen, onDownload, attempts, onAttemptSave
         );
       })}
 
+      {tests.filter((t) => !t.test_link && t.total_questions).length > 0 && (
+        <p className="pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Online Tests</p>
+      )}
+      {tests.filter((t) => !t.test_link && t.total_questions).map((t) => (
+        <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 shrink-0 text-primary" />
+              <span className="truncate text-sm font-medium">{t.title}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t.total_questions} Questions · {t.total_marks ?? t.total_questions} Marks · {t.duration_minutes} min
+            </p>
+          </div>
+          <Button size="sm" asChild><Link to={`/test/${t.id}`}>Start Test</Link></Button>
+        </div>
+      ))}
+
     </div>
   );
 }
