@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Search } from "lucide-react";
+import { ClipboardList, Search, Sparkles, Play } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TestTracker, attemptStats, type Attempt } from "@/components/TestTracker";
 
 export default function Tests() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [tests, setTests] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -30,7 +33,7 @@ export default function Tests() {
         supabase.from("tests").select("*, subjects(name)").order("created_at", { ascending: false }),
         supabase.from("subjects").select("id,name").order("name"),
       ]);
-      setTests((t.data ?? []).filter((row: any) => row.test_link));
+      setTests((t.data ?? []).filter((row: any) => row.test_link || row.total_questions));
       setSubjects(s.data ?? []);
       await loadAttempts();
       setLoading(false);
@@ -80,24 +83,39 @@ export default function Tests() {
                     <ClipboardList className="h-4 w-4 text-primary-foreground" />
                   </div>
                   {t.subjects?.name && <Badge variant="secondary">{t.subjects.name}</Badge>}
+                  {!t.test_link && t.total_questions && <Badge className="gap-1"><Sparkles className="h-3 w-3" /> Online</Badge>}
                 </div>
                 <h3 className="font-semibold">{t.title}</h3>
+                {t.test_part && <p className="text-xs text-muted-foreground">{t.test_part}</p>}
                 {t.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t.description}</p>}
-                {(() => {
-                  const mine = attempts.filter((a) => a.test_id === t.id);
-                  const s = attemptStats(mine);
-                  return (
+                {t.test_link ? (
+                  <>
+                    {(() => {
+                      const mine = attempts.filter((a) => a.test_id === t.id);
+                      const s = attemptStats(mine);
+                      return (
+                        <p className="mt-3 text-xs text-muted-foreground">
+                          Last Score: {s.last ?? "—"} · Best Score: {s.best ?? "—"} · Attempts: {s.count}
+                        </p>
+                      );
+                    })()}
+                    <TestTracker
+                      test={{ id: t.id, title: t.title, test_link: t.test_link, subject_id: t.subject_id, chapter_id: t.chapter_id }}
+                      attempts={attempts.filter((a) => a.test_id === t.id)}
+                      onSaved={loadAttempts}
+                      triggerClassName="mt-4 w-full"
+                    />
+                  </>
+                ) : (
+                  <>
                     <p className="mt-3 text-xs text-muted-foreground">
-                      Last Score: {s.last ?? "—"} · Best Score: {s.best ?? "—"} · Attempts: {s.count}
+                      {t.total_questions} Questions · {t.total_marks ?? t.total_questions} Marks · {t.duration_minutes} min
                     </p>
-                  );
-                })()}
-                <TestTracker
-                  test={{ id: t.id, title: t.title, test_link: t.test_link, subject_id: t.subject_id, chapter_id: t.chapter_id }}
-                  attempts={attempts.filter((a) => a.test_id === t.id)}
-                  onSaved={loadAttempts}
-                  triggerClassName="mt-4 w-full"
-                />
+                    <Button className="mt-4 w-full" onClick={() => navigate(`/test/${t.id}`)}>
+                      <Play className="mr-1 h-4 w-4" /> Start Test
+                    </Button>
+                  </>
+                )}
               </CardContent>
             </Card>
 

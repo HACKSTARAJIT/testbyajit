@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard.tsx";
 import Subjects from "./pages/Subjects.tsx";
 import SubjectDetail from "./pages/SubjectDetail.tsx";
 import Tests from "./pages/Tests.tsx";
+import TestRunner from "./pages/TestRunner.tsx";
 import TestAnalysis from "./pages/TestAnalysis.tsx";
 import WrongQuestions from "./pages/WrongQuestions.tsx";
 import Bookmarks from "./pages/Bookmarks.tsx";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/subjects" element={withLayout(<Subjects />)} />
             <Route path="/subjects/:id" element={withLayout(<SubjectDetail />)} />
             <Route path="/tests" element={withLayout(<Tests />)} />
+            <Route path="/test/:id" element={withLayout(<TestRunner />)} />
             <Route path="/analysis" element={withLayout(<TestAnalysis />)} />
             <Route path="/wrong-questions" element={withLayout(<WrongQuestions />)} />
             <Route path="/bookmarks" element={withLayout(<Bookmarks />)} />
