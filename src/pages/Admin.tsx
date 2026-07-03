@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, BookOpen, Layers, FileText, ClipboardList, Loader2, Pencil, BarChart3, Smartphone } from "lucide-react";
+import { Plus, Trash2, BookOpen, Layers, FileText, ClipboardList, Loader2, Pencil, BarChart3, Smartphone, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { AITestGenerator } from "@/components/AITestGenerator";
 
 export default function Admin() {
   const [subjects, setSubjects] = useState<any[]>([]);
