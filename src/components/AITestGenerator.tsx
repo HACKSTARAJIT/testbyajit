@@ -204,8 +204,33 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
                 <Badge className="gap-1 bg-green-600"><CheckCircle2 className="h-3 w-3" /> All complete</Badge>
               )}
             </div>
+
+            <div className="grid grid-cols-2 gap-2 rounded-xl border bg-muted/40 p-3 text-sm sm:grid-cols-3">
+              <Summary label="Test Name" value={testName || "—"} />
+              <Summary label="Subject" value={subjectName || "—"} />
+              <Summary label="Chapter" value={chapterName || "General"} />
+              <Summary label="Total Questions" value={String(questions.length)} />
+              <Summary label="Total Marks" value={totalMarks || String(questions.length)} />
+              <Summary label="Status" value={missing > 0 ? "Not ready" : "Ready to publish"} />
+            </div>
           </CardContent>
         </Card>
+
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto p-4">
+            <DialogHeader><DialogTitle>Preview (exactly like the student test)</DialogTitle></DialogHeader>
+            {previewQuestions.length > 0 && (
+              <TestEngine
+                test={{ id: "preview", title: testName || "Preview Test", duration_minutes: Number(timeLimit) || 30, total_marks: Number(totalMarks) || questions.length }}
+                questions={previewQuestions}
+                mode="exam"
+                isPreview
+                onExit={() => setShowPreview(false)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
 
         <div className="space-y-3">
           {questions.map((q, i) => {
