@@ -274,7 +274,10 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
         <div className="sticky bottom-0 flex flex-wrap gap-2 border-t bg-background/95 py-3 backdrop-blur">
           <Button variant="outline" onClick={() => setStep("input")}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
           <Button variant="outline" onClick={addQ}><Plus className="mr-1 h-4 w-4" /> Add Question</Button>
-          <Button onClick={publish} disabled={publishing} className="ml-auto">
+          <Button variant="secondary" onClick={() => setShowPreview(true)} disabled={questions.length === 0}>
+            <Eye className="mr-1 h-4 w-4" /> Preview Test
+          </Button>
+          <Button onClick={publish} disabled={publishing || questions.length === 0} className="ml-auto">
             {publishing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1 h-4 w-4" />} Publish Test
           </Button>
         </div>
