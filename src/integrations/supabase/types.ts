@@ -505,6 +505,7 @@ export type Database = {
       test_attempts: {
         Row: {
           accuracy: number
+          answers: Json | null
           correct_count: number
           created_at: string
           current_index: number
@@ -516,12 +517,15 @@ export type Database = {
           skipped_count: number
           status: string
           test_id: string
+          time_taken_seconds: number
+          total_questions: number
           unattempted_count: number
           updated_at: string
           user_id: string
         }
         Insert: {
           accuracy?: number
+          answers?: Json | null
           correct_count?: number
           created_at?: string
           current_index?: number
@@ -533,12 +537,15 @@ export type Database = {
           skipped_count?: number
           status?: string
           test_id: string
+          time_taken_seconds?: number
+          total_questions?: number
           unattempted_count?: number
           updated_at?: string
           user_id: string
         }
         Update: {
           accuracy?: number
+          answers?: Json | null
           correct_count?: number
           created_at?: string
           current_index?: number
@@ -550,6 +557,8 @@ export type Database = {
           skipped_count?: number
           status?: string
           test_id?: string
+          time_taken_seconds?: number
+          total_questions?: number
           unattempted_count?: number
           updated_at?: string
           user_id?: string
