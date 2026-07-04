@@ -35,6 +35,7 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
   const [extracting, setExtracting] = useState(false);
   const [questions, setQuestions] = useState<ParsedQuestion[]>([]);
   const [publishing, setPublishing] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   // config
   const [subjectId, setSubjectId] = useState("");
