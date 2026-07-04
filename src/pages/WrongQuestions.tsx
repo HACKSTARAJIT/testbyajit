@@ -17,9 +17,12 @@ type WQ = {
   test_id: string | null;
   subject_id: string | null;
   chapter_id: string | null;
-  image_path: string;
+  image_path: string | null;
   note: string | null;
   explanation: string | null;
+  question_text: string | null;
+  selected_option: string | null;
+  correct_option: string | null;
   priority: "high" | "medium" | "low";
   status: "pending" | "revised" | "mastered";
   created_at: string;
@@ -57,7 +60,7 @@ export default function WrongQuestions() {
     setRows(list);
     setLoading(false);
     const entries = await Promise.all(
-      list.map(async (r) => [r.image_path, (await getSignedUrl(r.image_path)) ?? ""] as const)
+      list.filter((r) => r.image_path).map(async (r) => [r.image_path!, (await getSignedUrl(r.image_path!)) ?? ""] as const)
     );
     setUrls(Object.fromEntries(entries));
   }, [user]);
@@ -144,13 +147,13 @@ export default function WrongQuestions() {
 
   const renderCard = (r: WQ) => (
     <Card key={r.id} className="overflow-hidden">
-      {urls[r.image_path] ? (
-        <button onClick={() => setZoom(urls[r.image_path])} className="block w-full">
-          <img src={urls[r.image_path]} alt="wrong question" className="max-h-56 w-full object-contain bg-muted" />
+      {r.image_path && urls[r.image_path] ? (
+        <button onClick={() => setZoom(urls[r.image_path!])} className="block w-full">
+          <img src={urls[r.image_path!]} alt="wrong question" className="max-h-56 w-full object-contain bg-muted" />
         </button>
-      ) : (
+      ) : !r.question_text ? (
         <div className="flex h-40 items-center justify-center bg-muted"><ImageIcon className="h-8 w-8 text-muted-foreground" /></div>
-      )}
+      ) : null}
       <CardContent className="space-y-2 p-4">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="gap-1">
@@ -162,6 +165,13 @@ export default function WrongQuestions() {
           {r.status === "revised" && <Badge>Revised</Badge>}
           {r.status === "mastered" && <Badge className="bg-green-600">Mastered</Badge>}
         </div>
+        {r.question_text && <p className="text-sm font-medium">{r.question_text}</p>}
+        {(r.selected_option || r.correct_option) && (
+          <p className="text-xs">
+            {r.selected_option && <span className="text-destructive">Your answer: {r.selected_option}</span>}
+            {r.correct_option && <span className="ml-2 text-success">Correct: {r.correct_option}</span>}
+          </p>
+        )}
         {r.note && <p className="text-sm"><span className="font-medium">Note: </span>{r.note}</p>}
         {r.explanation && <p className="text-sm text-muted-foreground"><span className="font-medium">Explanation: </span>{r.explanation}</p>}
         <div className="flex flex-wrap gap-2 pt-1">

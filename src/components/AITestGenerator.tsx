@@ -7,10 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Loader2, Trash2, Plus, Upload, FileText, CheckCircle2, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sparkles, Loader2, Trash2, Plus, Upload, FileText, CheckCircle2, AlertTriangle, ArrowLeft, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { parseMCQs, type ParsedQuestion } from "@/lib/mcqParser";
 import { extractTextFromFile } from "@/lib/extractText";
+import { TestEngine, type EngineQuestion } from "@/components/TestEngine";
 
 const LETTERS = ["A", "B", "C", "D"] as const;
 const EXAMPLE = `1. What is the capital of India?
@@ -33,6 +35,7 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
   const [extracting, setExtracting] = useState(false);
   const [questions, setQuestions] = useState<ParsedQuestion[]>([]);
   const [publishing, setPublishing] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   // config
   const [subjectId, setSubjectId] = useState("");
@@ -83,6 +86,21 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
     [questions]
   );
 
+  const previewQuestions: EngineQuestion[] = useMemo(
+    () => questions.map((q, i) => ({
+      id: `preview-${i}`,
+      question_text: q.question,
+      option_a: q.option_a, option_b: q.option_b,
+      option_c: q.option_c || "-", option_d: q.option_d || "-",
+      correct_option: q.correct_option, explanation: q.explanation,
+      marks: 1,
+    })),
+    [questions]
+  );
+
+  const subjectName = subjects.find((s: any) => s.id === subjectId)?.name;
+  const chapterName = chapters.find((c: any) => c.id === chapterId)?.name;
+
   const publish = async () => {
     if (!subjectId) return toast.error("Select a subject");
     if (!testName.trim()) return toast.error("Enter a test name");
@@ -104,6 +122,7 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
           duration_minutes: Number(timeLimit) || 30,
           total_marks: marks,
           total_questions: questions.length,
+          is_published: true,
         } as any)
         .select("id")
         .single();
@@ -129,7 +148,13 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
         if (error) throw error;
       }
 
-      toast.success(`Test "${testName}" published with ${questions.length} questions!`);
+      // verify the published test actually contains all questions
+      const { count } = await supabase.from("questions").select("id", { count: "exact", head: true }).eq("test_id", test.id);
+      if ((count ?? 0) !== questions.length) {
+        throw new Error(`Verification failed: saved ${count ?? 0}/${questions.length} questions. Please retry.`);
+      }
+
+      toast.success(`Test "${testName}" published & verified with ${count} questions!`);
       // reset
       setStep("input"); setRawText(""); setQuestions([]);
       setTestName(""); setTestPart(""); setTotalMarks(""); setChapterId("");
@@ -179,8 +204,33 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
                 <Badge className="gap-1 bg-green-600"><CheckCircle2 className="h-3 w-3" /> All complete</Badge>
               )}
             </div>
+
+            <div className="grid grid-cols-2 gap-2 rounded-xl border bg-muted/40 p-3 text-sm sm:grid-cols-3">
+              <Summary label="Test Name" value={testName || "—"} />
+              <Summary label="Subject" value={subjectName || "—"} />
+              <Summary label="Chapter" value={chapterName || "General"} />
+              <Summary label="Total Questions" value={String(questions.length)} />
+              <Summary label="Total Marks" value={totalMarks || String(questions.length)} />
+              <Summary label="Status" value={missing > 0 ? "Not ready" : "Ready to publish"} />
+            </div>
           </CardContent>
         </Card>
+
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto p-4">
+            <DialogHeader><DialogTitle>Preview (exactly like the student test)</DialogTitle></DialogHeader>
+            {previewQuestions.length > 0 && (
+              <TestEngine
+                test={{ id: "preview", title: testName || "Preview Test", duration_minutes: Number(timeLimit) || 30, total_marks: Number(totalMarks) || questions.length }}
+                questions={previewQuestions}
+                mode="exam"
+                isPreview
+                onExit={() => setShowPreview(false)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
 
         <div className="space-y-3">
           {questions.map((q, i) => {
@@ -224,7 +274,10 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
         <div className="sticky bottom-0 flex flex-wrap gap-2 border-t bg-background/95 py-3 backdrop-blur">
           <Button variant="outline" onClick={() => setStep("input")}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
           <Button variant="outline" onClick={addQ}><Plus className="mr-1 h-4 w-4" /> Add Question</Button>
-          <Button onClick={publish} disabled={publishing} className="ml-auto">
+          <Button variant="secondary" onClick={() => setShowPreview(true)} disabled={questions.length === 0}>
+            <Eye className="mr-1 h-4 w-4" /> Preview Test
+          </Button>
+          <Button onClick={publish} disabled={publishing || questions.length === 0} className="ml-auto">
             {publishing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1 h-4 w-4" />} Publish Test
           </Button>
         </div>
@@ -282,3 +335,13 @@ Explanation: (optional)`}</pre>
     </Card>
   );
 }
+
+function Summary({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-background p-2">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="truncate font-semibold">{value}</p>
+    </div>
+  );
+}
+
