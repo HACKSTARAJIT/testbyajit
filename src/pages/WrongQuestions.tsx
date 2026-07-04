@@ -60,7 +60,7 @@ export default function WrongQuestions() {
     setRows(list);
     setLoading(false);
     const entries = await Promise.all(
-      list.map(async (r) => [r.image_path, (await getSignedUrl(r.image_path)) ?? ""] as const)
+      list.filter((r) => r.image_path).map(async (r) => [r.image_path!, (await getSignedUrl(r.image_path!)) ?? ""] as const)
     );
     setUrls(Object.fromEntries(entries));
   }, [user]);
