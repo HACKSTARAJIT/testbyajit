@@ -86,6 +86,21 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
     [questions]
   );
 
+  const previewQuestions: EngineQuestion[] = useMemo(
+    () => questions.map((q, i) => ({
+      id: `preview-${i}`,
+      question_text: q.question,
+      option_a: q.option_a, option_b: q.option_b,
+      option_c: q.option_c || "-", option_d: q.option_d || "-",
+      correct_option: q.correct_option, explanation: q.explanation,
+      marks: 1,
+    })),
+    [questions]
+  );
+
+  const subjectName = subjects.find((s: any) => s.id === subjectId)?.name;
+  const chapterName = chapters.find((c: any) => c.id === chapterId)?.name;
+
   const publish = async () => {
     if (!subjectId) return toast.error("Select a subject");
     if (!testName.trim()) return toast.error("Enter a test name");
