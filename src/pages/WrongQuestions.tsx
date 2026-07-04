@@ -17,9 +17,12 @@ type WQ = {
   test_id: string | null;
   subject_id: string | null;
   chapter_id: string | null;
-  image_path: string;
+  image_path: string | null;
   note: string | null;
   explanation: string | null;
+  question_text: string | null;
+  selected_option: string | null;
+  correct_option: string | null;
   priority: "high" | "medium" | "low";
   status: "pending" | "revised" | "mastered";
   created_at: string;
