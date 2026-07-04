@@ -504,33 +504,54 @@ export type Database = {
       }
       test_attempts: {
         Row: {
+          accuracy: number
           correct_count: number
           created_at: string
+          current_index: number
           id: string
           incorrect_count: number
+          marked: Json | null
           marks_obtained: number
+          mode: string
+          skipped_count: number
+          status: string
           test_id: string
           unattempted_count: number
+          updated_at: string
           user_id: string
         }
         Insert: {
+          accuracy?: number
           correct_count?: number
           created_at?: string
+          current_index?: number
           id?: string
           incorrect_count?: number
+          marked?: Json | null
           marks_obtained?: number
+          mode?: string
+          skipped_count?: number
+          status?: string
           test_id: string
           unattempted_count?: number
+          updated_at?: string
           user_id: string
         }
         Update: {
+          accuracy?: number
           correct_count?: number
           created_at?: string
+          current_index?: number
           id?: string
           incorrect_count?: number
+          marked?: Json | null
           marks_obtained?: number
+          mode?: string
+          skipped_count?: number
+          status?: string
           test_id?: string
           unattempted_count?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -550,6 +571,7 @@ export type Database = {
           description: string | null
           duration_minutes: number
           id: string
+          is_published: boolean
           subject_id: string | null
           test_link: string | null
           test_part: string | null
@@ -563,6 +585,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number
           id?: string
+          is_published?: boolean
           subject_id?: string | null
           test_link?: string | null
           test_part?: string | null
@@ -576,6 +599,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number
           id?: string
+          is_published?: boolean
           subject_id?: string | null
           test_link?: string | null
           test_part?: string | null
@@ -621,43 +645,58 @@ export type Database = {
       wrong_questions: {
         Row: {
           chapter_id: string | null
+          correct_option: string | null
           created_at: string
           explanation: string | null
           id: string
-          image_path: string
+          image_path: string | null
           note: string | null
           priority: string
+          question_text: string | null
+          selected_option: string | null
+          source: string
           status: string
           subject_id: string | null
           test_id: string | null
+          test_part: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           chapter_id?: string | null
+          correct_option?: string | null
           created_at?: string
           explanation?: string | null
           id?: string
-          image_path: string
+          image_path?: string | null
           note?: string | null
           priority?: string
+          question_text?: string | null
+          selected_option?: string | null
+          source?: string
           status?: string
           subject_id?: string | null
           test_id?: string | null
+          test_part?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           chapter_id?: string | null
+          correct_option?: string | null
           created_at?: string
           explanation?: string | null
           id?: string
-          image_path?: string
+          image_path?: string | null
           note?: string | null
           priority?: string
+          question_text?: string | null
+          selected_option?: string | null
+          source?: string
           status?: string
           subject_id?: string | null
           test_id?: string | null
+          test_part?: string | null
           updated_at?: string
           user_id?: string
         }
