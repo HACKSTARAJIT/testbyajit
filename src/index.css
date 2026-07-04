@@ -118,4 +118,19 @@
     @apply bg-clip-text text-transparent;
     background-image: var(--gradient-hero);
   }
+  .glass-card {
+    @apply border border-white/20 bg-card/70 backdrop-blur-xl;
+    box-shadow: var(--shadow-lg);
+  }
+  .btn-ripple {
+    @apply relative overflow-hidden transition-transform active:scale-95;
+  }
+}
+
+@layer utilities {
+  .bg-gradient-royal { background-image: var(--gradient-royal); }
+  .bg-gradient-exam { background-image: var(--gradient-exam); }
+  .bg-gradient-practice { background-image: var(--gradient-practice); }
+  .bg-gradient-emerald { background-image: var(--gradient-emerald); }
+  .bg-gradient-warm { background-image: var(--gradient-warm); }
 }
