@@ -107,6 +107,7 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
           duration_minutes: Number(timeLimit) || 30,
           total_marks: marks,
           total_questions: questions.length,
+          is_published: true,
         } as any)
         .select("id")
         .single();
