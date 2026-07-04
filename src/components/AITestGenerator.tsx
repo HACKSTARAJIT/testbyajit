@@ -335,3 +335,13 @@ Explanation: (optional)`}</pre>
     </Card>
   );
 }
+
+function Summary({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-background p-2">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="truncate font-semibold">{value}</p>
+    </div>
+  );
+}
+
