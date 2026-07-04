@@ -133,7 +133,13 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
         if (error) throw error;
       }
 
-      toast.success(`Test "${testName}" published with ${questions.length} questions!`);
+      // verify the published test actually contains all questions
+      const { count } = await supabase.from("questions").select("id", { count: "exact", head: true }).eq("test_id", test.id);
+      if ((count ?? 0) !== questions.length) {
+        throw new Error(`Verification failed: saved ${count ?? 0}/${questions.length} questions. Please retry.`);
+      }
+
+      toast.success(`Test "${testName}" published & verified with ${count} questions!`);
       // reset
       setStep("input"); setRawText(""); setQuestions([]);
       setTestName(""); setTestPart(""); setTotalMarks(""); setChapterId("");
