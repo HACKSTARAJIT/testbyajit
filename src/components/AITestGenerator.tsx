@@ -7,10 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Loader2, Trash2, Plus, Upload, FileText, CheckCircle2, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sparkles, Loader2, Trash2, Plus, Upload, FileText, CheckCircle2, AlertTriangle, ArrowLeft, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { parseMCQs, type ParsedQuestion } from "@/lib/mcqParser";
 import { extractTextFromFile } from "@/lib/extractText";
+import { TestEngine, type EngineQuestion } from "@/components/TestEngine";
 
 const LETTERS = ["A", "B", "C", "D"] as const;
 const EXAMPLE = `1. What is the capital of India?
