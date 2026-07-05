@@ -5,8 +5,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { GraduationCap, Zap, ArrowLeft, Clock, ListChecks, Award, PlayCircle } from "lucide-react";
+import { GraduationCap, Zap, ArrowLeft, Clock, ListChecks, Award, PlayCircle, AlertTriangle } from "lucide-react";
 import { TestEngine, type EngineQuestion, type EngineTest } from "@/components/TestEngine";
+import { loadTestWithQuestions } from "@/lib/testLoader";
 
 type Mode = "practice" | "exam";
 
@@ -16,6 +17,7 @@ export default function TestRunner() {
   const { user } = useAuth();
   const [test, setTest] = useState<any>(null);
   const [questions, setQuestions] = useState<EngineQuestion[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<Mode | null>(null);
   const [started, setStarted] = useState(false);
@@ -23,10 +25,11 @@ export default function TestRunner() {
 
   useEffect(() => {
     (async () => {
-      const { data: t } = await supabase.from("tests").select("*, subjects(name)").eq("id", id).maybeSingle();
-      const { data: q } = await supabase.from("questions").select("*").eq("test_id", id).order("sort_order");
-      setTest(t);
-      setQuestions((q as any) ?? []);
+      // Single shared loader — identical to Admin validation & debug panel
+      const loaded = await loadTestWithQuestions(id!);
+      setTest(loaded.test);
+      setQuestions(loaded.questions);
+      setLoadError(loaded.testError || loaded.questionsError);
       if (user) {
         const { data: att } = await supabase
           .from("test_attempts")
@@ -41,11 +44,22 @@ export default function TestRunner() {
 
   if (loading) return <div className="space-y-3"><Skeleton className="h-48 rounded-3xl" /><Skeleton className="h-32 rounded-2xl" /></div>;
 
+  if (loadError)
+    return (
+      <div className="rounded-3xl border border-destructive/40 bg-card p-10 text-center">
+        <AlertTriangle className="mx-auto h-10 w-10 text-destructive" />
+        <p className="mt-3 font-semibold">Could not load this test</p>
+        <p className="mx-auto mt-2 max-w-md break-words rounded-lg bg-muted p-3 text-left font-mono text-xs text-muted-foreground">{loadError}</p>
+        <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>Go Back</Button>
+      </div>
+    );
+
   if (!test || questions.length === 0)
     return (
       <div className="rounded-3xl border bg-card p-10 text-center text-muted-foreground">
         <ListChecks className="mx-auto h-10 w-10" />
-        <p className="mt-3">This test has no questions yet.</p>
+        <p className="mt-3">{!test ? "This test was not found." : "This test has no questions saved in the database yet."}</p>
+        <p className="mt-1 text-xs">If you just published it, re-publish from the Admin AI Test Generator — earlier publishes may have failed to save questions.</p>
         <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>Go Back</Button>
       </div>
     );
