@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2, BookOpen, Layers, FileText, ClipboardList, Loader2, Pencil, BarChart3, Smartphone, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { AITestGenerator } from "@/components/AITestGenerator";
+import { TestDebugPanel } from "@/components/TestDebugPanel";
 
 export default function Admin() {
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -60,7 +61,10 @@ export default function Admin() {
         <TabsContent value="subjects" className="pt-4"><SubjectsTab subjects={subjects} reload={load} del={del} /></TabsContent>
         <TabsContent value="chapters" className="pt-4"><ChaptersTab subjects={subjects} chapters={chapters} reload={load} del={del} /></TabsContent>
         <TabsContent value="pdfs" className="pt-4"><PdfsTab subjects={subjects} chapters={chapters} pdfs={pdfs} reload={load} del={del} /></TabsContent>
-        <TabsContent value="tests" className="pt-4"><TestsTab subjects={subjects} chapters={chapters} tests={tests} reload={load} del={del} /></TabsContent>
+        <TabsContent value="tests" className="space-y-4 pt-4">
+          <TestDebugPanel tests={tests} />
+          <TestsTab subjects={subjects} chapters={chapters} tests={tests} reload={load} del={del} />
+        </TabsContent>
         <TabsContent value="ai" className="pt-4"><AITestGenerator subjects={subjects} chapters={chapters} reload={load} /></TabsContent>
         <TabsContent value="performance" className="pt-4"><PerformanceTab subjects={subjects} chapters={chapters} performance={performance} reload={load} del={del} /></TabsContent>
         <TabsContent value="app" className="pt-4"><AppTab /></TabsContent>
