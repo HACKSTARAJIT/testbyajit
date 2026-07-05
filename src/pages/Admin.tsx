@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2, BookOpen, Layers, FileText, ClipboardList, Loader2, Pencil, BarChart3, Smartphone, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { AITestGenerator } from "@/components/AITestGenerator";
+import { TestDebugPanel } from "@/components/TestDebugPanel";
 
 export default function Admin() {
   const [subjects, setSubjects] = useState<any[]>([]);

@@ -12,6 +12,7 @@ import { Sparkles, Loader2, Trash2, Plus, Upload, FileText, CheckCircle2, AlertT
 import { toast } from "sonner";
 import { parseMCQs, type ParsedQuestion } from "@/lib/mcqParser";
 import { extractTextFromFile } from "@/lib/extractText";
+import { loadTestWithQuestions } from "@/lib/testLoader";
 import { TestEngine, type EngineQuestion } from "@/components/TestEngine";
 
 const LETTERS = ["A", "B", "C", "D"] as const;
@@ -154,7 +155,16 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
         throw new Error(`Verification failed: saved ${count ?? 0}/${questions.length} questions. Please retry.`);
       }
 
-      toast.success(`Test "${testName}" published & verified with ${count} questions!`);
+      // final validation: load the test EXACTLY like the Student Test page does
+      const studentView = await loadTestWithQuestions(test.id);
+      if (studentView.testError || studentView.questionsError) {
+        throw new Error(`Student page cannot load this test: ${studentView.testError || studentView.questionsError}`);
+      }
+      if (studentView.questions.length !== questions.length) {
+        throw new Error(`Student query returned ${studentView.questions.length}/${questions.length} questions. Publish incomplete — please retry.`);
+      }
+
+      toast.success(`Test "${testName}" published & verified — students can load all ${studentView.questions.length} questions!`);
       // reset
       setStep("input"); setRawText(""); setQuestions([]);
       setTestName(""); setTestPart(""); setTotalMarks(""); setChapterId("");
