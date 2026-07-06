@@ -99,7 +99,7 @@ export function TestEngine({
   }, [answers, sessionQs]);
 
   // ---- attempt persistence ----
-  const canSave = !!userId && !isPreview;
+  const canSave = !!userId && !isPreview && saveAttempt;
 
   const persist = useCallback(async (status: "in_progress" | "completed", finalStats?: typeof stats, timeTaken?: number) => {
     if (!canSave) return;
