@@ -156,10 +156,13 @@ export function TestEngine({
     setResult({ ...final, timeTaken });
     await persist("completed", final, timeTaken);
     // Auto-update the smart wrong-question bank & regenerate the revision test
-    if (canSave) {
-      try { await recordAttempt(userId!, test, sessionQs, answers); } catch (e) { console.error(e); }
+    if (userId && !isPreview) {
+      try {
+        if (onSubmit) await onSubmit(answers, sessionQs);
+        else if (autoRecord) await recordAttempt(userId, test, sessionQs, answers);
+      } catch (e) { console.error(e); }
     }
-  }, [submitted, stats, persist, canSave, userId, test, sessionQs, answers]);
+  }, [submitted, stats, persist, userId, isPreview, onSubmit, autoRecord, test, sessionQs, answers]);
 
   // timer
   useEffect(() => {
