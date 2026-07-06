@@ -149,7 +149,11 @@ export function TestEngine({
     const final = { ...stats };
     setResult({ ...final, timeTaken });
     await persist("completed", final, timeTaken);
-  }, [submitted, stats, persist]);
+    // Auto-update the smart wrong-question bank & regenerate the revision test
+    if (canSave) {
+      try { await recordAttempt(userId!, test, sessionQs, answers); } catch (e) { console.error(e); }
+    }
+  }, [submitted, stats, persist, canSave, userId, test, sessionQs, answers]);
 
   // timer
   useEffect(() => {
