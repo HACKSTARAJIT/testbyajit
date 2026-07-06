@@ -76,14 +76,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
+      <SplashScreen />
       <header className="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-lg">
         <div className="container flex h-16 items-center justify-between gap-4">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-hero">
-              <GraduationCap className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <img src={pbLogo} alt="Practice Book logo" width={36} height={36} className="h-9 w-9 rounded-xl" />
             <span className="text-base font-bold font-display leading-tight">Practice Book<br className="hidden sm:block" /> <span className="text-secondary">By Ajit</span></span>
           </Link>
+
 
           <nav className="hidden items-center gap-1 md:flex">
             <NavItems />
