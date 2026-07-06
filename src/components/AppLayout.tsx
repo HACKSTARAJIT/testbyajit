@@ -8,25 +8,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  BookOpen, LayoutDashboard, FileText, ClipboardList,
-  Shield, LogOut, GraduationCap, Menu, User, Moon, Sun, BarChart3, BookMarked,
-  Star, LayoutGrid, LogIn,
+  Home, Shield, LogOut, Menu, User, Moon, Sun, XCircle, LogIn, Info,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { SplashScreen } from "@/components/SplashScreen";
+import pbLogo from "@/assets/pb-logo.png";
 
 const navItems = [
-  { to: "/dashboard", label: "होम / Home", icon: LayoutDashboard },
-  { to: "/subjects", label: "विषय / Subjects", icon: BookOpen },
-  { to: "/tests", label: "टेस्ट / Tests", icon: ClipboardList },
-  { to: "/analysis", label: "स्कोर / Test Score & Analysis", icon: BarChart3 },
-  { to: "/wrong-questions", label: "गलत प्रश्न / Wrong Questions", icon: BookMarked },
-  { to: "/bookmarks", label: "बुकमार्क / Bookmarks", icon: BookMarked },
-  { to: "/revision", label: "रिवीजन / Revision List", icon: Star },
-  { to: "/revision-dashboard", label: "रिवीजन डैशबोर्ड / Revision Dashboard", icon: LayoutGrid },
-  { to: "/profile", label: "प्रोफ़ाइल / Profile", icon: User },
+  { to: "/dashboard", label: "होम / Home", icon: Home },
+  { to: "/wrong-questions", label: "गलत प्रश्न / Wrong Questions", icon: XCircle },
 ];
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
