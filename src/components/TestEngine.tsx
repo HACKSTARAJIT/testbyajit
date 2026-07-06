@@ -136,26 +136,11 @@ export function TestEngine({
     return () => clearInterval(t);
   }, [canSave, submitted, persist]);
 
-  // save wrong question to notebook (practice mode, auto)
-  const saveWrongQuestion = useCallback(async (item: EngineQuestion) => {
-    if (!canSave || savedWrong.current.has(item.id)) return;
+  // Practice-mode immediate UI cue only; the durable bank update happens on submit
+  const saveWrongQuestion = useCallback((item: EngineQuestion) => {
+    if (!canSave) return;
     savedWrong.current.add(item.id);
-    await supabase.from("wrong_questions").insert({
-      user_id: userId,
-      test_id: test.id,
-      subject_id: test.subject_id ?? null,
-      chapter_id: test.chapter_id ?? null,
-      image_path: null,
-      question_text: item.question_text,
-      selected_option: answers[item.id] ?? null,
-      correct_option: item.correct_option,
-      explanation: item.explanation ?? null,
-      test_part: test.test_part ?? null,
-      priority: "high",
-      status: "pending",
-      source: "auto",
-    } as any);
-  }, [canSave, userId, test, answers]);
+  }, [canSave]);
 
   const submit = useCallback(async () => {
     if (submitted) return;
