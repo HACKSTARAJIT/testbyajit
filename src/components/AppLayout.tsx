@@ -119,6 +119,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   {user?.email ?? (isGuest ? "Guest / अतिथि" : "")}
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
+                  <User className="mr-2 h-4 w-4" /> Profile / प्रोफ़ाइल
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/about")}>
+                  <Info className="mr-2 h-4 w-4" /> About
+                </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate("/admin")}>
                     <Shield className="mr-2 h-4 w-4" /> Admin Dashboard
