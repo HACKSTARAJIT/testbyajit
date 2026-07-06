@@ -18,6 +18,8 @@ import WrongQuestions from "./pages/WrongQuestions.tsx";
 import Bookmarks from "./pages/Bookmarks.tsx";
 import Revision from "./pages/Revision.tsx";
 import RevisionDashboard from "./pages/RevisionDashboard.tsx";
+import RevisionRunner from "./pages/RevisionRunner.tsx";
+import About from "./pages/About.tsx";
 import Admin from "./pages/Admin.tsx";
 import Profile from "./pages/Profile.tsx";
 import NotFound from "./pages/NotFound.tsx";
