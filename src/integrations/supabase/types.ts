@@ -433,6 +433,53 @@ export type Database = {
         }
         Relationships: []
       }
+      revision_tests: {
+        Row: {
+          chapter_id: string | null
+          created_at: string
+          id: string
+          question_count: number
+          question_ids: Json
+          subject_id: string | null
+          test_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          question_count?: number
+          question_ids?: Json
+          subject_id?: string | null
+          test_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          question_count?: number
+          question_ids?: Json
+          subject_id?: string | null
+          test_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revision_tests_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       study_activity: {
         Row: {
           id: string
@@ -654,13 +701,18 @@ export type Database = {
       wrong_questions: {
         Row: {
           chapter_id: string | null
+          consecutive_correct: number
           correct_option: string | null
+          correct_revision_count: number
           created_at: string
           explanation: string | null
           id: string
           image_path: string | null
+          last_attempt_at: string | null
+          mastered_at: string | null
           note: string | null
           priority: string
+          question_id: string | null
           question_text: string | null
           selected_option: string | null
           source: string
@@ -670,16 +722,22 @@ export type Database = {
           test_part: string | null
           updated_at: string
           user_id: string
+          wrong_count: number
         }
         Insert: {
           chapter_id?: string | null
+          consecutive_correct?: number
           correct_option?: string | null
+          correct_revision_count?: number
           created_at?: string
           explanation?: string | null
           id?: string
           image_path?: string | null
+          last_attempt_at?: string | null
+          mastered_at?: string | null
           note?: string | null
           priority?: string
+          question_id?: string | null
           question_text?: string | null
           selected_option?: string | null
           source?: string
@@ -689,16 +747,22 @@ export type Database = {
           test_part?: string | null
           updated_at?: string
           user_id: string
+          wrong_count?: number
         }
         Update: {
           chapter_id?: string | null
+          consecutive_correct?: number
           correct_option?: string | null
+          correct_revision_count?: number
           created_at?: string
           explanation?: string | null
           id?: string
           image_path?: string | null
+          last_attempt_at?: string | null
+          mastered_at?: string | null
           note?: string | null
           priority?: string
+          question_id?: string | null
           question_text?: string | null
           selected_option?: string | null
           source?: string
@@ -708,6 +772,7 @@ export type Database = {
           test_part?: string | null
           updated_at?: string
           user_id?: string
+          wrong_count?: number
         }
         Relationships: [
           {

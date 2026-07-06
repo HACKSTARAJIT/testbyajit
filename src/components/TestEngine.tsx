@@ -8,6 +8,7 @@ import {
   Clock, CheckCircle2, XCircle, ArrowLeft, ArrowRight, Trophy, Flag,
   Target, RotateCcw, ListChecks, Sparkles, Info,
 } from "lucide-react";
+import { recordAttempt } from "@/lib/revisionEngine";
 
 export type EngineQuestion = {
   id: string;
@@ -43,6 +44,9 @@ export function TestEngine({
   mode,
   userId,
   isPreview = false,
+  saveAttempt = true,
+  autoRecord = true,
+  onSubmit,
   onExit,
   resume,
 }: {
@@ -51,6 +55,9 @@ export function TestEngine({
   mode: Mode;
   userId?: string;
   isPreview?: boolean;
+  saveAttempt?: boolean;
+  autoRecord?: boolean;
+  onSubmit?: (answers: Record<string, string>, questions: EngineQuestion[]) => void | Promise<void>;
   onExit: () => void;
   resume?: {
     attemptId: string;
@@ -92,7 +99,7 @@ export function TestEngine({
   }, [answers, sessionQs]);
 
   // ---- attempt persistence ----
-  const canSave = !!userId && !isPreview;
+  const canSave = !!userId && !isPreview && saveAttempt;
 
   const persist = useCallback(async (status: "in_progress" | "completed", finalStats?: typeof stats, timeTaken?: number) => {
     if (!canSave) return;
@@ -135,26 +142,11 @@ export function TestEngine({
     return () => clearInterval(t);
   }, [canSave, submitted, persist]);
 
-  // save wrong question to notebook (practice mode, auto)
-  const saveWrongQuestion = useCallback(async (item: EngineQuestion) => {
-    if (!canSave || savedWrong.current.has(item.id)) return;
+  // Practice-mode immediate UI cue only; the durable bank update happens on submit
+  const saveWrongQuestion = useCallback((item: EngineQuestion) => {
+    if (!canSave) return;
     savedWrong.current.add(item.id);
-    await supabase.from("wrong_questions").insert({
-      user_id: userId,
-      test_id: test.id,
-      subject_id: test.subject_id ?? null,
-      chapter_id: test.chapter_id ?? null,
-      image_path: null,
-      question_text: item.question_text,
-      selected_option: answers[item.id] ?? null,
-      correct_option: item.correct_option,
-      explanation: item.explanation ?? null,
-      test_part: test.test_part ?? null,
-      priority: "high",
-      status: "pending",
-      source: "auto",
-    } as any);
-  }, [canSave, userId, test, answers]);
+  }, [canSave]);
 
   const submit = useCallback(async () => {
     if (submitted) return;
@@ -163,7 +155,14 @@ export function TestEngine({
     const final = { ...stats };
     setResult({ ...final, timeTaken });
     await persist("completed", final, timeTaken);
-  }, [submitted, stats, persist]);
+    // Auto-update the smart wrong-question bank & regenerate the revision test
+    if (userId && !isPreview) {
+      try {
+        if (onSubmit) await onSubmit(answers, sessionQs);
+        else if (autoRecord) await recordAttempt(userId, test, sessionQs, answers);
+      } catch (e) { console.error(e); }
+    }
+  }, [submitted, stats, persist, userId, isPreview, onSubmit, autoRecord, test, sessionQs, answers]);
 
   // timer
   useEffect(() => {

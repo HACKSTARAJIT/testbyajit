@@ -18,6 +18,8 @@ import WrongQuestions from "./pages/WrongQuestions.tsx";
 import Bookmarks from "./pages/Bookmarks.tsx";
 import Revision from "./pages/Revision.tsx";
 import RevisionDashboard from "./pages/RevisionDashboard.tsx";
+import RevisionRunner from "./pages/RevisionRunner.tsx";
+import About from "./pages/About.tsx";
 import Admin from "./pages/Admin.tsx";
 import Profile from "./pages/Profile.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -48,6 +50,9 @@ const App = () => (
             <Route path="/bookmarks" element={withLayout(<Bookmarks />)} />
             <Route path="/revision" element={withLayout(<Revision />)} />
             <Route path="/revision-dashboard" element={withLayout(<RevisionDashboard />)} />
+            <Route path="/revise" element={withLayout(<RevisionRunner />)} />
+            <Route path="/revise/:testId" element={withLayout(<RevisionRunner />)} />
+            <Route path="/about" element={withLayout(<About />)} />
             <Route path="/profile" element={withLayout(<Profile />)} />
             <Route path="/admin" element={<AdminRoute><AppLayout><Admin /></AppLayout></AdminRoute>} />
             <Route path="*" element={<NotFound />} />

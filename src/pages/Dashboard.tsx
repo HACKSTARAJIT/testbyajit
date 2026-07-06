@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [counts, setCounts] = useState<Record<string, Counts>>({});
   const [release, setRelease] = useState<any | null>(null);
   const [activity, setActivity] = useState<any[]>([]);
+  const [revision, setRevision] = useState({ total: 0, high: 0, medium: 0, low: 0 });
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -75,8 +76,14 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (!user) { setActivity([]); return; }
+    if (!user) { setActivity([]); setRevision({ total: 0, high: 0, medium: 0, low: 0 }); return; }
     fetchActivity(user.id).then((a) => setActivity(a.slice(0, 8)));
+    supabase.from("wrong_questions").select("priority").eq("user_id", user.id).eq("status", "pending")
+      .then(({ data }) => {
+        const r = { total: 0, high: 0, medium: 0, low: 0 };
+        (data ?? []).forEach((row: any) => { r.total++; if (row.priority in r) (r as any)[row.priority]++; });
+        setRevision(r);
+      });
   }, [user]);
 
 
@@ -197,6 +204,30 @@ export default function Dashboard() {
           )}
         </section>
       )}
+
+      {/* Today's Revision */}
+      {user && revision.total > 0 && (
+        <section className="animate-fade-in overflow-hidden rounded-3xl bg-gradient-royal p-5 text-white shadow-lg">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium uppercase tracking-wide text-white/80">Today's Revision</p>
+              <p className="text-2xl font-bold">{revision.total} pending question{revision.total !== 1 ? "s" : ""}</p>
+            </div>
+            <Link to="/revise">
+              <Button className="btn-ripple bg-white text-primary hover:bg-white/90">
+                <Flame className="mr-1 h-4 w-4" /> Start Revision
+              </Button>
+            </Link>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl bg-white/15 p-2"><p className="text-lg font-bold">🔴 {revision.high}</p><p className="text-[11px] text-white/80">High</p></div>
+            <div className="rounded-xl bg-white/15 p-2"><p className="text-lg font-bold">🟠 {revision.medium}</p><p className="text-[11px] text-white/80">Medium</p></div>
+            <div className="rounded-xl bg-white/15 p-2"><p className="text-lg font-bold">🟢 {revision.low}</p><p className="text-[11px] text-white/80">Low</p></div>
+          </div>
+        </section>
+      )}
+
+
 
 
       {/* Subjects grid */}

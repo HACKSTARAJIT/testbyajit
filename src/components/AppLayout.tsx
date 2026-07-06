@@ -8,25 +8,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  BookOpen, LayoutDashboard, FileText, ClipboardList,
-  Shield, LogOut, GraduationCap, Menu, User, Moon, Sun, BarChart3, BookMarked,
-  Star, LayoutGrid, LogIn,
+  Home, Shield, LogOut, Menu, User, Moon, Sun, XCircle, LogIn, Info,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { SplashScreen } from "@/components/SplashScreen";
+import pbLogo from "@/assets/pb-logo.png";
 
 const navItems = [
-  { to: "/dashboard", label: "होम / Home", icon: LayoutDashboard },
-  { to: "/subjects", label: "विषय / Subjects", icon: BookOpen },
-  { to: "/tests", label: "टेस्ट / Tests", icon: ClipboardList },
-  { to: "/analysis", label: "स्कोर / Test Score & Analysis", icon: BarChart3 },
-  { to: "/wrong-questions", label: "गलत प्रश्न / Wrong Questions", icon: BookMarked },
-  { to: "/bookmarks", label: "बुकमार्क / Bookmarks", icon: BookMarked },
-  { to: "/revision", label: "रिवीजन / Revision List", icon: Star },
-  { to: "/revision-dashboard", label: "रिवीजन डैशबोर्ड / Revision Dashboard", icon: LayoutGrid },
-  { to: "/profile", label: "प्रोफ़ाइल / Profile", icon: User },
+  { to: "/dashboard", label: "होम / Home", icon: Home },
+  { to: "/wrong-questions", label: "गलत प्रश्न / Wrong Questions", icon: XCircle },
 ];
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
@@ -83,14 +76,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
+      <SplashScreen />
       <header className="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-lg">
         <div className="container flex h-16 items-center justify-between gap-4">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-hero">
-              <GraduationCap className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <img src={pbLogo} alt="Practice Book logo" width={36} height={36} className="h-9 w-9 rounded-xl" />
             <span className="text-base font-bold font-display leading-tight">Practice Book<br className="hidden sm:block" /> <span className="text-secondary">By Ajit</span></span>
           </Link>
+
 
           <nav className="hidden items-center gap-1 md:flex">
             <NavItems />
@@ -126,6 +119,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   {user?.email ?? (isGuest ? "Guest / अतिथि" : "")}
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
+                  <User className="mr-2 h-4 w-4" /> Profile / प्रोफ़ाइल
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/about")}>
+                  <Info className="mr-2 h-4 w-4" /> About
+                </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate("/admin")}>
                     <Shield className="mr-2 h-4 w-4" /> Admin Dashboard
@@ -163,10 +162,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="container py-6 animate-fade-in">{children}</main>
-      <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-        <FileText className="mx-auto mb-1 h-4 w-4" />
-        Practice Book By Ajit — प्रतियोगी परीक्षा तैयारी मंच
+      <footer className="border-t py-6 text-center text-xs text-muted-foreground">
+        <img src={pbLogo} alt="Practice Book logo" width={28} height={28} className="mx-auto mb-2 h-7 w-7 rounded-lg" loading="lazy" />
+        <p>© {new Date().getFullYear()} Practice Book By Ajit</p>
+        <p className="mt-0.5">Designed &amp; Developed by Ajit Singh</p>
+        <Link to="/about" className="story-link mt-1 inline-block text-primary">About</Link>
       </footer>
+
     </div>
   );
 }
