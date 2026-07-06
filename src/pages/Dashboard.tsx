@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [counts, setCounts] = useState<Record<string, Counts>>({});
   const [release, setRelease] = useState<any | null>(null);
   const [activity, setActivity] = useState<any[]>([]);
+  const [revision, setRevision] = useState({ total: 0, high: 0, medium: 0, low: 0 });
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
