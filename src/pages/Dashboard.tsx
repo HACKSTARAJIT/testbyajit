@@ -76,8 +76,14 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (!user) { setActivity([]); return; }
+    if (!user) { setActivity([]); setRevision({ total: 0, high: 0, medium: 0, low: 0 }); return; }
     fetchActivity(user.id).then((a) => setActivity(a.slice(0, 8)));
+    supabase.from("wrong_questions").select("priority").eq("user_id", user.id).eq("status", "pending")
+      .then(({ data }) => {
+        const r = { total: 0, high: 0, medium: 0, low: 0 };
+        (data ?? []).forEach((row: any) => { r.total++; if (row.priority in r) (r as any)[row.priority]++; });
+        setRevision(r);
+      });
   }, [user]);
 
 
