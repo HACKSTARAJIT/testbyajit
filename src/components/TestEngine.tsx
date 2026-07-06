@@ -44,6 +44,9 @@ export function TestEngine({
   mode,
   userId,
   isPreview = false,
+  saveAttempt = true,
+  autoRecord = true,
+  onSubmit,
   onExit,
   resume,
 }: {
@@ -52,6 +55,9 @@ export function TestEngine({
   mode: Mode;
   userId?: string;
   isPreview?: boolean;
+  saveAttempt?: boolean;
+  autoRecord?: boolean;
+  onSubmit?: (answers: Record<string, string>, questions: EngineQuestion[]) => void | Promise<void>;
   onExit: () => void;
   resume?: {
     attemptId: string;
