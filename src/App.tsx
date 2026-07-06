@@ -50,6 +50,9 @@ const App = () => (
             <Route path="/bookmarks" element={withLayout(<Bookmarks />)} />
             <Route path="/revision" element={withLayout(<Revision />)} />
             <Route path="/revision-dashboard" element={withLayout(<RevisionDashboard />)} />
+            <Route path="/revise" element={withLayout(<RevisionRunner />)} />
+            <Route path="/revise/:testId" element={withLayout(<RevisionRunner />)} />
+            <Route path="/about" element={withLayout(<About />)} />
             <Route path="/profile" element={withLayout(<Profile />)} />
             <Route path="/admin" element={<AdminRoute><AppLayout><Admin /></AppLayout></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
