@@ -168,3 +168,73 @@ export async function loadTodaysRevisionIds(userId: string): Promise<string[]> {
     .order("priority", { ascending: true });
   return [...new Set((data ?? []).map((r: any) => r.question_id).filter(Boolean))];
 }
+
+/**
+ * Records a revision attempt (from Today's Revision or an auto revision test).
+ * Correct answers build the mastery streak; wrong answers bump wrong_count.
+ * Then regenerates every revision test whose questions were touched.
+ */
+export async function recordRevisionAttempt(
+  userId: string,
+  questions: EngineQuestion[],
+  answers: Record<string, string>,
+): Promise<void> {
+  if (!userId) return;
+  const qIds = questions.map((q) => q.id);
+  const { data: rows } = await supabase
+    .from("wrong_questions")
+    .select("id, question_id, test_id, wrong_count, correct_revision_count, consecutive_correct, status")
+    .eq("user_id", userId)
+    .in("question_id", qIds);
+
+  const byQ = new Map<string, any>();
+  (rows ?? []).forEach((r: any) => r.question_id && byQ.set(r.question_id, r));
+  const now = new Date().toISOString();
+  const affectedTests = new Set<string>();
+
+  for (const q of questions) {
+    const prev = byQ.get(q.id);
+    if (!prev) continue;
+    if (prev.test_id) affectedTests.add(prev.test_id);
+    const chosen = answers[q.id];
+    const correct = chosen != null && chosen !== "" && chosen === q.correct_option;
+
+    if (correct && prev.status !== "mastered") {
+      const streak = (prev.consecutive_correct ?? 0) + 1;
+      const mastered = streak >= 2;
+      await supabase.from("wrong_questions").update({
+        correct_revision_count: (prev.correct_revision_count ?? 0) + 1,
+        consecutive_correct: streak,
+        status: mastered ? "mastered" : "pending",
+        mastered_at: mastered ? now : null,
+        last_attempt_at: now,
+      } as any).eq("id", prev.id);
+    } else if (!correct) {
+      const wrongCount = (prev.wrong_count ?? 1) + 1;
+      await supabase.from("wrong_questions").update({
+        wrong_count: wrongCount,
+        consecutive_correct: 0,
+        priority: priorityForCount(wrongCount),
+        status: "pending",
+        mastered_at: null,
+        selected_option: chosen ?? null,
+        last_attempt_at: now,
+      } as any).eq("id", prev.id);
+    }
+  }
+
+  for (const testId of affectedTests) {
+    await regenerateRevisionTestById(userId, testId);
+  }
+}
+
+async function regenerateRevisionTestById(userId: string, testId: string): Promise<void> {
+  const { data: test } = await supabase
+    .from("tests")
+    .select("id, title, subject_id, chapter_id, test_part")
+    .eq("id", testId)
+    .maybeSingle();
+  if (!test) return;
+  await regenerateRevisionTest(userId, test as any);
+}
+
