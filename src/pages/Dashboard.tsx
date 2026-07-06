@@ -205,6 +205,30 @@ export default function Dashboard() {
         </section>
       )}
 
+      {/* Today's Revision */}
+      {user && revision.total > 0 && (
+        <section className="animate-fade-in overflow-hidden rounded-3xl bg-gradient-royal p-5 text-white shadow-lg">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium uppercase tracking-wide text-white/80">Today's Revision</p>
+              <p className="text-2xl font-bold">{revision.total} pending question{revision.total !== 1 ? "s" : ""}</p>
+            </div>
+            <Link to="/revise">
+              <Button className="btn-ripple bg-white text-primary hover:bg-white/90">
+                <Flame className="mr-1 h-4 w-4" /> Start Revision
+              </Button>
+            </Link>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl bg-white/15 p-2"><p className="text-lg font-bold">🔴 {revision.high}</p><p className="text-[11px] text-white/80">High</p></div>
+            <div className="rounded-xl bg-white/15 p-2"><p className="text-lg font-bold">🟠 {revision.medium}</p><p className="text-[11px] text-white/80">Medium</p></div>
+            <div className="rounded-xl bg-white/15 p-2"><p className="text-lg font-bold">🟢 {revision.low}</p><p className="text-[11px] text-white/80">Low</p></div>
+          </div>
+        </section>
+      )}
+
+
+
 
       {/* Subjects grid */}
       {loading ? (
