@@ -162,10 +162,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="container py-6 animate-fade-in">{children}</main>
-      <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-        <FileText className="mx-auto mb-1 h-4 w-4" />
-        Practice Book By Ajit — प्रतियोगी परीक्षा तैयारी मंच
+      <footer className="border-t py-6 text-center text-xs text-muted-foreground">
+        <img src={pbLogo} alt="Practice Book logo" width={28} height={28} className="mx-auto mb-2 h-7 w-7 rounded-lg" loading="lazy" />
+        <p>© {new Date().getFullYear()} Practice Book By Ajit</p>
+        <p className="mt-0.5">Designed &amp; Developed by Ajit Singh</p>
+        <Link to="/about" className="story-link mt-1 inline-block text-primary">About</Link>
       </footer>
+
     </div>
   );
 }
