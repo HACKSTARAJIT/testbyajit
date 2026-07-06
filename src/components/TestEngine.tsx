@@ -8,6 +8,7 @@ import {
   Clock, CheckCircle2, XCircle, ArrowLeft, ArrowRight, Trophy, Flag,
   Target, RotateCcw, ListChecks, Sparkles, Info,
 } from "lucide-react";
+import { recordAttempt } from "@/lib/revisionEngine";
 
 export type EngineQuestion = {
   id: string;
