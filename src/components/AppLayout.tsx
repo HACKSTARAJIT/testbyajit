@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  Home, Shield, LogOut, Menu, User, Moon, Sun, XCircle, LogIn, Info,
+  Home, Shield, LogOut, Menu, User, Moon, Sun, XCircle, LogIn, Info, Brain,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetTrigger,
