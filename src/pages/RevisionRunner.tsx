@@ -35,13 +35,16 @@ export default function RevisionRunner() {
           .maybeSingle();
         ids = ((data as any)?.question_ids as string[]) ?? [];
         if ((data as any)?.title) setTitle((data as any).title);
+      } else if (countParam > 0) {
+        ids = await loadQuickRevisionIds(user.id, countParam);
+        setTitle(`Quick Revision · ${countParam} Questions`);
       } else {
         ids = await loadTodaysRevisionIds(user.id);
       }
       setQuestions(await loadQuestionsByIds(ids));
       setLoading(false);
     })();
-  }, [user, testId]);
+  }, [user, testId, countParam]);
 
   if (loading) return <div className="space-y-3"><Skeleton className="h-48 rounded-3xl" /><Skeleton className="h-32 rounded-2xl" /></div>;
 
