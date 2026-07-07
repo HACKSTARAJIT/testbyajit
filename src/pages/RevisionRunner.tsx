@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,11 +7,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { GraduationCap, Zap, ArrowLeft, ListChecks } from "lucide-react";
 import { TestEngine, type EngineQuestion, type EngineTest } from "@/components/TestEngine";
 import { loadQuestionsByIds, loadTodaysRevisionIds, recordRevisionAttempt } from "@/lib/revisionEngine";
+import { loadQuickRevisionIds } from "@/lib/smartRevision";
 
 type Mode = "practice" | "exam";
 
 export default function RevisionRunner() {
   const { testId } = useParams();
+  const [searchParams] = useSearchParams();
+  const countParam = Number(searchParams.get("count")) || 0;
   const navigate = useNavigate();
   const { user } = useAuth();
   const [questions, setQuestions] = useState<EngineQuestion[]>([]);
