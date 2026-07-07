@@ -49,6 +49,9 @@ const App = () => (
             <Route path="/tests" element={withLayout(<Tests />)} />
             <Route path="/test/:id" element={withLayout(<TestRunner />)} />
             <Route path="/analysis" element={withLayout(<TestAnalysis />)} />
+            <Route path="/smart-revision" element={withLayout(<SmartRevision />)} />
+            <Route path="/smart-revision/subject/:subjectId" element={withLayout(<SmartRevisionSubject />)} />
+            <Route path="/smart-revision/subject/:subjectId/chapter/:chapterId" element={withLayout(<SmartRevisionChapter />)} />
             <Route path="/wrong-questions" element={withLayout(<WrongQuestions />)} />
             <Route path="/bookmarks" element={withLayout(<Bookmarks />)} />
             <Route path="/revision" element={withLayout(<Revision />)} />
