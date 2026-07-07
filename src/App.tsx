@@ -15,6 +15,9 @@ import Tests from "./pages/Tests.tsx";
 import TestRunner from "./pages/TestRunner.tsx";
 import TestAnalysis from "./pages/TestAnalysis.tsx";
 import WrongQuestions from "./pages/WrongQuestions.tsx";
+import SmartRevision from "./pages/SmartRevision.tsx";
+import SmartRevisionSubject from "./pages/SmartRevisionSubject.tsx";
+import SmartRevisionChapter from "./pages/SmartRevisionChapter.tsx";
 import Bookmarks from "./pages/Bookmarks.tsx";
 import Revision from "./pages/Revision.tsx";
 import RevisionDashboard from "./pages/RevisionDashboard.tsx";
@@ -46,6 +49,9 @@ const App = () => (
             <Route path="/tests" element={withLayout(<Tests />)} />
             <Route path="/test/:id" element={withLayout(<TestRunner />)} />
             <Route path="/analysis" element={withLayout(<TestAnalysis />)} />
+            <Route path="/smart-revision" element={withLayout(<SmartRevision />)} />
+            <Route path="/smart-revision/subject/:subjectId" element={withLayout(<SmartRevisionSubject />)} />
+            <Route path="/smart-revision/subject/:subjectId/chapter/:chapterId" element={withLayout(<SmartRevisionChapter />)} />
             <Route path="/wrong-questions" element={withLayout(<WrongQuestions />)} />
             <Route path="/bookmarks" element={withLayout(<Bookmarks />)} />
             <Route path="/revision" element={withLayout(<Revision />)} />
