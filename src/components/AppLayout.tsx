@@ -19,7 +19,7 @@ import pbLogo from "@/assets/pb-logo.png";
 
 const navItems = [
   { to: "/dashboard", label: "होम / Home", icon: Home },
-  { to: "/wrong-questions", label: "गलत प्रश्न / Wrong Questions", icon: XCircle },
+  { to: "/smart-revision", label: "स्मार्ट रिवीजन / Smart Revision", icon: Brain },
 ];
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
