@@ -822,6 +822,17 @@ function Chips({ items, tone }: { items?: string[]; tone?: "green" | "red" }) {
            : tone === "red" ? "bg-red-500/15 text-red-600 border-red-500/30" : "";
   return <div className="flex flex-wrap gap-1">{items.map((x, i) => <Badge key={i} variant="outline" className={cls}>{x}</Badge>)}</div>;
 }
+function Bullets({ items, tone }: { items?: string[]; tone?: "green" | "red" }) {
+  if (!items?.length) return <p className="text-xs text-muted-foreground">None</p>;
+  const dot = tone === "green" ? "bg-emerald-500" : tone === "red" ? "bg-red-500" : "bg-primary";
+  return (
+    <ul className="space-y-1 text-sm">
+      {items.map((x, i) => (
+        <li key={i} className="flex gap-2"><span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />{x}</li>
+      ))}
+    </ul>
+  );
+}
 function BigStat({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (
     <div className="rounded-xl border bg-gradient-to-br from-primary/5 to-secondary/5 p-3 text-center">
