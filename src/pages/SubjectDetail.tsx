@@ -135,7 +135,7 @@ export default function SubjectDetail() {
     const myAtt = attempts.filter((a) => subjectTestIds.has(a.test_id));
     const scored = myAtt.filter((a) => (a.marks_obtained ?? null) !== null || (a.correct_count ?? 0) > 0);
     const best = scored.reduce((m, a) => Math.max(m, Number(a.marks_obtained ?? a.correct_count ?? 0)), 0);
-    const accArr = scored.map((a) => Number(a.accuracy ?? 0)).filter((n) => n > 0);
+    const accArr = scored.map((a) => Number((a as any).accuracy ?? 0)).filter((n) => n > 0);
     const avgAcc = accArr.length ? Math.round(accArr.reduce((s, n) => s + n, 0) / accArr.length) : 0;
     const lastAtt = scored.sort((a: any, b: any) => (b.updated_at || b.created_at || "").localeCompare(a.updated_at || a.created_at || ""))[0];
     const completedTestIds = new Set(scored.map((a) => a.test_id));
@@ -289,7 +289,7 @@ function ChapterCard({
   const bestScore = scored.reduce((m, a) => Math.max(m, Number(a.marks_obtained ?? a.correct_count ?? 0)), 0);
   const lastAtt: any = scored.sort((a: any, b: any) => (b.updated_at || b.created_at || "").localeCompare(a.updated_at || a.created_at || ""))[0];
   const lastScore = lastAtt ? Number(lastAtt.marks_obtained ?? lastAtt.correct_count ?? 0) : null;
-  const accArr = scored.map((a) => Number(a.accuracy ?? 0)).filter((n) => n > 0);
+  const accArr = scored.map((a) => Number((a as any).accuracy ?? 0)).filter((n) => n > 0);
   const avgAcc = accArr.length ? Math.round(accArr.reduce((s, n) => s + n, 0) / accArr.length) : 0;
   const bestAcc = accArr.length ? Math.max(...accArr) : 0;
 
