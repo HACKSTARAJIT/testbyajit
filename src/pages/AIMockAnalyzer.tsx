@@ -102,9 +102,8 @@ export default function AIMockAnalyzer() {
     try {
       await supabase.from("ai_mock_reports").update({ status: "analyzing", error: null }).eq("id", id);
       await load();
-      const { data, error } = await supabase.functions.invoke("analyze-mock-test", { body: { reportId: id } });
+      const { error } = await supabase.functions.invoke("analyze-mock-test", { body: { reportId: id } });
       if (error) {
-        // Surface real backend error from response body
         let backendMsg = error.message;
         try {
           const ctx: any = (error as any).context;
@@ -113,16 +112,30 @@ export default function AIMockAnalyzer() {
             try { backendMsg = JSON.parse(text).error ?? text; } catch { backendMsg = text; }
           }
         } catch { /* ignore */ }
-        throw new Error(backendMsg || "Analysis failed");
+        throw new Error(backendMsg || "Analysis failed to start");
       }
-      if ((data as any)?.error) throw new Error((data as any).error);
-      toast.success("Analysis complete");
+      toast.info("Analyzing in background — this can take a few minutes.");
+
+      // Poll status for up to ~10 minutes
+      const started = Date.now();
+      let fresh: any = null;
+      while (Date.now() - started < 10 * 60 * 1000) {
+        await new Promise(r => setTimeout(r, 5000));
+        const { data } = await supabase.from("ai_mock_reports").select("*").eq("id", id).single();
+        fresh = data;
+        if (fresh?.status === "completed" || fresh?.status === "failed") break;
+      }
       await load();
-      const fresh = (await supabase.from("ai_mock_reports").select("*").eq("id", id).single()).data as any;
-      setSelected(fresh);
+      if (fresh?.status === "completed") {
+        toast.success("Analysis complete");
+        setSelected(fresh);
+      } else if (fresh?.status === "failed") {
+        throw new Error(fresh.error || "Analysis failed");
+      } else {
+        toast.message("Still processing — check back shortly.");
+      }
     } catch (e: any) {
       toast.error(e.message ?? "Analysis failed");
-      await supabase.from("ai_mock_reports").update({ status: "failed", error: e.message }).eq("id", id);
       await load();
     } finally {
       setAnalyzingId(null);
