@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClipboardList, Search, Sparkles, Play } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TestTracker, attemptStats, type Attempt } from "@/components/TestTracker";
+import { TestTracker, type Attempt } from "@/components/TestTracker";
+import { TestAttemptSummary } from "@/components/TestAttemptSummary";
 
 export default function Tests() {
   const navigate = useNavigate();
