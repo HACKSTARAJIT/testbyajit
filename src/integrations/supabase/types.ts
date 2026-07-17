@@ -136,6 +136,9 @@ export type Database = {
         Row: {
           accuracy: number | null
           created_at: string
+          detected_chapter: string | null
+          detected_subject: string | null
+          detected_topic: string | null
           error: string | null
           exam_name: string | null
           file_paths: Json
@@ -144,6 +147,7 @@ export type Database = {
           overall_score: number | null
           readiness_score: number | null
           report: Json | null
+          report_type: string
           status: string
           title: string
           updated_at: string
@@ -152,6 +156,9 @@ export type Database = {
         Insert: {
           accuracy?: number | null
           created_at?: string
+          detected_chapter?: string | null
+          detected_subject?: string | null
+          detected_topic?: string | null
           error?: string | null
           exam_name?: string | null
           file_paths?: Json
@@ -160,6 +167,7 @@ export type Database = {
           overall_score?: number | null
           readiness_score?: number | null
           report?: Json | null
+          report_type?: string
           status?: string
           title?: string
           updated_at?: string
@@ -168,6 +176,9 @@ export type Database = {
         Update: {
           accuracy?: number | null
           created_at?: string
+          detected_chapter?: string | null
+          detected_subject?: string | null
+          detected_topic?: string | null
           error?: string | null
           exam_name?: string | null
           file_paths?: Json
@@ -176,6 +187,7 @@ export type Database = {
           overall_score?: number | null
           readiness_score?: number | null
           report?: Json | null
+          report_type?: string
           status?: string
           title?: string
           updated_at?: string
