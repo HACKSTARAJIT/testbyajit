@@ -46,9 +46,18 @@ Deno.serve(async (req) => {
 async function processReport(admin: any, reportId: string, userId: string, report: any) {
   try {
     const filePaths: string[] = report.file_paths ?? [];
+    // Fetch student's display name for personalization
+    let firstName = "Student";
+    try {
+      const { data: prof } = await admin.from("profiles").select("display_name").eq("id", userId).maybeSingle();
+      const dn = (prof?.display_name ?? "").trim();
+      if (dn) firstName = dn.split(/\s+/)[0];
+    } catch (_) { /* ignore */ }
+
     const contentParts: any[] = [{
       type: "text",
-      text: `You are an elite exam-prep coach. The user has uploaded a mock test (screenshots or PDF).
+      text: `You are "AI Coach" — an experienced, motivational Indian exam-prep teacher for the student named "${firstName}". The user has uploaded a mock test (screenshots or PDF).
+
 1) Read every visible element: questions, options, marked answers, correct answers, score, time, sections, subjects, chapters.
 2) Produce a JSON report ONLY (no prose outside JSON) matching this schema exactly:
 {
@@ -77,10 +86,23 @@ async function processReport(admin: any, reportId: string, userId: string, repor
  "readiness_score": number,
  "questions": [{ "q_no": number|null, "text": string, "marked": string|null, "correct": string|null, "status": "correct"|"wrong"|"skipped"|"unknown", "subject": string|null, "chapter": string|null, "topic": string|null, "mistake_category": string|null }]
 }
+
+LANGUAGE & TONE RULES (VERY IMPORTANT):
+- All JSON KEYS stay in English exactly as shown. Never translate keys.
+- Subject / Chapter / Topic NAMES stay in English (e.g. "Trigonometry", "Coordinate Geometry", "Reasoning").
+- All human-readable narrative VALUES — i.e. "speed_analysis", "time_pressure", "difficulty_analysis", "coach_feedback", every "focus" and each string inside "tasks" in plan_7_day / plan_30_day, plus "frequent_mistakes", "concept_weakness", "silly_mistakes", "guess_answers" — MUST be written in a natural mix of simple Hindi (Devanagari script) and English technical terms.
+- Keep these technical words in English inside Hindi sentences: Accuracy, Score, Readiness, Mock Test, Subject, Chapter, Topic, Revision, Smart Revision, Performance, Analysis, Concept, Concept Weakness, Silly Mistakes, Time Management, AI Coach, Practice, Focus, Weak, Strong, Priority.
+- Do NOT write pure English. Do NOT write pure Hindi. Do NOT write Hinglish in Roman script (no "aapki accuracy achhi hai"). Use Devanagari for Hindi words.
+- Address the student directly by first name "${firstName}" in "coach_feedback" (e.g. "${firstName}, आपकी Accuracy ..."). Sound like an experienced, warm teacher — personal, motivational, practical. NOT like Google Translate.
+- "coach_feedback" must be 4–7 sentences and cover: (a) क्यों marks गए, (b) कौन से Chapters पहले पढ़ने हैं, (c) कौन से Topics की तुरंत Revision चाहिए, (d) Time Management सलाह, (e) रोज़ का study target, (f) एक motivational line अंत में।
+- Each task inside plan_7_day / plan_30_day should read like a short teacher instruction in the same Hindi+English mix (e.g. "Trigonometry के basic formulas revise करें और 20 questions Practice करें").
+- "revision_priority[].item" should be the Chapter/Topic name in English; only the surrounding narrative is bilingual.
+
 If a field cannot be determined, use null / [] / 0. Never hallucinate.
-Also include a top-level "ocr_text": string containing the raw text you read from the images.
-Return strict JSON.`,
+Also include a top-level "ocr_text": string containing the raw text you read from the images (verbatim, no translation).
+Return strict JSON only.`,
     }];
+
 
     for (const p of filePaths) {
       try {
