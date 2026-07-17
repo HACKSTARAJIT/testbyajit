@@ -21,6 +21,7 @@ const SubjectDetail = lazy(() => import("./pages/SubjectDetail.tsx"));
 const Tests = lazy(() => import("./pages/Tests.tsx"));
 const TestRunner = lazy(() => import("./pages/TestRunner.tsx"));
 const TestAnalysis = lazy(() => import("./pages/TestAnalysis.tsx"));
+const TestMistakeAnalysis = lazy(() => import("./pages/TestMistakeAnalysis.tsx"));
 const WrongQuestions = lazy(() => import("./pages/WrongQuestions.tsx"));
 const SmartRevision = lazy(() => import("./pages/SmartRevision.tsx"));
 const SmartRevisionSubject = lazy(() => import("./pages/SmartRevisionSubject.tsx"));
@@ -83,6 +84,7 @@ const App = () => (
             <Route path="/tests" element={withLayout(<Tests />)} />
             <Route path="/test/:id" element={withLayout(<TestRunner />)} />
             <Route path="/analysis" element={withLayout(<TestAnalysis />)} />
+            <Route path="/analysis/:attemptId" element={withLayout(<TestMistakeAnalysis />)} />
             <Route path="/smart-revision" element={withLayout(<SmartRevision />)} />
             <Route path="/smart-revision/subject/:subjectId" element={withLayout(<SmartRevisionSubject />)} />
             <Route path="/smart-revision/subject/:subjectId/chapter/:chapterId" element={withLayout(<SmartRevisionChapter />)} />
