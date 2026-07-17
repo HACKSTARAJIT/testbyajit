@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import AIMockAnalyzer from "./AIMockAnalyzer";
 import PerformanceIntelligence from "./PerformanceIntelligence";
 import AICoach from "./AICoach";
+import Preparation360 from "@/components/prep360/Preparation360";
 
 type Report = {
   id: string; title: string; status: string; created_at: string; report: any;
@@ -122,8 +123,9 @@ export default function AIPerformanceCenter() {
         </div>
       </header>
 
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue="prep360" className="space-y-4">
         <TabsList className="flex flex-wrap h-auto justify-start bg-card/60 backdrop-blur">
+          <TabsTrigger value="prep360"><Brain className="mr-1 h-3.5 w-3.5" />🧠 Preparation 360°</TabsTrigger>
           <TabsTrigger value="overview"><BarChart3 className="mr-1 h-3.5 w-3.5" />📊 Overview</TabsTrigger>
           <TabsTrigger value="mock"><FileText className="mr-1 h-3.5 w-3.5" />📝 Full Mock</TabsTrigger>
           <TabsTrigger value="subject"><BookOpen className="mr-1 h-3.5 w-3.5" />📚 Subject</TabsTrigger>
@@ -133,6 +135,10 @@ export default function AIPerformanceCenter() {
           <TabsTrigger value="coach"><Sparkles className="mr-1 h-3.5 w-3.5" />🤖 AI Coach</TabsTrigger>
           <TabsTrigger value="planner"><CalendarDays className="mr-1 h-3.5 w-3.5" />📅 Planner</TabsTrigger>
         </TabsList>
+
+        {/* -------- PREPARATION 360° -------- */}
+        <TabsContent value="prep360"><Preparation360 /></TabsContent>
+
 
         {/* -------- OVERVIEW -------- */}
         <TabsContent value="overview" className="space-y-4">
@@ -250,6 +256,8 @@ function reportTypeLabel(t: string | null | undefined) {
     case "subject": return "📚 Subject";
     case "chapter": return "📖 Chapter";
     case "topic": return "🎯 Topic";
+    case "revision_test": return "🔁 Revision Test";
+    case "previous_year": return "📜 Previous Year";
     default: return "📝 Full Mock";
   }
 }
