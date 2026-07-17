@@ -63,6 +63,33 @@ export default function TestAnalysis() {
     best: Math.max(...s.m),
   })).sort((a, b) => b.count - a.count);
 
+  // ---- Guess Intelligence (long-term) ----
+  const guessSeries = rows
+    .slice()
+    .reverse()
+    .map((r) => {
+      const g = r.guesses ?? {};
+      const a = r.answers ?? {};
+      const ids = Object.keys(g);
+      let gc = 0;
+      // We can only know correctness if a matching question was scored.
+      // We derive it from stored answers vs the guess.selected — if a guess selection was correct,
+      // the row's correct_count already includes it, but we still need per-guess correctness.
+      // We approximate: assume each guess is correct if its selected option matches the answer key we kept in-memory.
+      // The engine records `guesses[id].selected` — we compare against answers[id] which is the same value.
+      // Without correct_option here, we cannot recompute; we fall back to counting only totals.
+      // (Per-attempt accuracy is shown on the individual analysis page.)
+      for (const id of ids) if (a[id] && g[id].selected === a[id]) gc += 0; // no-op
+      return { total: ids.length, count: r.total_questions ?? 0, date: r.created_at };
+    });
+  const guessTotals = guessSeries.reduce((acc, x) => ({
+    tests: acc.tests + (x.count > 0 ? 1 : 0),
+    guessed: acc.guessed + x.total,
+    questions: acc.questions + x.count,
+  }), { tests: 0, guessed: 0, questions: 0 });
+  const avgGuessPerTest = guessTotals.tests ? Math.round((guessTotals.guessed / guessTotals.tests) * 10) / 10 : 0;
+  const guessFrequency = guessTotals.questions ? Math.round((guessTotals.guessed / guessTotals.questions) * 100) : 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
