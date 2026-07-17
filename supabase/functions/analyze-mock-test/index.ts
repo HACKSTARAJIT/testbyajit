@@ -282,6 +282,8 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
     }
 
     const totals = parsed.totals ?? {};
+    const validTypes = new Set(["full_mock", "subject", "chapter", "topic"]);
+    const reportType = validTypes.has(parsed.report_type) ? parsed.report_type : "full_mock";
     await admin.from("ai_mock_reports").update({
       status: "completed",
       report: parsed,
@@ -290,9 +292,13 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       accuracy: toNum(parsed.accuracy),
       readiness_score: toNum(parsed.readiness_score),
       overall_score: toNum(totals.score),
+      report_type: reportType,
+      detected_subject: parsed.detected_subject ?? null,
+      detected_chapter: parsed.detected_chapter ?? null,
+      detected_topic: parsed.detected_topic ?? null,
       error: null,
     }).eq("id", reportId);
-    console.log("report done", reportId);
+    console.log("report done", reportId, "type=", reportType);
 
     // ---- Smart Revision sync + Planner/Coach/Goals persistence (non-fatal) ----
     try {
