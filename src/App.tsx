@@ -29,6 +29,7 @@ import AIMockAnalyzer from "./pages/AIMockAnalyzer.tsx";
 import PerformanceIntelligence from "./pages/PerformanceIntelligence.tsx";
 import AICoach from "./pages/AICoach.tsx";
 import AICoachChat from "./pages/AICoachChat.tsx";
+import AIPerformanceCenter from "./pages/AIPerformanceCenter.tsx";
 
 
 import Profile from "./pages/Profile.tsx";
