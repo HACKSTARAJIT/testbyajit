@@ -576,3 +576,35 @@ function ResultStat({ label, value, className, icon: Icon }: { label: string; va
     </div>
   );
 }
+
+function MiniStat({ label, value, tone }: { label: string; value: any; tone?: "success" | "danger" }) {
+  return (
+    <div className={cn(
+      "rounded-xl border p-2 text-center",
+      tone === "success" && "border-success/30 bg-success/10",
+      tone === "danger" && "border-destructive/30 bg-destructive/10",
+      !tone && "border-border bg-muted/40",
+    )}>
+      <p className="text-base font-bold leading-none">{value}</p>
+      <p className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+function guessInsight(s: {
+  total: number; gCorrect: number; guessAccuracy: number;
+  knowledgeAccuracy: number; guessPct: number;
+}) {
+  const parts: string[] = [];
+  parts.push(`You guessed ${s.total} question${s.total === 1 ? "" : "s"}.`);
+  parts.push(`Your Guess Accuracy is ${s.guessAccuracy}%.`);
+  if (s.guessPct >= 40) parts.push("High Guess Dependency — try to strengthen core concepts instead of relying on guesses.");
+  else if (s.guessPct >= 20) parts.push("Balanced Guess Strategy — keep improving your first-instinct accuracy.");
+  else parts.push("Low Guess Dependency — most answers are knowledge-based, keep it up!");
+  if (s.guessAccuracy >= 60 && s.total >= 3) parts.push("Your educated-guessing skill is strong.");
+  else if (s.total >= 3 && s.guessAccuracy < 35) parts.push("Try eliminating 1–2 options before guessing to raise your odds.");
+  if (s.knowledgeAccuracy && s.knowledgeAccuracy - s.guessAccuracy >= 25) {
+    parts.push("Knowledge answers are significantly more accurate than guesses — trust what you know.");
+  }
+  return parts.join(" ");
+}
