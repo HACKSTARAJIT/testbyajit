@@ -26,6 +26,7 @@ import About from "./pages/About.tsx";
 import Admin from "./pages/Admin.tsx";
 import AdminAnalytics from "./pages/AdminAnalytics.tsx";
 import AIMockAnalyzer from "./pages/AIMockAnalyzer.tsx";
+import PerformanceIntelligence from "./pages/PerformanceIntelligence.tsx";
 import Profile from "./pages/Profile.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -63,6 +64,7 @@ const App = () => (
             <Route path="/about" element={withLayout(<About />)} />
             <Route path="/profile" element={withLayout(<Profile />)} />
             <Route path="/ai-mock-analyzer" element={withLayout(<AIMockAnalyzer />)} />
+            <Route path="/performance" element={withLayout(<PerformanceIntelligence />)} />
             <Route path="/admin" element={<AdminRoute><AppLayout><Admin /></AppLayout></AdminRoute>} />
             <Route path="/admin/analytics" element={<AdminRoute><AppLayout><AdminAnalytics /></AppLayout></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
