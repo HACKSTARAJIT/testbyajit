@@ -46,7 +46,7 @@ export function AddWrongQuestionDialog({
     if (!file) return toast.error("Upload a screenshot of the question");
     setSaving(true);
     try {
-      const path = await uploadFile(file, "wrong-questions");
+      const path = await uploadFile(file, `wrong-questions/${user.id}`);
       const { error } = await supabase.from("wrong_questions").insert({
         user_id: user.id,
         test_id: target.test_id ?? null,
