@@ -782,6 +782,19 @@ function ReportView({ r, onAnalyze, analyzing }: { r: Report; onAnalyze: () => v
             {(d.plan_7_day ?? []).map((p: any) => (
               <div key={p.day} className="rounded-md border p-2 text-sm">
                 <p className="font-semibold">Day {p.day} · {p.focus}</p>
+                {(p.chapters?.length || p.topics?.length) ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    {p.chapters?.length ? <><span className="font-medium">Chapters:</span> {p.chapters.join(", ")} · </> : null}
+                    {p.topics?.length ? <><span className="font-medium">Topics:</span> {p.topics.join(", ")}</> : null}
+                  </p>
+                ) : null}
+                {(p.practice_questions != null || p.revision_minutes != null || p.mock_recommendation) && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {p.practice_questions != null && <>{p.practice_questions} Practice Q · </>}
+                    {p.revision_minutes != null && <>{p.revision_minutes} min Revision · </>}
+                    {p.mock_recommendation && <>Mock: {p.mock_recommendation}</>}
+                  </p>
+                )}
                 <ul className="ml-4 list-disc text-xs text-muted-foreground">{(p.tasks ?? []).map((t: string, i: number) => <li key={i}>{t}</li>)}</ul>
               </div>
             ))}
@@ -792,6 +805,12 @@ function ReportView({ r, onAnalyze, analyzing }: { r: Report; onAnalyze: () => v
             {(d.plan_30_day ?? []).map((p: any) => (
               <div key={p.week} className="rounded-md border p-2 text-sm">
                 <p className="font-semibold">Week {p.week} · {p.focus}</p>
+                {(p.chapters?.length || p.topics?.length) ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    {p.chapters?.length ? <><span className="font-medium">Chapters:</span> {p.chapters.join(", ")} · </> : null}
+                    {p.topics?.length ? <><span className="font-medium">Topics:</span> {p.topics.join(", ")}</> : null}
+                  </p>
+                ) : null}
                 <ul className="ml-4 list-disc text-xs text-muted-foreground">{(p.tasks ?? []).map((t: string, i: number) => <li key={i}>{t}</li>)}</ul>
               </div>
             ))}
@@ -799,11 +818,48 @@ function ReportView({ r, onAnalyze, analyzing }: { r: Report; onAnalyze: () => v
         </Section>
       </div>
 
+      {(d.revision_advice || d.time_management_advice) && (
+        <div className="grid gap-3 md:grid-cols-2">
+          {d.revision_advice && (
+            <Section title="🔁 Revision Advice"><p className="text-sm">{d.revision_advice}</p></Section>
+          )}
+          {d.time_management_advice && (
+            <Section title="⏱️ Time Management Advice"><p className="text-sm">{d.time_management_advice}</p></Section>
+          )}
+        </div>
+      )}
+
+      {d.mistake_reasons?.length > 0 && (
+        <Section title="🔍 Why These Mistakes Happened">
+          <div className="space-y-1">
+            {d.mistake_reasons.map((m: any, i: number) => (
+              <div key={i} className="rounded-md border p-2 text-sm">
+                <p className="text-xs font-semibold capitalize">{(m.category ?? "").replace(/_/g, " ")}</p>
+                <p className="text-xs text-muted-foreground">{m.why}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
       <Section title="⏳ Time & Difficulty">
         <p className="text-sm"><span className="font-semibold">Speed:</span> {d.speed_analysis ?? "-"}</p>
         <p className="text-sm"><span className="font-semibold">Time Pressure:</span> {d.time_pressure ?? "-"}</p>
         <p className="text-sm"><span className="font-semibold">Difficulty:</span> {d.difficulty_analysis ?? "-"}</p>
       </Section>
+
+      {(d.readiness_reason || d.readiness_to_90) && (
+        <Section title="📈 Readiness Explanation">
+          {d.readiness_reason && <p className="text-sm"><span className="font-semibold">Why {d.readiness_score ?? 0}%:</span> {d.readiness_reason}</p>}
+          {d.readiness_to_90 && <p className="mt-1 text-sm"><span className="font-semibold">Path to 90%:</span> {d.readiness_to_90}</p>}
+        </Section>
+      )}
+
+      {d.motivational_feedback && (
+        <Section title="🌟 Motivation">
+          <p className="whitespace-pre-wrap text-sm">{d.motivational_feedback}</p>
+        </Section>
+      )}
     </div>
   );
 }
