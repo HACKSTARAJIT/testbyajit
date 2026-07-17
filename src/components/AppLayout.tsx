@@ -22,15 +22,6 @@ const navItems = [
   { to: "/smart-revision", label: "स्मार्ट रिवीजन / Smart Revision", icon: Brain },
   { to: "/ai-mock-analyzer", label: "AI Mock Analyzer", icon: Sparkles },
 ];
-} from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
-import { SplashScreen } from "@/components/SplashScreen";
-import pbLogo from "@/assets/pb-logo.png";
-
-const navItems = [
-  { to: "/dashboard", label: "होम / Home", icon: Home },
-  { to: "/smart-revision", label: "स्मार्ट रिवीजन / Smart Revision", icon: Brain },
-];
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   const location = useLocation();
