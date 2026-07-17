@@ -254,9 +254,15 @@ export default function AIMockAnalyzer() {
             <p className="text-sm text-muted-foreground">Your premium mock analysis workspace.</p>
           </div>
         </div>
-        <Button asChild size="sm" variant="outline">
-          <a href="/performance"><TrendingUp className="mr-1 h-4 w-4" />Performance Intelligence</a>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild size="sm" variant="outline">
+            <a href="/ai-coach"><Sparkles className="mr-1 h-4 w-4" />AI Coach</a>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <a href="/performance"><TrendingUp className="mr-1 h-4 w-4" />Performance Intelligence</a>
+          </Button>
+        </div>
+
       </header>
 
       {/* Dashboard */}
