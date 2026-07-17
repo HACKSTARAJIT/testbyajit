@@ -62,6 +62,7 @@ const App = () => (
             <Route path="/revise/:testId" element={withLayout(<RevisionRunner />)} />
             <Route path="/about" element={withLayout(<About />)} />
             <Route path="/profile" element={withLayout(<Profile />)} />
+            <Route path="/ai-mock-analyzer" element={withLayout(<AIMockAnalyzer />)} />
             <Route path="/admin" element={<AdminRoute><AppLayout><Admin /></AppLayout></AdminRoute>} />
             <Route path="/admin/analytics" element={<AdminRoute><AppLayout><AdminAnalytics /></AppLayout></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
