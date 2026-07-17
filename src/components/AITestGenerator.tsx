@@ -166,16 +166,25 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
 
       toast.success(`Test "${testName}" published & verified — students can load all ${studentView.questions.length} questions!`);
 
-      // Fire-and-forget: AI Question Difficulty & Quality Analyzer runs in background
-      supabase.functions.invoke("analyze-test-questions", { body: { testId: test.id } })
-        .then(({ data, error }) => {
-          if (error || (data as any)?.error) {
-            console.error("AI analysis failed:", error || (data as any)?.error);
-            toast.error("AI question analysis failed — you can retry from the test's AI Review panel.");
-          } else {
-            toast.success(`AJIT AI analysed ${(data as any)?.analyzed ?? 0} question(s). Review in the test list.`);
-          }
-        });
+      // Fire-and-forget: AI pipeline runs in background — quality analyser, then embeddings, then similarity detector.
+      (async () => {
+        try {
+          const { data: qa, error: qaErr } = await supabase.functions.invoke("analyze-test-questions", { body: { testId: test.id } });
+          if (qaErr || (qa as any)?.error) throw new Error((qaErr as any)?.message || (qa as any)?.error);
+          toast.success(`AJIT AI analysed ${(qa as any)?.analyzed ?? 0} question(s).`);
+
+          const { data: em, error: emErr } = await supabase.functions.invoke("embed-questions", { body: { testId: test.id } });
+          if (emErr || (em as any)?.error) throw new Error((emErr as any)?.message || (em as any)?.error);
+
+          const { data: sim, error: simErr } = await supabase.functions.invoke("find-similar-questions", { body: { testId: test.id } });
+          if (simErr || (sim as any)?.error) throw new Error((simErr as any)?.message || (sim as any)?.error);
+          const flagged = (sim as any)?.analysed ?? 0;
+          if (flagged > 0) toast.success(`Similarity scan complete — review flagged duplicates in the Similarity panel.`);
+        } catch (e: any) {
+          console.error("AI pipeline error", e);
+          toast.error(`AI post-processing failed: ${e.message ?? e}. Retry from the test's AI/Similarity panels.`);
+        }
+      })();
 
       // reset
       setStep("input"); setRawText(""); setQuestions([]);
