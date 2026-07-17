@@ -286,6 +286,30 @@ export function TestEngine({
           <ResultStat label="Questions" value={sessionQs.length} className="glass-card" icon={Sparkles} />
         </div>
 
+        {guessStats.total > 0 && (
+          <div className="rounded-3xl border border-primary/20 bg-gradient-to-br from-card to-primary/5 p-5 shadow-md">
+            <div className="mb-3 flex items-center gap-2">
+              <Dice5 className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Guess Intelligence</h3>
+              <Badge variant="secondary" className="ml-auto text-[10px]">AI Analysis</Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <MiniStat label="Guessed" value={guessStats.total} />
+              <MiniStat label="Guess ✓" value={guessStats.gCorrect} tone="success" />
+              <MiniStat label="Guess ✗" value={guessStats.gWrong} tone="danger" />
+              <MiniStat label="Guess Acc." value={`${guessStats.guessAccuracy}%`} />
+              <MiniStat label="Knowledge ✓" value={guessStats.kCorrect} tone="success" />
+              <MiniStat label="Knowledge ✗" value={guessStats.kWrong} tone="danger" />
+              <MiniStat label="Knowledge Acc." value={`${guessStats.knowledgeAccuracy}%`} />
+              <MiniStat label="Guess %" value={`${guessStats.guessPct}%`} />
+            </div>
+            <p className="mt-3 rounded-xl bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">
+              <Brain className="mr-1 inline h-3.5 w-3.5 text-primary" />
+              {guessInsight(guessStats)}
+            </p>
+          </div>
+        )}
+
         {userId && attemptId.current && (
           <Link to={`/analysis/${attemptId.current}`} className="block">
             <Button className="btn-ripple w-full bg-gradient-hero text-white shadow-lg">
