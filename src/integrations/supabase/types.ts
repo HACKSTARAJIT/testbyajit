@@ -316,6 +316,33 @@ export type Database = {
           },
         ]
       }
+      mistake_dna: {
+        Row: {
+          distribution: Json
+          last_attempt_id: string | null
+          timeline: Json
+          totals: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          distribution?: Json
+          last_attempt_id?: string | null
+          timeline?: Json
+          totals?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          distribution?: Json
+          last_attempt_id?: string | null
+          timeline?: Json
+          totals?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           chapter_id: string
@@ -927,6 +954,77 @@ export type Database = {
             columns: ["test_id"]
             isOneToOne: false
             referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_mistake_analyses: {
+        Row: {
+          action_plan: Json
+          attempt_id: string
+          coach_summary: string | null
+          created_at: string
+          id: string
+          improvements: Json
+          memory_analysis: Json
+          mistake_distribution: Json
+          model: string | null
+          overall: Json
+          question_analyses: Json
+          related_learning: Json
+          subject_id: string | null
+          test_id: string | null
+          thinking_profile: Json
+          time_analysis: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_plan?: Json
+          attempt_id: string
+          coach_summary?: string | null
+          created_at?: string
+          id?: string
+          improvements?: Json
+          memory_analysis?: Json
+          mistake_distribution?: Json
+          model?: string | null
+          overall?: Json
+          question_analyses?: Json
+          related_learning?: Json
+          subject_id?: string | null
+          test_id?: string | null
+          thinking_profile?: Json
+          time_analysis?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_plan?: Json
+          attempt_id?: string
+          coach_summary?: string | null
+          created_at?: string
+          id?: string
+          improvements?: Json
+          memory_analysis?: Json
+          mistake_distribution?: Json
+          model?: string | null
+          overall?: Json
+          question_analyses?: Json
+          related_learning?: Json
+          subject_id?: string | null
+          test_id?: string | null
+          thinking_profile?: Json
+          time_analysis?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_mistake_analyses_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: true
+            referencedRelation: "test_attempts"
             referencedColumns: ["id"]
           },
         ]

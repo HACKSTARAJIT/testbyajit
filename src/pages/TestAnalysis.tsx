@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart3, TrendingUp, Award, Activity } from "lucide-react";
+import { BarChart3, TrendingUp, Award, Activity, Sparkles, ChevronRight } from "lucide-react";
 
 type Row = {
   id: string;
@@ -104,12 +105,22 @@ export default function TestAnalysis() {
             <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Activity className="h-5 w-5 text-primary" /> Recent Activity</CardTitle></CardHeader>
             <CardContent className="space-y-1.5">
               {rows.slice(0, 10).map((r) => (
-                <div key={r.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                <Link
+                  key={r.id}
+                  to={`/analysis/${r.id}`}
+                  className="group flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:border-primary/40 hover:bg-primary/5"
+                >
                   <span className="truncate">
                     {r.tests?.subjects?.name ? `${r.tests.subjects.name} · ` : ""}{r.tests?.title ?? "Test"}
                   </span>
-                  <span className="shrink-0 font-medium">{Number(r.marks_obtained)} Marks</span>
-                </div>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="font-medium">{Number(r.marks_obtained)} Marks</span>
+                    <span className="hidden items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary sm:inline-flex">
+                      <Sparkles className="h-3 w-3" /> AI Analysis
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </Link>
               ))}
             </CardContent>
           </Card>

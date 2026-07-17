@@ -61,7 +61,7 @@ export function useHomeData(userId?: string) {
     (async () => {
       const [profile, attemptsR, reportsR, wrongsR, actR, pdfR, goalsR, achR, tasksR, subsR] = await Promise.all([
         supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
-        supabase.from("test_attempts").select("id,accuracy,marks_obtained,total_questions,correct_count,time_taken,created_at,test_id,status")
+        supabase.from("test_attempts").select("id,accuracy,marks_obtained,total_questions,correct_count,time_taken_seconds,created_at,test_id,status")
           .eq("user_id", userId).eq("status", "completed").order("created_at", { ascending: false }).limit(100),
         supabase.from("ai_mock_reports").select("id,accuracy,readiness_score,status,report_type,created_at").eq("user_id", userId).eq("status", "completed").order("created_at", { ascending: false }).limit(30),
         supabase.from("wrong_questions").select("id,status,priority,subject_id,created_at,last_attempt_at,mastered_at").eq("user_id", userId),
@@ -117,7 +117,7 @@ export function useHomeData(userId?: string) {
         const dayAttempts = attempts.filter((a: any) => a.created_at?.slice(0, 10) === key);
         const dayActs = activity.filter((a: any) => a.opened_at?.slice(0, 10) === key);
         const dayWrongs = wrongs.filter((w: any) => w.mastered_at?.slice(0, 10) === key);
-        const minutes = dayAttempts.reduce((s: number, a: any) => s + Math.round((a.time_taken ?? 0) / 60), 0)
+        const minutes = dayAttempts.reduce((s: number, a: any) => s + Math.round((a.time_taken_seconds ?? 0) / 60), 0)
           + dayActs.length * 5;
         const questions = dayAttempts.reduce((s: number, a: any) => s + (a.total_questions ?? 0), 0);
         const accs = dayAttempts.map((a: any) => a.accuracy ?? 0).filter((x: number) => x > 0);
@@ -133,7 +133,7 @@ export function useHomeData(userId?: string) {
       }
 
       const questionsSolved = attempts.reduce((s: number, a: any) => s + (a.total_questions ?? 0), 0);
-      const studyMinutes = attempts.reduce((s: number, a: any) => s + Math.round((a.time_taken ?? 0) / 60), 0)
+      const studyMinutes = attempts.reduce((s: number, a: any) => s + Math.round((a.time_taken_seconds ?? 0) / 60), 0)
         + tasks.filter((t: any) => t.status === "completed").reduce((s: number, t: any) => s + (t.estimated_minutes ?? 0), 0);
 
       setData({

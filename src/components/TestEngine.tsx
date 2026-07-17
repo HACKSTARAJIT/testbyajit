@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -234,6 +235,14 @@ export function TestEngine({
           <ResultStat label="Time Taken" value={`${tm}:${ts}`} className="glass-card" icon={Clock} />
           <ResultStat label="Questions" value={sessionQs.length} className="glass-card" icon={Sparkles} />
         </div>
+
+        {userId && attemptId.current && (
+          <Link to={`/analysis/${attemptId.current}`} className="block">
+            <Button className="btn-ripple w-full bg-gradient-hero text-white shadow-lg">
+              <Sparkles className="mr-1 h-4 w-4" /> AJIT AI Mistake Analysis
+            </Button>
+          </Link>
+        )}
 
         <div className="flex flex-wrap gap-2">
           <Button className="btn-ripple flex-1 bg-gradient-royal text-white" onClick={() => retry(false)}>
