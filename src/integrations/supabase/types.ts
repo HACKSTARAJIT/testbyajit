@@ -516,46 +516,91 @@ export type Database = {
       }
       questions: {
         Row: {
+          admin_reviewed: boolean
+          ai_analysis: Json | null
+          ai_analyzed_at: string | null
+          ai_confidence: number | null
+          ai_issues: Json
+          bloom_level: string | null
+          complexity_score: number | null
+          concept: string | null
           correct_option: string
           created_at: string
+          difficulty: string | null
+          exam_level: string | null
+          expected_time_seconds: number | null
           explanation: string | null
           id: string
+          importance: string | null
           marks: number
           option_a: string
           option_b: string
           option_c: string
           option_d: string
+          quality_score: number | null
           question_text: string
           sort_order: number
+          subtopic: string | null
           test_id: string
+          topic: string | null
         }
         Insert: {
+          admin_reviewed?: boolean
+          ai_analysis?: Json | null
+          ai_analyzed_at?: string | null
+          ai_confidence?: number | null
+          ai_issues?: Json
+          bloom_level?: string | null
+          complexity_score?: number | null
+          concept?: string | null
           correct_option: string
           created_at?: string
+          difficulty?: string | null
+          exam_level?: string | null
+          expected_time_seconds?: number | null
           explanation?: string | null
           id?: string
+          importance?: string | null
           marks?: number
           option_a: string
           option_b: string
           option_c: string
           option_d: string
+          quality_score?: number | null
           question_text: string
           sort_order?: number
+          subtopic?: string | null
           test_id: string
+          topic?: string | null
         }
         Update: {
+          admin_reviewed?: boolean
+          ai_analysis?: Json | null
+          ai_analyzed_at?: string | null
+          ai_confidence?: number | null
+          ai_issues?: Json
+          bloom_level?: string | null
+          complexity_score?: number | null
+          concept?: string | null
           correct_option?: string
           created_at?: string
+          difficulty?: string | null
+          exam_level?: string | null
+          expected_time_seconds?: number | null
           explanation?: string | null
           id?: string
+          importance?: string | null
           marks?: number
           option_a?: string
           option_b?: string
           option_c?: string
           option_d?: string
+          quality_score?: number | null
           question_text?: string
           sort_order?: number
+          subtopic?: string | null
           test_id?: string
+          topic?: string | null
         }
         Relationships: [
           {
@@ -1031,6 +1076,9 @@ export type Database = {
       }
       tests: {
         Row: {
+          ai_analysis_status: string
+          ai_analysis_summary: Json | null
+          ai_analyzed_at: string | null
           chapter_id: string | null
           created_at: string
           description: string | null
@@ -1045,6 +1093,9 @@ export type Database = {
           total_questions: number | null
         }
         Insert: {
+          ai_analysis_status?: string
+          ai_analysis_summary?: Json | null
+          ai_analyzed_at?: string | null
           chapter_id?: string | null
           created_at?: string
           description?: string | null
@@ -1059,6 +1110,9 @@ export type Database = {
           total_questions?: number | null
         }
         Update: {
+          ai_analysis_status?: string
+          ai_analysis_summary?: Json | null
+          ai_analyzed_at?: string | null
           chapter_id?: string | null
           created_at?: string
           description?: string | null

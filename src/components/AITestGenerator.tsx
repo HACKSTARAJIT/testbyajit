@@ -165,6 +165,18 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
       }
 
       toast.success(`Test "${testName}" published & verified — students can load all ${studentView.questions.length} questions!`);
+
+      // Fire-and-forget: AI Question Difficulty & Quality Analyzer runs in background
+      supabase.functions.invoke("analyze-test-questions", { body: { testId: test.id } })
+        .then(({ data, error }) => {
+          if (error || (data as any)?.error) {
+            console.error("AI analysis failed:", error || (data as any)?.error);
+            toast.error("AI question analysis failed — you can retry from the test's AI Review panel.");
+          } else {
+            toast.success(`AJIT AI analysed ${(data as any)?.analyzed ?? 0} question(s). Review in the test list.`);
+          }
+        });
+
       // reset
       setStep("input"); setRawText(""); setQuestions([]);
       setTestName(""); setTestPart(""); setTotalMarks(""); setChapterId("");
