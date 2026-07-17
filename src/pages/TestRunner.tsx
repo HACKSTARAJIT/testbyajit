@@ -108,6 +108,14 @@ export default function TestRunner() {
         </div>
       </div>
 
+      <PreTestDashboard
+        testId={test.id}
+        userId={user?.id}
+        totalMarks={test.total_marks ?? questions.length}
+        totalQuestions={questions.length}
+        userName={user?.user_metadata?.display_name || user?.email}
+      />
+
       {resume && (
         <button
           onClick={() => { setMode(resume.mode); setStarted(true); }}
