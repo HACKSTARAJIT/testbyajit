@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { GraduationCap, Zap, ArrowLeft, Clock, ListChecks, Award, PlayCircle, AlertTriangle } from "lucide-react";
 import { TestEngine, type EngineQuestion, type EngineTest } from "@/components/TestEngine";
 import { loadTestWithQuestions } from "@/lib/testLoader";
+import { PreTestDashboard } from "@/components/PreTestDashboard";
 
 type Mode = "practice" | "exam";
 
@@ -106,6 +107,14 @@ export default function TestRunner() {
           <div className="rounded-xl bg-white/15 p-2"><Clock className="mx-auto mb-1 h-4 w-4" /><b>{test.duration_minutes ?? 30}</b><p className="text-xs text-white/80">Minutes</p></div>
         </div>
       </div>
+
+      <PreTestDashboard
+        testId={test.id}
+        userId={user?.id}
+        totalMarks={test.total_marks ?? questions.length}
+        totalQuestions={questions.length}
+        userName={user?.user_metadata?.display_name || user?.email}
+      />
 
       {resume && (
         <button
