@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClipboardList, Search, Sparkles, Play } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TestTracker, attemptStats, type Attempt } from "@/components/TestTracker";
+import { TestTracker, type Attempt } from "@/components/TestTracker";
+import { TestAttemptSummary } from "@/components/TestAttemptSummary";
 
 export default function Tests() {
   const navigate = useNavigate();
@@ -90,15 +91,10 @@ export default function Tests() {
                 {t.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t.description}</p>}
                 {t.test_link ? (
                   <>
-                    {(() => {
-                      const mine = attempts.filter((a) => a.test_id === t.id);
-                      const s = attemptStats(mine);
-                      return (
-                        <p className="mt-3 text-xs text-muted-foreground">
-                          Last Score: {s.last ?? "—"} · Best Score: {s.best ?? "—"} · Attempts: {s.count}
-                        </p>
-                      );
-                    })()}
+                    <TestAttemptSummary
+                      attempts={attempts.filter((a) => a.test_id === t.id)}
+                      totalMarks={t.total_marks ?? t.total_questions ?? null}
+                    />
                     <TestTracker
                       test={{ id: t.id, title: t.title, test_link: t.test_link, subject_id: t.subject_id, chapter_id: t.chapter_id }}
                       attempts={attempts.filter((a) => a.test_id === t.id)}
@@ -111,6 +107,10 @@ export default function Tests() {
                     <p className="mt-3 text-xs text-muted-foreground">
                       {t.total_questions} Questions · {t.total_marks ?? t.total_questions} Marks · {t.duration_minutes} min
                     </p>
+                    <TestAttemptSummary
+                      attempts={attempts.filter((a) => a.test_id === t.id)}
+                      totalMarks={t.total_marks ?? t.total_questions ?? null}
+                    />
                     <Button className="mt-4 w-full" onClick={() => navigate(`/test/${t.id}`)}>
                       <Play className="mr-1 h-4 w-4" /> Start Test
                     </Button>
