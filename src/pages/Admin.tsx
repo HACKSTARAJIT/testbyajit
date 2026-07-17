@@ -17,6 +17,7 @@ import { Link } from "react-router-dom";
 import { AITestGenerator } from "@/components/AITestGenerator";
 import { TestDebugPanel } from "@/components/TestDebugPanel";
 import { TestAIReviewDialog } from "@/components/TestAIReviewDialog";
+import { TestSimilarityDialog } from "@/components/TestSimilarityDialog";
 
 export default function Admin() {
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -339,6 +340,7 @@ function TestsTab({ subjects, chapters, tests, reload, del }: any) {
       {tests.map((t: any) => (
         <Row key={t.id} title={t.title} sub={t.subjects?.name} onDelete={() => del("tests", t.id)}>
           <TestAIReviewDialog test={t} />
+          <TestSimilarityDialog test={t} />
           <EditTestDialog test={t} subjects={subjects} chapters={chapters} reload={reload} />
         </Row>
       ))}

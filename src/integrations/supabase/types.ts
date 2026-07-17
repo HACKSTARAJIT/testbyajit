@@ -514,6 +514,56 @@ export type Database = {
         }
         Relationships: []
       }
+      question_similarity_reports: {
+        Row: {
+          admin_status: string
+          ai_recommendation: string | null
+          generated_at: string
+          id: string
+          matches: Json
+          question_id: string
+          test_id: string | null
+          top_match_score: number
+          top_match_status: string
+          updated_at: string
+          variant_type: string | null
+        }
+        Insert: {
+          admin_status?: string
+          ai_recommendation?: string | null
+          generated_at?: string
+          id?: string
+          matches?: Json
+          question_id: string
+          test_id?: string | null
+          top_match_score?: number
+          top_match_status?: string
+          updated_at?: string
+          variant_type?: string | null
+        }
+        Update: {
+          admin_status?: string
+          ai_recommendation?: string | null
+          generated_at?: string
+          id?: string
+          matches?: Json
+          question_id?: string
+          test_id?: string | null
+          top_match_score?: number
+          top_match_status?: string
+          updated_at?: string
+          variant_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_similarity_reports_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: true
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       questions: {
         Row: {
           admin_reviewed: boolean
@@ -524,9 +574,13 @@ export type Database = {
           bloom_level: string | null
           complexity_score: number | null
           concept: string | null
+          content_hash: string | null
           correct_option: string
           created_at: string
           difficulty: string | null
+          embedded_at: string | null
+          embedding: string | null
+          embedding_model: string | null
           exam_level: string | null
           expected_time_seconds: number | null
           explanation: string | null
@@ -553,9 +607,13 @@ export type Database = {
           bloom_level?: string | null
           complexity_score?: number | null
           concept?: string | null
+          content_hash?: string | null
           correct_option: string
           created_at?: string
           difficulty?: string | null
+          embedded_at?: string | null
+          embedding?: string | null
+          embedding_model?: string | null
           exam_level?: string | null
           expected_time_seconds?: number | null
           explanation?: string | null
@@ -582,9 +640,13 @@ export type Database = {
           bloom_level?: string | null
           complexity_score?: number | null
           concept?: string | null
+          content_hash?: string | null
           correct_option?: string
           created_at?: string
           difficulty?: string | null
+          embedded_at?: string | null
+          embedding?: string | null
+          embedding_model?: string | null
           exam_level?: string | null
           expected_time_seconds?: number | null
           explanation?: string | null
@@ -1340,6 +1402,25 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      match_questions: {
+        Args: {
+          exclude_ids?: string[]
+          match_count?: number
+          query_embedding: string
+        }
+        Returns: {
+          concept: string
+          correct_option: string
+          created_at: string
+          difficulty: string
+          exam_level: string
+          id: string
+          question_text: string
+          similarity: number
+          test_id: string
+          topic: string
+        }[]
       }
     }
     Enums: {
