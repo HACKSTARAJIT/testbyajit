@@ -337,7 +337,14 @@ export function TestEngine({
           const chosen = answers[item.id];
           return (
             <div key={item.id} className="rounded-2xl border bg-card p-4 shadow-sm">
-              <p className="font-medium">Q{i + 1}. {item.question_text}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium">Q{i + 1}. {item.question_text}</p>
+                {guesses[item.id] && (
+                  <Badge variant="secondary" className="shrink-0 gap-1 text-[10px]">
+                    <Dice5 className="h-3 w-3" /> Guess
+                  </Badge>
+                )}
+              </div>
               <div className="mt-2 space-y-1.5">
                 {LETTERS.map((L) => {
                   const val = item[`option_${L.toLowerCase()}` as keyof EngineQuestion] as string;
