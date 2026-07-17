@@ -86,7 +86,7 @@ export default function Auth() {
             <GraduationCap className="h-7 w-7 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl font-display">AJIT 360</CardTitle>
-          <CardDescription>प्रतियोगी परीक्षा की तैयारी / Practice & Study</CardDescription>
+          <CardDescription>Learn • Practice • Analyze • Succeed</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login">
