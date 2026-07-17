@@ -71,6 +71,10 @@ export function TestEngine({
   const [current, setCurrent] = useState(resume?.current_index ?? 0);
   const [answers, setAnswers] = useState<Record<string, string>>(resume?.answers ?? {});
   const [marked, setMarked] = useState<Record<string, MarkState>>(resume?.marked ?? {});
+  // Guess Intelligence — per-question guess flag, does not affect scoring.
+  // `guessArmed` = toggle state before answering; `guesses` = frozen at answer time.
+  const [guessArmed, setGuessArmed] = useState<Record<string, boolean>>({});
+  const [guesses, setGuesses] = useState<Record<string, { guess: true; selected: string; timeMs: number }>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>(
     mode === "practice" ? Object.fromEntries(Object.keys(resume?.answers ?? {}).map((k) => [k, true])) : {}
   );
@@ -78,6 +82,7 @@ export function TestEngine({
   const [result, setResult] = useState<any>(null);
   const [secondsLeft, setSecondsLeft] = useState((test.duration_minutes ?? 30) * 60);
   const startTime = useRef<number>(Date.now());
+  const qStartTime = useRef<number>(Date.now());
   const attemptId = useRef<string | null>(resume?.attemptId ?? null);
   const savedWrong = useRef<Set<string>>(new Set());
 
