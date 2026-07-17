@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2, BookOpen, Layers, FileText, ClipboardList, Loader2, Pencil, BarChart3, Smartphone, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import { AITestGenerator } from "@/components/AITestGenerator";
 import { TestDebugPanel } from "@/components/TestDebugPanel";
 
