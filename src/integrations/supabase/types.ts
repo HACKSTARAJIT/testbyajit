@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_mock_reports: {
+        Row: {
+          accuracy: number | null
+          created_at: string
+          error: string | null
+          exam_name: string | null
+          file_paths: Json
+          id: string
+          ocr_text: string | null
+          overall_score: number | null
+          readiness_score: number | null
+          report: Json | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          created_at?: string
+          error?: string | null
+          exam_name?: string | null
+          file_paths?: Json
+          id?: string
+          ocr_text?: string | null
+          overall_score?: number | null
+          readiness_score?: number | null
+          report?: Json | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          created_at?: string
+          error?: string | null
+          exam_name?: string | null
+          file_paths?: Json
+          id?: string
+          ocr_text?: string | null
+          overall_score?: number | null
+          readiness_score?: number | null
+          report?: Json | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       app_release: {
         Row: {
           created_at: string
