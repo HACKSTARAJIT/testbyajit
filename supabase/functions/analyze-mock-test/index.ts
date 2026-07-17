@@ -215,25 +215,52 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
     const aiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!aiKey) throw new Error("LOVABLE_API_KEY missing");
 
-    console.log("calling AI", { reportId, parts: contentParts.length });
-    const aiRes = await fetch(LOVABLE_AI_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${aiKey}` },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [{ role: "user", content: contentParts }],
-        response_format: { type: "json_object" },
-      }),
-    });
+    let parsed: any = null;
+    let lastErr = "";
+    let lastRaw = "";
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      console.log("calling AI", { reportId, attempt, parts: contentParts.length });
+      const aiRes = await fetch(LOVABLE_AI_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${aiKey}` },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-pro",
+          messages: [{ role: "user", content: contentParts }],
+          response_format: { type: "json_object" },
+          max_tokens: 16000,
+        }),
+      });
 
-    if (!aiRes.ok) {
-      const errText = await aiRes.text();
-      throw new Error(`AI ${aiRes.status}: ${errText.slice(0, 800)}`);
+      if (!aiRes.ok) {
+        const errText = await aiRes.text();
+        lastErr = `AI ${aiRes.status}: ${errText.slice(0, 400)}`;
+        console.error("AI request failed", reportId, attempt, lastErr);
+        if (aiRes.status === 429 || aiRes.status === 402) throw new Error(lastErr);
+        continue;
+      }
+      const aiData = await aiRes.json();
+      const finish = aiData.choices?.[0]?.finish_reason;
+      const raw = aiData.choices?.[0]?.message?.content ?? "";
+      lastRaw = typeof raw === "string" ? raw : JSON.stringify(raw);
+      console.log("AI response", { reportId, attempt, finish, len: lastRaw.length });
+
+      try {
+        const candidate = typeof raw === "string" ? extractJSON(raw) : raw;
+        if (validateReport(candidate)) {
+          parsed = candidate;
+          break;
+        }
+        lastErr = "Response missing required fields (totals/accuracy/subject_analysis)";
+        console.error("validation failed", reportId, attempt, lastErr);
+      } catch (parseErr) {
+        lastErr = `JSON parse failed: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`;
+        console.error("parse failed", reportId, attempt, lastErr, "raw head:", lastRaw.slice(0, 300));
+      }
     }
-    const aiData = await aiRes.json();
-    const raw = aiData.choices?.[0]?.message?.content ?? "{}";
-    let parsed: any = {};
-    try { parsed = typeof raw === "string" ? JSON.parse(raw) : raw; } catch { parsed = { raw }; }
+
+    if (!parsed) {
+      throw new Error(`AI analysis failed after retries. ${lastErr}. Raw head: ${lastRaw.slice(0, 400)}`);
+    }
 
     const totals = parsed.totals ?? {};
     await admin.from("ai_mock_reports").update({
@@ -241,9 +268,9 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       report: parsed,
       ocr_text: parsed.ocr_text ?? null,
       exam_name: parsed.exam_name ?? null,
-      accuracy: parsed.accuracy ?? null,
-      readiness_score: parsed.readiness_score ?? null,
-      overall_score: totals.score ?? null,
+      accuracy: toNum(parsed.accuracy),
+      readiness_score: toNum(parsed.readiness_score),
+      overall_score: toNum(totals.score),
       error: null,
     }).eq("id", reportId);
     console.log("report done", reportId);
@@ -260,6 +287,51 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
     console.error("processReport failed", reportId, msg);
     await admin.from("ai_mock_reports").update({ status: "failed", error: msg.slice(0, 1000) }).eq("id", reportId);
   }
+}
+
+function extractJSON(raw: string): any {
+  let s = raw.trim()
+    .replace(/^\uFEFF/, "")
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
+  if (!s.startsWith("{") && !s.startsWith("[")) {
+    const oi = s.indexOf("{"), ai = s.indexOf("[");
+    const isArr = ai !== -1 && (oi === -1 || ai < oi);
+    const start = isArr ? ai : oi;
+    const end = isArr ? s.lastIndexOf("]") : s.lastIndexOf("}");
+    if (start === -1 || end <= start) throw new Error("No JSON object found");
+    s = s.slice(start, end + 1);
+  }
+  try { return JSON.parse(s); } catch (e) {
+    // Try trimming to last balanced brace
+    const end = s.lastIndexOf("}");
+    if (end > 0) {
+      try { return JSON.parse(s.slice(0, end + 1)); } catch { /* fallthrough */ }
+    }
+    throw e;
+  }
+}
+
+function toNum(v: any): number | null {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "number") return isFinite(v) ? v : null;
+  const m = String(v).match(/-?\d+(\.\d+)?/);
+  return m ? Number(m[0]) : null;
+}
+
+function validateReport(r: any): boolean {
+  if (!r || typeof r !== "object") return false;
+  if (!r.totals || typeof r.totals !== "object") return false;
+  const t = r.totals;
+  if (typeof t.questions !== "number" || t.questions <= 0) return false;
+  if (r.accuracy === undefined || r.accuracy === null) return false;
+  if (!Array.isArray(r.subject_analysis)) return false;
+  // At least one narrative field must be non-empty
+  const narratives = [r.coach_feedback, r.overall_performance, r.performance_summary];
+  if (!narratives.some((x) => typeof x === "string" && x.trim().length > 20)) return false;
+  return true;
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
