@@ -316,6 +316,99 @@ export type Database = {
           },
         ]
       }
+      daily_reviews: {
+        Row: {
+          analysis: string | null
+          consistency_label: string | null
+          consistency_score: number
+          created_at: string
+          id: string
+          mentor_message: string | null
+          metrics: Json | null
+          review_date: string
+          seriousness_level: string | null
+          seriousness_reasons: Json | null
+          targets_completed: number
+          targets_total: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis?: string | null
+          consistency_label?: string | null
+          consistency_score?: number
+          created_at?: string
+          id?: string
+          mentor_message?: string | null
+          metrics?: Json | null
+          review_date?: string
+          seriousness_level?: string | null
+          seriousness_reasons?: Json | null
+          targets_completed?: number
+          targets_total?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis?: string | null
+          consistency_label?: string | null
+          consistency_score?: number
+          created_at?: string
+          id?: string
+          mentor_message?: string | null
+          metrics?: Json | null
+          review_date?: string
+          seriousness_level?: string | null
+          seriousness_reasons?: Json | null
+          targets_completed?: number
+          targets_total?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      daily_targets: {
+        Row: {
+          category: string | null
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          id: string
+          priority: string
+          sort_order: number
+          target_date: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          priority?: string
+          sort_order?: number
+          target_date?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          priority?: string
+          sort_order?: number
+          target_date?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mistake_dna: {
         Row: {
           distribution: Json
