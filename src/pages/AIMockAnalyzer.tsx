@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Brain, Upload, Sparkles, Trash2, Search, FileText, Loader2, X, TrendingUp, Target, Clock, Award } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Brain, Upload, Sparkles, Trash2, Search, FileText, Loader2, X,
+  TrendingUp, Target, Clock, Award, BarChart3, Trophy, CalendarClock,
+  ListChecks, FileStack, CheckCircle2, AlertCircle, Image as ImageIcon,
+  RotateCw, Copy, Pencil, Filter,
+} from "lucide-react";
 import { toast } from "sonner";
 
 type Report = {
@@ -19,19 +24,40 @@ type Report = {
 };
 
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,image/*,application/pdf";
+const MAX_MB = 20;
+
+const STAGES = [
+  { key: "upload", label: "Uploading" },
+  { key: "read", label: "Reading Document" },
+  { key: "ocr", label: "Running OCR" },
+  { key: "prep", label: "Preparing AI Analysis" },
+  { key: "ready", label: "Ready to Analyze" },
+];
+
+type Activity = { id: string; kind: string; title: string; at: number };
 
 export default function AIMockAnalyzer() {
   const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [examFilter, setExamFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
   const [files, setFiles] = useState<File[]>([]);
   const [title, setTitle] = useState("");
+  const [examName, setExamName] = useState("");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [stage, setStage] = useState(0);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Report | null>(null);
+  const [activity, setActivity] = useState<Activity[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const logActivity = (kind: string, title: string) => {
+    setActivity(a => [{ id: crypto.randomUUID(), kind, title, at: Date.now() }, ...a].slice(0, 8));
+  };
 
   const load = async () => {
     if (!user) return;
@@ -42,23 +68,62 @@ export default function AIMockAnalyzer() {
   };
   useEffect(() => { load(); }, [user]);
 
+  // Dashboard stats
+  const stats = useMemo(() => {
+    const completed = reports.filter(r => r.status === "completed");
+    const avg = (arr: number[]) => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+    const accs = completed.map(r => r.accuracy ?? 0).filter(x => x > 0);
+    const scores = completed.map(r => r.overall_score ?? 0).filter(x => x > 0);
+    const readys = completed.map(r => r.readiness_score ?? 0).filter(x => x > 0);
+    const best = completed.reduce<Report | null>((b, r) => (r.overall_score ?? 0) > (b?.overall_score ?? -1) ? r : b, null);
+    const latest = reports[0] ?? null;
+    const totalQ = completed.reduce((n, r) => n + (r.report?.totals?.total_questions ?? r.report?.totals?.total ?? 0), 0);
+    return {
+      total: reports.length,
+      avgAcc: avg(accs),
+      avgScore: avg(scores),
+      avgReady: avg(readys),
+      best, latest,
+      totalQ,
+      aiReports: completed.length,
+    };
+  }, [reports]);
+
+  const exams = useMemo(() => {
+    const s = new Set(reports.map(r => r.exam_name).filter(Boolean) as string[]);
+    return Array.from(s);
+  }, [reports]);
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return reports;
-    return reports.filter(r =>
-      r.title.toLowerCase().includes(q) ||
-      (r.exam_name ?? "").toLowerCase().includes(q) ||
-      new Date(r.created_at).toLocaleDateString().includes(q) ||
-      JSON.stringify(r.report ?? {}).toLowerCase().includes(q)
-    );
-  }, [reports, search]);
+    let list = reports.filter(r => {
+      if (statusFilter !== "all" && r.status !== statusFilter) return false;
+      if (examFilter !== "all" && (r.exam_name ?? "") !== examFilter) return false;
+      if (!q) return true;
+      return (
+        r.title.toLowerCase().includes(q) ||
+        (r.exam_name ?? "").toLowerCase().includes(q) ||
+        new Date(r.created_at).toLocaleDateString().includes(q) ||
+        JSON.stringify(r.report ?? {}).toLowerCase().includes(q)
+      );
+    });
+    const t = (r: Report) => new Date(r.created_at).getTime();
+    switch (sortBy) {
+      case "oldest": list = [...list].sort((a, b) => t(a) - t(b)); break;
+      case "acc_high": list = [...list].sort((a, b) => (b.accuracy ?? 0) - (a.accuracy ?? 0)); break;
+      case "acc_low": list = [...list].sort((a, b) => (a.accuracy ?? 0) - (b.accuracy ?? 0)); break;
+      default: list = [...list].sort((a, b) => t(b) - t(a));
+    }
+    return list;
+  }, [reports, search, statusFilter, examFilter, sortBy]);
 
   const onFiles = (list: FileList | null) => {
     if (!list) return;
     const arr = [...list].filter(f => {
       const ok = /\.(pdf|jpg|jpeg|png)$/i.test(f.name);
-      if (!ok) toast.error(`Skipped ${f.name} — unsupported format`);
-      return ok && f.size <= 20 * 1024 * 1024;
+      if (!ok) { toast.error(`Skipped ${f.name} — unsupported format`); return false; }
+      if (f.size > MAX_MB * 1024 * 1024) { toast.error(`${f.name} exceeds ${MAX_MB}MB`); return false; }
+      return true;
     });
     arr.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
     setFiles(f => [...f, ...arr]);
@@ -66,9 +131,14 @@ export default function AIMockAnalyzer() {
 
   const removeFile = (i: number) => setFiles(f => f.filter((_, idx) => idx !== i));
 
+  const runStage = async (idx: number, ms: number) => {
+    setStage(idx);
+    await new Promise(r => setTimeout(r, ms));
+  };
+
   const uploadAndCreate = async () => {
     if (!user || !files.length) return;
-    setUploading(true); setProgress(0);
+    setUploading(true); setProgress(0); setStage(0);
     try {
       const paths: string[] = [];
       for (let i = 0; i < files.length; i++) {
@@ -79,19 +149,24 @@ export default function AIMockAnalyzer() {
         paths.push(path);
         setProgress(Math.round(((i + 1) / files.length) * 100));
       }
+      await runStage(1, 400);
+      await runStage(2, 500);
+      await runStage(3, 400);
       const { data, error } = await supabase.from("ai_mock_reports").insert({
         user_id: user.id,
         title: title.trim() || `Mock ${new Date().toLocaleDateString()}`,
+        exam_name: examName.trim() || null,
         file_paths: paths,
         status: "pending",
       }).select().single();
       if (error) throw error;
-      toast.success("Uploaded. Press Analyze Mock to generate the AI report.");
-      setFiles([]); setTitle(""); setProgress(0);
+      await runStage(4, 300);
+      toast.success("Uploaded — ready for AI Analysis");
+      logActivity("upload", data.title);
+      setFiles([]); setTitle(""); setExamName(""); setProgress(0); setStage(0);
       await load();
-      setSelected(data as any);
     } catch (e: any) {
-      toast.error(e.message ?? "Upload failed");
+      toast.error(friendly(e.message) || "Upload failed");
     } finally {
       setUploading(false);
     }
@@ -111,12 +186,10 @@ export default function AIMockAnalyzer() {
             const text = typeof ctx.body === "string" ? ctx.body : await new Response(ctx.body).text();
             try { backendMsg = JSON.parse(text).error ?? text; } catch { backendMsg = text; }
           }
-        } catch { /* ignore */ }
+        } catch {}
         throw new Error(backendMsg || "Analysis failed to start");
       }
       toast.info("Analyzing in background — this can take a few minutes.");
-
-      // Poll status for up to ~10 minutes
       const started = Date.now();
       let fresh: any = null;
       while (Date.now() - started < 10 * 60 * 1000) {
@@ -128,6 +201,7 @@ export default function AIMockAnalyzer() {
       await load();
       if (fresh?.status === "completed") {
         toast.success("Analysis complete");
+        logActivity("analysis", fresh.title);
         setSelected(fresh);
       } else if (fresh?.status === "failed") {
         throw new Error(fresh.error || "Analysis failed");
@@ -135,7 +209,7 @@ export default function AIMockAnalyzer() {
         toast.message("Still processing — check back shortly.");
       }
     } catch (e: any) {
-      toast.error(e.message ?? "Analysis failed");
+      toast.error(friendly(e.message) || "AI analysis failed. Please retry.");
       await load();
     } finally {
       setAnalyzingId(null);
@@ -171,113 +245,180 @@ export default function AIMockAnalyzer() {
   return (
     <div className="space-y-6">
       <header className="flex items-center gap-3">
-        <div className="rounded-xl bg-gradient-to-br from-primary to-secondary p-2 text-primary-foreground">
+        <div className="rounded-xl bg-gradient-to-br from-primary to-secondary p-2 text-primary-foreground shadow-lg shadow-primary/20">
           <Brain className="h-6 w-6" />
         </div>
         <div>
           <h1 className="text-2xl font-bold">AI Mock Analyzer</h1>
-          <p className="text-sm text-muted-foreground">Upload any external mock test — get a premium AI performance report.</p>
+          <p className="text-sm text-muted-foreground">Your premium mock analysis workspace.</p>
         </div>
       </header>
 
-      <Card className="border-primary/20">
+      {/* Dashboard */}
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatCard icon={<FileStack />} label="Total Mocks" value={stats.total} tint="from-primary/20 to-primary/5" />
+        <StatCard icon={<Target />} label="Avg Accuracy" value={`${stats.avgAcc}%`} tint="from-emerald-500/20 to-emerald-500/5" />
+        <StatCard icon={<Award />} label="Avg Score" value={stats.avgScore || "—"} tint="from-amber-500/20 to-amber-500/5" />
+        <StatCard icon={<TrendingUp />} label="Avg Readiness" value={`${stats.avgReady}%`} tint="from-sky-500/20 to-sky-500/5" />
+        <StatCard icon={<Trophy />} label="Best Mock" value={stats.best?.title ?? "—"} sub={stats.best ? `${stats.best.overall_score ?? "-"} pts` : ""} tint="from-yellow-500/20 to-yellow-500/5" small />
+        <StatCard icon={<CalendarClock />} label="Latest Mock" value={stats.latest?.title ?? "—"} sub={stats.latest ? new Date(stats.latest.created_at).toLocaleDateString() : ""} tint="from-fuchsia-500/20 to-fuchsia-500/5" small />
+        <StatCard icon={<ListChecks />} label="Questions Analyzed" value={stats.totalQ || "—"} tint="from-indigo-500/20 to-indigo-500/5" />
+        <StatCard icon={<Sparkles />} label="AI Reports" value={stats.aiReports} tint="from-violet-500/20 to-violet-500/5" />
+      </section>
+
+      {/* Upload */}
+      <Card className="border-primary/20 backdrop-blur bg-card/60">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base"><Upload className="h-4 w-4" />New Mock Analysis</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input placeholder="Title (e.g. SSC CGL Testbook Mock 12)" value={title} onChange={e => setTitle(e.target.value)} />
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Input placeholder="Mock title (e.g. SSC CGL Mock 12)" value={title} onChange={e => setTitle(e.target.value)} />
+            <Input placeholder="Exam name (optional)" value={examName} onChange={e => setExamName(e.target.value)} />
+          </div>
 
           <div
-            onDragOver={e => { e.preventDefault(); }}
+            onDragOver={e => e.preventDefault()}
             onDrop={e => { e.preventDefault(); onFiles(e.dataTransfer.files); }}
             onClick={() => fileRef.current?.click()}
-            className="cursor-pointer rounded-xl border-2 border-dashed border-primary/30 bg-muted/30 p-6 text-center transition hover:border-primary hover:bg-muted/50"
+            className="cursor-pointer rounded-xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-muted/30 to-muted/10 p-8 text-center transition hover:border-primary hover:bg-muted/50"
           >
-            <Upload className="mx-auto mb-2 h-8 w-8 text-primary" />
-            <p className="text-sm font-medium">Drop PDF / images or click to browse</p>
-            <p className="text-xs text-muted-foreground">Multiple screenshots auto-arranged alphabetically. Max 20MB each.</p>
+            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Upload className="h-6 w-6" />
+            </div>
+            <p className="text-sm font-medium">Drop PDF / JPG / PNG or click to browse</p>
+            <p className="text-xs text-muted-foreground">Multiple screenshots auto-ordered alphabetically · Max {MAX_MB}MB each</p>
             <input ref={fileRef} type="file" accept={ACCEPT} multiple hidden onChange={e => onFiles(e.target.files)} />
           </div>
 
           {files.length > 0 && (
-            <div className="space-y-1">
-              {files.map((f, i) => (
-                <div key={i} className="flex items-center justify-between rounded-md bg-muted/50 px-2 py-1.5 text-sm">
-                  <span className="truncate"><FileText className="mr-1 inline h-3.5 w-3.5" />{f.name}</span>
-                  <button onClick={() => removeFile(i)} className="text-muted-foreground hover:text-destructive"><X className="h-4 w-4" /></button>
-                </div>
-              ))}
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              {files.map((f, i) => {
+                const isImg = /\.(jpg|jpeg|png)$/i.test(f.name);
+                return (
+                  <div key={i} className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-2 py-1.5 text-sm">
+                    <div className="flex min-w-0 items-center gap-2">
+                      {isImg
+                        ? <ImageIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
+                        : <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />}
+                      <span className="truncate">{f.name}</span>
+                      <span className="shrink-0 text-[10px] text-muted-foreground">{(f.size/1024/1024).toFixed(1)}MB</span>
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); removeFile(i); }} className="text-muted-foreground hover:text-destructive">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
 
-          {uploading && <Progress value={progress} />}
+          {uploading && (
+            <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
+              <Progress value={stage === 0 ? progress : Math.min(100, (stage + 1) * 20)} className="h-2" />
+              <div className="grid grid-cols-5 gap-1 text-[10px]">
+                {STAGES.map((s, i) => (
+                  <div key={s.key} className={`flex flex-col items-center gap-1 rounded-md p-1.5 transition ${i < stage ? "text-emerald-500" : i === stage ? "text-primary" : "text-muted-foreground/60"}`}>
+                    {i < stage
+                      ? <CheckCircle2 className="h-3.5 w-3.5" />
+                      : i === stage
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <span className="h-3.5 w-3.5 rounded-full border border-current opacity-50" />}
+                    <span className="text-center leading-tight">{s.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <Button onClick={uploadAndCreate} disabled={!files.length || uploading} className="w-full">
-            {uploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Uploading...</> : "Upload"}
+            {uploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</> : <>Upload {files.length ? `(${files.length})` : ""}</>}
           </Button>
-          <p className="text-center text-xs text-muted-foreground">AI analysis runs only after you press <span className="font-semibold text-foreground">Analyze Mock</span> on a report.</p>
+          <p className="text-center text-xs text-muted-foreground">
+            AI analysis runs only after you press <span className="font-semibold text-foreground">Analyze Mock</span> on a report.
+          </p>
         </CardContent>
       </Card>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Report History</h2>
-          <div className="relative w-64">
+      {/* Filters */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-lg font-semibold"><BarChart3 className="h-4 w-4" />Report History</h2>
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by exam, date, keyword..." className="pl-9" />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search exam, date, keyword..." className="pl-9" />
           </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="analyzing">Analyzing</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="failed">Failed</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={examFilter} onValueChange={setExamFilter}>
+            <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Exam" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Exams</SelectItem>
+              {exams.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest first</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="acc_high">Highest Accuracy</SelectItem>
+              <SelectItem value="acc_low">Lowest Accuracy</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {loading ? (
-          <div className="grid gap-3 sm:grid-cols-2">{[1,2,3,4].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}</div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-44 rounded-xl" />)}
+          </div>
         ) : filtered.length === 0 ? (
-          <Card><CardContent className="py-10 text-center text-muted-foreground">
-            <Sparkles className="mx-auto mb-2 h-8 w-8 text-primary/50" />
-            No reports yet. Upload a mock test to begin.
-          </CardContent></Card>
+          <EmptyState hasAny={reports.length > 0} />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map(r => (
-              <Card key={r.id} className="transition hover:shadow-md">
-                <CardContent className="space-y-2 p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">{r.title}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</p>
-                    </div>
-                    <StatusBadge status={r.status} />
-                  </div>
-                  {r.exam_name && <Badge variant="outline">{r.exam_name}</Badge>}
-                  {r.report && (
-                    <div className="grid grid-cols-3 gap-1 pt-1 text-center text-xs">
-                      <MiniStat icon={<Target className="h-3 w-3" />} label="Acc" value={r.accuracy ? `${r.accuracy}%` : "-"} />
-                      <MiniStat icon={<Award className="h-3 w-3" />} label="Score" value={r.overall_score ?? "-"} />
-                      <MiniStat icon={<TrendingUp className="h-3 w-3" />} label="Ready" value={r.readiness_score ? `${r.readiness_score}%` : "-"} />
-                    </div>
-                  )}
-                  <div className="flex flex-wrap gap-1 pt-2">
-                    {r.status !== "completed" && r.status !== "analyzing" && (
-                      <Button size="sm" onClick={() => analyze(r.id)} disabled={analyzingId === r.id} className="flex-1">
-                        {analyzingId === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Sparkles className="mr-1 h-3.5 w-3.5" />Analyze Mock</>}
-                      </Button>
-                    )}
-                    {r.status === "completed" && (
-                      <Button size="sm" variant="secondary" onClick={() => setSelected(r)} className="flex-1">Open Report</Button>
-                    )}
-                    <Button size="sm" variant="ghost" onClick={() => rename(r)}>Rename</Button>
-                    <Button size="sm" variant="ghost" onClick={() => duplicate(r)}>Dup</Button>
-                    {r.status === "completed" && (
-                      <Button size="sm" variant="ghost" onClick={() => analyze(r.id)}>Re-run</Button>
-                    )}
-                    <Button size="icon" variant="ghost" onClick={() => del(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                  </div>
-                  {r.error && <p className="text-xs text-destructive">{r.error}</p>}
-                </CardContent>
-              </Card>
+              <ReportCard
+                key={r.id}
+                r={r}
+                onOpen={() => setSelected(r)}
+                onAnalyze={() => analyze(r.id)}
+                onRename={() => rename(r)}
+                onDuplicate={() => duplicate(r)}
+                onDelete={() => del(r.id)}
+                analyzing={analyzingId === r.id}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {/* Recent activity */}
+      {activity.length > 0 && (
+        <Card className="bg-card/60 backdrop-blur">
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Recent Activity</CardTitle></CardHeader>
+          <CardContent className="space-y-1">
+            {activity.map(a => (
+              <div key={a.id} className="flex items-center gap-2 text-xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                <span className="font-medium capitalize">{a.kind}</span>
+                <span className="text-muted-foreground truncate">— {a.title}</span>
+                <span className="ml-auto text-muted-foreground">{new Date(a.at).toLocaleTimeString()}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={!!selected} onOpenChange={o => !o && setSelected(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -288,25 +429,122 @@ export default function AIMockAnalyzer() {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    pending: "bg-muted text-muted-foreground",
-    analyzing: "bg-blue-500/20 text-blue-600",
-    completed: "bg-green-500/20 text-green-600",
-    failed: "bg-red-500/20 text-red-600",
-  };
-  return <Badge className={map[status] ?? ""} variant="outline">{status}</Badge>;
+function friendly(msg?: string) {
+  if (!msg) return msg;
+  if (/ocr/i.test(msg)) return "OCR failed. Please retry.";
+  if (/timeout|timed out/i.test(msg)) return "Request timed out. Please retry.";
+  if (/network|fetch/i.test(msg)) return "Network error. Check your connection.";
+  return msg.length > 140 ? "Something went wrong. Please retry." : msg;
 }
 
-function MiniStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: any }) {
+function StatCard({ icon, label, value, sub, tint, small }: { icon: React.ReactNode; label: string; value: any; sub?: string; tint: string; small?: boolean }) {
   return (
-    <div className="rounded-md bg-muted/50 p-1.5">
-      <div className="flex items-center justify-center gap-1 text-muted-foreground">{icon}<span>{label}</span></div>
-      <p className="font-semibold">{value}</p>
+    <div className={`relative overflow-hidden rounded-xl border bg-gradient-to-br ${tint} p-3 backdrop-blur transition hover:scale-[1.02]`}>
+      <div className="mb-1 flex h-7 w-7 items-center justify-center rounded-lg bg-background/60 text-primary [&_svg]:h-4 [&_svg]:w-4">
+        {icon}
+      </div>
+      <p className={`font-bold ${small ? "text-sm truncate" : "text-xl"}`}>{value}</p>
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      {sub && <p className="mt-0.5 text-[10px] text-muted-foreground truncate">{sub}</p>}
     </div>
   );
 }
 
+function ReportCard({ r, onOpen, onAnalyze, onRename, onDuplicate, onDelete, analyzing }: {
+  r: Report; onOpen: () => void; onAnalyze: () => void; onRename: () => void; onDuplicate: () => void; onDelete: () => void; analyzing: boolean;
+}) {
+  const pages = r.file_paths?.length ?? 0;
+  return (
+    <Card className="group relative overflow-hidden bg-card/60 backdrop-blur transition hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5">
+      <CardContent className="space-y-3 p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-semibold">{r.title}</p>
+            <p className="text-[11px] text-muted-foreground">{new Date(r.created_at).toLocaleString()}</p>
+          </div>
+          <StatusBadge status={r.status} />
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          {r.exam_name && <Badge variant="outline" className="text-[10px]">{r.exam_name}</Badge>}
+          <Badge variant="outline" className="text-[10px]">{pages} file{pages !== 1 ? "s" : ""}</Badge>
+        </div>
+        <div className="grid grid-cols-3 gap-1 text-center">
+          <Mini label="Accuracy" value={r.accuracy ? `${r.accuracy}%` : "—"} />
+          <Mini label="Score" value={r.overall_score ?? "—"} />
+          <Mini label="Readiness" value={r.readiness_score ? `${r.readiness_score}%` : "—"} />
+        </div>
+        {r.error && r.status === "failed" && (
+          <div className="flex items-start gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>AI Analysis Failed. Please retry.</span>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-1">
+          {r.status === "completed" ? (
+            <Button size="sm" variant="secondary" onClick={onOpen} className="flex-1">Open</Button>
+          ) : r.status === "analyzing" ? (
+            <Button size="sm" disabled className="flex-1"><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Analyzing</Button>
+          ) : (
+            <Button size="sm" onClick={onAnalyze} disabled={analyzing} className="flex-1">
+              {analyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Sparkles className="mr-1 h-3.5 w-3.5" />Analyze</>}
+            </Button>
+          )}
+          {r.status === "completed" && (
+            <Button size="icon" variant="ghost" title="Reanalyze" onClick={onAnalyze}><RotateCw className="h-4 w-4" /></Button>
+          )}
+          {r.status === "failed" && (
+            <Button size="icon" variant="ghost" title="Retry" onClick={onAnalyze}><RotateCw className="h-4 w-4" /></Button>
+          )}
+          <Button size="icon" variant="ghost" title="Rename" onClick={onRename}><Pencil className="h-4 w-4" /></Button>
+          <Button size="icon" variant="ghost" title="Duplicate" onClick={onDuplicate}><Copy className="h-4 w-4" /></Button>
+          <Button size="icon" variant="ghost" title="Delete" onClick={onDelete}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Mini({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="rounded-md bg-muted/50 p-1.5">
+      <p className="text-sm font-semibold">{value}</p>
+      <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    pending: "bg-muted text-muted-foreground border-muted-foreground/20",
+    analyzing: "bg-blue-500/15 text-blue-500 border-blue-500/30",
+    completed: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
+    failed: "bg-red-500/15 text-red-500 border-red-500/30",
+  };
+  return <Badge className={`text-[10px] ${map[status] ?? ""}`} variant="outline">{status}</Badge>;
+}
+
+function EmptyState({ hasAny }: { hasAny: boolean }) {
+  return (
+    <Card className="border-dashed bg-card/40 backdrop-blur">
+      <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
+        <div className="relative">
+          <div className="absolute inset-0 animate-pulse rounded-full bg-primary/20 blur-2xl" />
+          <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-xl">
+            <Brain className="h-10 w-10" />
+          </div>
+        </div>
+        <div>
+          <p className="text-lg font-semibold">{hasAny ? "No matching reports" : "No reports yet"}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {hasAny ? "Try changing your filters." : "Upload your first mock to begin AI Analysis."}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ---------- Existing detailed report view (unchanged rendering) ---------- */
 function ReportView({ r, onAnalyze, analyzing }: { r: Report; onAnalyze: () => void; analyzing: boolean }) {
   const d = r.report ?? {};
   if (r.status !== "completed" || !r.report) {
@@ -332,7 +570,16 @@ function ReportView({ r, onAnalyze, analyzing }: { r: Report; onAnalyze: () => v
     <div className="space-y-5">
       <DialogHeader>
         <DialogTitle>{r.title}</DialogTitle>
-        <p className="text-xs text-muted-foreground">{d.exam_name ?? "External Mock"} · {new Date(r.created_at).toLocaleString()}</p>
+        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+          <span>{d.exam_name ?? r.exam_name ?? "External Mock"}</span>
+          <span>·</span>
+          <span>Uploaded {new Date(r.created_at).toLocaleString()}</span>
+          <span>·</span>
+          <span>{r.file_paths?.length ?? 0} files</span>
+          <span>·</span>
+          <Badge variant="outline" className="text-[10px]">OCR ✓</Badge>
+          <Badge variant="outline" className="text-[10px]">AI ✓</Badge>
+        </div>
       </DialogHeader>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
