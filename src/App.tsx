@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,40 +7,64 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
 import { ProtectedRoute, AdminRoute } from "@/components/RouteGuards";
 import { SaveGateProvider } from "@/hooks/useSaveGate";
+import { Loader2 } from "lucide-react";
+
+// Eagerly-loaded (small / critical-path)
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
-import Subjects from "./pages/Subjects.tsx";
-import SubjectDetail from "./pages/SubjectDetail.tsx";
-import Tests from "./pages/Tests.tsx";
-import TestRunner from "./pages/TestRunner.tsx";
-import TestAnalysis from "./pages/TestAnalysis.tsx";
-import WrongQuestions from "./pages/WrongQuestions.tsx";
-import SmartRevision from "./pages/SmartRevision.tsx";
-import SmartRevisionSubject from "./pages/SmartRevisionSubject.tsx";
-import SmartRevisionChapter from "./pages/SmartRevisionChapter.tsx";
-import Bookmarks from "./pages/Bookmarks.tsx";
-import Revision from "./pages/Revision.tsx";
-import RevisionDashboard from "./pages/RevisionDashboard.tsx";
-import RevisionRunner from "./pages/RevisionRunner.tsx";
-import About from "./pages/About.tsx";
-import Admin from "./pages/Admin.tsx";
-import AdminAnalytics from "./pages/AdminAnalytics.tsx";
-import AdminIntelligence from "./pages/AdminIntelligence.tsx";
-import AIMockAnalyzer from "./pages/AIMockAnalyzer.tsx";
-import PerformanceIntelligence from "./pages/PerformanceIntelligence.tsx";
-import AICoach from "./pages/AICoach.tsx";
-import AICoachChat from "./pages/AICoachChat.tsx";
-import AIPerformanceCenter from "./pages/AIPerformanceCenter.tsx";
-
-
-import Profile from "./pages/Profile.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
-const queryClient = new QueryClient();
+// Lazy-loaded (heavy or secondary routes) — cuts initial JS significantly
+const Subjects = lazy(() => import("./pages/Subjects.tsx"));
+const SubjectDetail = lazy(() => import("./pages/SubjectDetail.tsx"));
+const Tests = lazy(() => import("./pages/Tests.tsx"));
+const TestRunner = lazy(() => import("./pages/TestRunner.tsx"));
+const TestAnalysis = lazy(() => import("./pages/TestAnalysis.tsx"));
+const WrongQuestions = lazy(() => import("./pages/WrongQuestions.tsx"));
+const SmartRevision = lazy(() => import("./pages/SmartRevision.tsx"));
+const SmartRevisionSubject = lazy(() => import("./pages/SmartRevisionSubject.tsx"));
+const SmartRevisionChapter = lazy(() => import("./pages/SmartRevisionChapter.tsx"));
+const Bookmarks = lazy(() => import("./pages/Bookmarks.tsx"));
+const Revision = lazy(() => import("./pages/Revision.tsx"));
+const RevisionDashboard = lazy(() => import("./pages/RevisionDashboard.tsx"));
+const RevisionRunner = lazy(() => import("./pages/RevisionRunner.tsx"));
+const About = lazy(() => import("./pages/About.tsx"));
+const Admin = lazy(() => import("./pages/Admin.tsx"));
+const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics.tsx"));
+const AdminIntelligence = lazy(() => import("./pages/AdminIntelligence.tsx"));
+const AIMockAnalyzer = lazy(() => import("./pages/AIMockAnalyzer.tsx"));
+const PerformanceIntelligence = lazy(() => import("./pages/PerformanceIntelligence.tsx"));
+const AICoach = lazy(() => import("./pages/AICoach.tsx"));
+const AICoachChat = lazy(() => import("./pages/AICoachChat.tsx"));
+const AIPerformanceCenter = lazy(() => import("./pages/AIPerformanceCenter.tsx"));
+const Profile = lazy(() => import("./pages/Profile.tsx"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center" role="status" aria-label="Loading page">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+    </div>
+  );
+}
 
 const withLayout = (el: JSX.Element) => (
-  <ProtectedRoute><AppLayout>{el}</AppLayout></ProtectedRoute>
+  <ProtectedRoute>
+    <AppLayout>
+      <Suspense fallback={<RouteFallback />}>{el}</Suspense>
+    </AppLayout>
+  </ProtectedRoute>
 );
 
 const App = () => (
@@ -76,10 +101,42 @@ const App = () => (
             <Route path="/ai-coach/chat" element={withLayout(<AICoachChat />)} />
             <Route path="/ai-coach/chat/:threadId" element={withLayout(<AICoachChat />)} />
 
-
-            <Route path="/admin" element={<AdminRoute><AppLayout><Admin /></AppLayout></AdminRoute>} />
-            <Route path="/admin/analytics" element={<AdminRoute><AppLayout><AdminAnalytics /></AppLayout></AdminRoute>} />
-            <Route path="/admin/intelligence" element={<AdminRoute><AppLayout><AdminIntelligence /></AppLayout></AdminRoute>} />
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AppLayout>
+                    <Suspense fallback={<RouteFallback />}>
+                      <Admin />
+                    </Suspense>
+                  </AppLayout>
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/analytics"
+              element={
+                <AdminRoute>
+                  <AppLayout>
+                    <Suspense fallback={<RouteFallback />}>
+                      <AdminAnalytics />
+                    </Suspense>
+                  </AppLayout>
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/intelligence"
+              element={
+                <AdminRoute>
+                  <AppLayout>
+                    <Suspense fallback={<RouteFallback />}>
+                      <AdminIntelligence />
+                    </Suspense>
+                  </AppLayout>
+                </AdminRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </SaveGateProvider>
