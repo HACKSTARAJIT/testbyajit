@@ -244,14 +244,19 @@ export default function AIMockAnalyzer() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center gap-3">
-        <div className="rounded-xl bg-gradient-to-br from-primary to-secondary p-2 text-primary-foreground shadow-lg shadow-primary/20">
-          <Brain className="h-6 w-6" />
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-gradient-to-br from-primary to-secondary p-2 text-primary-foreground shadow-lg shadow-primary/20">
+            <Brain className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">AI Mock Analyzer</h1>
+            <p className="text-sm text-muted-foreground">Your premium mock analysis workspace.</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold">AI Mock Analyzer</h1>
-          <p className="text-sm text-muted-foreground">Your premium mock analysis workspace.</p>
-        </div>
+        <Button asChild size="sm" variant="outline">
+          <a href="/performance"><TrendingUp className="mr-1 h-4 w-4" />Performance Intelligence</a>
+        </Button>
       </header>
 
       {/* Dashboard */}
