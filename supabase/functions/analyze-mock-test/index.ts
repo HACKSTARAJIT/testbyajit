@@ -152,10 +152,27 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
 
     return json({ ok: true, report: parsed });
   } catch (e) {
-    console.error("analyze-mock-test error", e);
-    return json({ error: (e as Error).message }, 500);
+    const msg = e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e);
+    console.error("analyze-mock-test error", msg);
+    try {
+      const body = await req.clone().json().catch(() => ({}));
+      if (body?.reportId) {
+        const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        await admin.from("ai_mock_reports").update({ status: "failed", error: msg.slice(0, 1000) }).eq("id", body.reportId);
+      }
+    } catch (_) { /* ignore */ }
+    return json({ error: msg }, 500);
   }
 });
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -163,3 +180,4 @@ function json(body: unknown, status = 200) {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
+
