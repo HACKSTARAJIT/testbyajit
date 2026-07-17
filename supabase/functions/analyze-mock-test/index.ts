@@ -289,6 +289,51 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
   }
 }
 
+function extractJSON(raw: string): any {
+  let s = raw.trim()
+    .replace(/^\uFEFF/, "")
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
+  if (!s.startsWith("{") && !s.startsWith("[")) {
+    const oi = s.indexOf("{"), ai = s.indexOf("[");
+    const isArr = ai !== -1 && (oi === -1 || ai < oi);
+    const start = isArr ? ai : oi;
+    const end = isArr ? s.lastIndexOf("]") : s.lastIndexOf("}");
+    if (start === -1 || end <= start) throw new Error("No JSON object found");
+    s = s.slice(start, end + 1);
+  }
+  try { return JSON.parse(s); } catch (e) {
+    // Try trimming to last balanced brace
+    const end = s.lastIndexOf("}");
+    if (end > 0) {
+      try { return JSON.parse(s.slice(0, end + 1)); } catch { /* fallthrough */ }
+    }
+    throw e;
+  }
+}
+
+function toNum(v: any): number | null {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "number") return isFinite(v) ? v : null;
+  const m = String(v).match(/-?\d+(\.\d+)?/);
+  return m ? Number(m[0]) : null;
+}
+
+function validateReport(r: any): boolean {
+  if (!r || typeof r !== "object") return false;
+  if (!r.totals || typeof r.totals !== "object") return false;
+  const t = r.totals;
+  if (typeof t.questions !== "number" || t.questions <= 0) return false;
+  if (r.accuracy === undefined || r.accuracy === null) return false;
+  if (!Array.isArray(r.subject_analysis)) return false;
+  // At least one narrative field must be non-empty
+  const narratives = [r.coach_feedback, r.overall_performance, r.performance_summary];
+  if (!narratives.some((x) => typeof x === "string" && x.trim().length > 20)) return false;
+  return true;
+}
+
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
   const chunk = 0x8000;
