@@ -125,6 +125,7 @@ export function TestEngine({
       current_index: current,
       answers,
       marked,
+      guesses,
       time_taken_seconds: timeTaken ?? Math.round((Date.now() - startTime.current) / 1000),
     };
     if (attemptId.current) {
@@ -133,7 +134,7 @@ export function TestEngine({
       const { data } = await supabase.from("test_attempts").insert(payload).select("id").single();
       if (data) attemptId.current = data.id;
     }
-  }, [canSave, userId, test.id, stats, sessionQs.length, mode, current, answers, marked]);
+  }, [canSave, userId, test.id, stats, sessionQs.length, mode, current, answers, marked, guesses]);
 
   // create/resume attempt on mount
   useEffect(() => {
