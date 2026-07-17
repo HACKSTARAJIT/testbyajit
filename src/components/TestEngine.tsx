@@ -415,10 +415,26 @@ export function TestEngine({
 
       {/* Question card */}
       <div key={q.id} className="animate-fade-in rounded-3xl border border-primary/10 bg-gradient-to-br from-card to-muted/30 p-5 shadow-md">
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-gradient-royal px-3 py-1 text-xs font-bold text-white">Q{current + 1}</span>
           {marked[q.id] === "review" && <Badge className="bg-warning text-white">Marked for Review</Badge>}
           {marked[q.id] === "doubt" && <Badge className="bg-warning text-white">Doubt</Badge>}
+          <button
+            type="button"
+            onClick={toggleGuess}
+            aria-pressed={!!guessArmed[q.id]}
+            aria-label="Toggle guess mode for this question"
+            className={cn(
+              "ml-auto inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+              guessArmed[q.id]
+                ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                : "border-border bg-muted/50 text-muted-foreground hover:border-primary/50"
+            )}
+            title="Mark this answer as a guess (does not affect scoring)"
+          >
+            <Dice5 className="h-3.5 w-3.5" />
+            🎲 Guess {guessArmed[q.id] ? "ON" : "OFF"}
+          </button>
         </div>
         <p className="text-lg font-semibold leading-relaxed">{q.question_text}</p>
 
