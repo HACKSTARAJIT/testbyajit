@@ -165,7 +165,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <main className="container py-6 animate-fade-in">{children}</main>
       <footer className="border-t py-6 text-center text-xs text-muted-foreground">
         <img src={brandLogo} alt="AJIT 360 logo" width={28} height={28} className="mx-auto mb-2 h-7 w-7 rounded-lg" loading="lazy" />
-        <p>© {new Date().getFullYear()} AJIT 360</p>
+        <p className="font-semibold text-primary">Learn • Practice • Analyze • Succeed</p>
+        <p className="mt-1">© {new Date().getFullYear()} AJIT 360 — AI Powered Learning Platform</p>
         <p className="mt-0.5">Designed &amp; Developed by Ajit Singh</p>
         <Link to="/about" className="story-link mt-1 inline-block text-primary">About</Link>
       </footer>
