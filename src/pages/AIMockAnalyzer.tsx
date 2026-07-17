@@ -103,7 +103,19 @@ export default function AIMockAnalyzer() {
       await supabase.from("ai_mock_reports").update({ status: "analyzing", error: null }).eq("id", id);
       await load();
       const { data, error } = await supabase.functions.invoke("analyze-mock-test", { body: { reportId: id } });
-      if (error) throw error;
+      if (error) {
+        // Surface real backend error from response body
+        let backendMsg = error.message;
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx?.body) {
+            const text = typeof ctx.body === "string" ? ctx.body : await new Response(ctx.body).text();
+            try { backendMsg = JSON.parse(text).error ?? text; } catch { backendMsg = text; }
+          }
+        } catch { /* ignore */ }
+        throw new Error(backendMsg || "Analysis failed");
+      }
+      if ((data as any)?.error) throw new Error((data as any).error);
       toast.success("Analysis complete");
       await load();
       const fresh = (await supabase.from("ai_mock_reports").select("*").eq("id", id).single()).data as any;
