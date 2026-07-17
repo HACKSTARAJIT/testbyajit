@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_coach_snapshots: {
+        Row: {
+          biggest_mistake: string | null
+          created_at: string
+          focus: string | null
+          id: string
+          motivation: string | null
+          recommendations: Json
+          report_id: string | null
+          revision_goal: string | null
+          sync_summary: Json
+          target_score: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          biggest_mistake?: string | null
+          created_at?: string
+          focus?: string | null
+          id?: string
+          motivation?: string | null
+          recommendations?: Json
+          report_id?: string | null
+          revision_goal?: string | null
+          sync_summary?: Json
+          target_score?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          biggest_mistake?: string | null
+          created_at?: string
+          focus?: string | null
+          id?: string
+          motivation?: string | null
+          recommendations?: Json
+          report_id?: string | null
+          revision_goal?: string | null
+          sync_summary?: Json
+          target_score?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_coach_snapshots_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: true
+            referencedRelation: "ai_mock_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_mock_reports: {
         Row: {
           accuracy: number | null
@@ -531,6 +584,59 @@ export type Database = {
           },
         ]
       }
+      smart_goals: {
+        Row: {
+          created_at: string
+          current_value: number
+          deadline: string | null
+          description: string | null
+          id: string
+          report_id: string | null
+          status: string
+          target_value: number | null
+          title: string
+          unit: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_value?: number
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          report_id?: string | null
+          status?: string
+          target_value?: number | null
+          title: string
+          unit?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_value?: number
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          report_id?: string | null
+          status?: string
+          target_value?: number | null
+          title?: string
+          unit?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_goals_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "ai_mock_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       study_activity: {
         Row: {
           id: string
@@ -560,6 +666,83 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      study_plan_tasks: {
+        Row: {
+          chapter: string | null
+          completed_at: string | null
+          created_at: string
+          day_index: number | null
+          description: string | null
+          estimated_minutes: number
+          id: string
+          practice_questions: number
+          priority: string
+          report_id: string | null
+          revision_minutes: number
+          scope: string
+          status: string
+          subject: string | null
+          task_date: string | null
+          title: string
+          topic: string | null
+          updated_at: string
+          user_id: string
+          week_index: number | null
+        }
+        Insert: {
+          chapter?: string | null
+          completed_at?: string | null
+          created_at?: string
+          day_index?: number | null
+          description?: string | null
+          estimated_minutes?: number
+          id?: string
+          practice_questions?: number
+          priority?: string
+          report_id?: string | null
+          revision_minutes?: number
+          scope?: string
+          status?: string
+          subject?: string | null
+          task_date?: string | null
+          title: string
+          topic?: string | null
+          updated_at?: string
+          user_id: string
+          week_index?: number | null
+        }
+        Update: {
+          chapter?: string | null
+          completed_at?: string | null
+          created_at?: string
+          day_index?: number | null
+          description?: string | null
+          estimated_minutes?: number
+          id?: string
+          practice_questions?: number
+          priority?: string
+          report_id?: string | null
+          revision_minutes?: number
+          scope?: string
+          status?: string
+          subject?: string | null
+          task_date?: string | null
+          title?: string
+          topic?: string | null
+          updated_at?: string
+          user_id?: string
+          week_index?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_plan_tasks_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "ai_mock_reports"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subjects: {
         Row: {
@@ -815,10 +998,12 @@ export type Database = {
           question_text: string | null
           selected_option: string | null
           source: string
+          source_report_id: string | null
           status: string
           subject_id: string | null
           test_id: string | null
           test_part: string | null
+          topic: string | null
           updated_at: string
           user_id: string
           wrong_count: number
@@ -840,10 +1025,12 @@ export type Database = {
           question_text?: string | null
           selected_option?: string | null
           source?: string
+          source_report_id?: string | null
           status?: string
           subject_id?: string | null
           test_id?: string | null
           test_part?: string | null
+          topic?: string | null
           updated_at?: string
           user_id: string
           wrong_count?: number
@@ -865,10 +1052,12 @@ export type Database = {
           question_text?: string | null
           selected_option?: string | null
           source?: string
+          source_report_id?: string | null
           status?: string
           subject_id?: string | null
           test_id?: string | null
           test_part?: string | null
+          topic?: string | null
           updated_at?: string
           user_id?: string
           wrong_count?: number
@@ -879,6 +1068,13 @@ export type Database = {
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wrong_questions_source_report_id_fkey"
+            columns: ["source_report_id"]
+            isOneToOne: false
+            referencedRelation: "ai_mock_reports"
             referencedColumns: ["id"]
           },
           {
