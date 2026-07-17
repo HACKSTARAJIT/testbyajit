@@ -138,6 +138,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Today's Target — Daily Accountability */}
+      {user && <TodayTargetCard userId={user.id} />}
+
       {/* Continue Learning — compact */}
       {user && continueLearning && (
         <Link to={continueLearning.path} className="block animate-fade-in">
