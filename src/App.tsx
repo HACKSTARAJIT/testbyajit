@@ -80,6 +80,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={withLayout(<Dashboard />)} />
+            <Route path="/my-dashboard" element={withLayout(<StudentDashboard />)} />
             <Route path="/subjects" element={withLayout(<Subjects />)} />
             <Route path="/subjects/:id" element={withLayout(<SubjectDetail />)} />
             <Route path="/tests" element={withLayout(<Tests />)} />
