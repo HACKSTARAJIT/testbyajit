@@ -8,11 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "@/hooks/use-toast";
 import {
   Sparkles, Target, Flame, BookOpen, CalendarDays, CheckCircle2,
   ArrowLeft, TrendingUp, AlertTriangle, ListChecks, Trophy,
+  Brain, Clock, Bell, Lightbulb, MessageSquare, Activity, ShieldCheck,
 } from "lucide-react";
+import {
+  greeting, memoryEngine, learningStyle, coachAlerts, personalInsights, currentStreak,
+  type CoachWrong, type CoachAttempt, type ChapterRef, type SubjectRef,
+} from "@/lib/aiCoachInsights";
+
 
 type Snapshot = {
   id: string;
@@ -72,31 +77,50 @@ export default function AICoach() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [wrongs, setWrongs] = useState<CoachWrong[]>([]);
+  const [attempts, setAttempts] = useState<CoachAttempt[]>([]);
+  const [chapters, setChapters] = useState<ChapterRef[]>([]);
+  const [subjects, setSubjects] = useState<SubjectRef[]>([]);
+  const [latestReport, setLatestReport] = useState<any>(null);
+  const [firstName, setFirstName] = useState("Student");
 
   useEffect(() => {
     if (!user) return;
     (async () => {
       setLoading(true);
-      // Latest snapshot
-      const { data: snaps } = await (supabase as any)
-        .from("ai_coach_snapshots").select("*")
-        .eq("user_id", user.id).order("created_at", { ascending: false }).limit(1);
-      const snap = snaps?.[0] ?? null;
+      const [snapRes, taskRes, goalRes, wrongRes, attemptRes, chapRes, subRes, reportRes, profRes] = await Promise.all([
+        (supabase as any).from("ai_coach_snapshots").select("*")
+          .eq("user_id", user.id).order("created_at", { ascending: false }).limit(1),
+        (supabase as any).from("study_plan_tasks").select("*").eq("user_id", user.id).order("task_date"),
+        (supabase as any).from("smart_goals").select("*")
+          .eq("user_id", user.id).eq("status", "active").order("deadline"),
+        supabase.from("wrong_questions")
+          .select("id, chapter_id, subject_id, priority, status, wrong_count, correct_revision_count, consecutive_correct, last_attempt_at, mastered_at, topic")
+          .eq("user_id", user.id),
+        supabase.from("test_attempts").select("accuracy, marks_obtained, created_at")
+          .eq("user_id", user.id).order("created_at", { ascending: false }).limit(20),
+        supabase.from("chapters").select("id, name, subject_id"),
+        supabase.from("subjects").select("id, name"),
+        supabase.from("ai_mock_reports").select("*")
+          .eq("user_id", user.id).eq("status", "completed").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
+      ]);
+      const snap = snapRes.data?.[0] ?? null;
       setSnapshot(snap);
-
-      // Tasks for latest report (or all if none)
       const reportFilter = snap?.report_id;
-      const q = (supabase as any).from("study_plan_tasks").select("*").eq("user_id", user.id);
-      const { data: t } = reportFilter ? await q.eq("report_id", reportFilter).order("task_date") : await q.order("task_date");
-      setTasks(t ?? []);
-
-      const { data: g } = await (supabase as any)
-        .from("smart_goals").select("*")
-        .eq("user_id", user.id).eq("status", "active").order("deadline");
-      setGoals(g ?? []);
+      setTasks((taskRes.data ?? []).filter((t: any) => !reportFilter || t.report_id === reportFilter || !t.report_id));
+      setGoals(goalRes.data ?? []);
+      setWrongs((wrongRes.data as any) ?? []);
+      setAttempts((attemptRes.data as any) ?? []);
+      setChapters((chapRes.data as any) ?? []);
+      setSubjects((subRes.data as any) ?? []);
+      setLatestReport(reportRes.data ?? null);
+      const dn = (profRes.data?.display_name ?? "").trim();
+      if (dn) setFirstName(dn.split(/\s+/)[0]);
       setLoading(false);
     })();
   }, [user]);
+
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const grouped = useMemo(() => ({
@@ -121,11 +145,34 @@ export default function AICoach() {
     }).eq("id", t.id);
   }
 
+  // ---- Insights / Memory / Alerts (derived) ----
+  const tasksByDate = useMemo(() => {
+    const m = new Map<string, { done: number; total: number }>();
+    tasks.forEach((t) => {
+      if (!t.task_date) return;
+      const cur = m.get(t.task_date) ?? { done: 0, total: 0 };
+      cur.total++; if (t.status === "done") cur.done++;
+      m.set(t.task_date, cur);
+    });
+    return m;
+  }, [tasks]);
+
+  const memory = useMemo(() => memoryEngine(wrongs, chapters), [wrongs, chapters]);
+  const style = useMemo(() => learningStyle(attempts), [attempts]);
+  const insights = useMemo(() => personalInsights({ wrongs, chapters, subjects, attempts }), [wrongs, chapters, subjects, attempts]);
+  const streak = useMemo(() => currentStreak(attempts, tasksByDate), [attempts, tasksByDate]);
+  const alerts = useMemo(() => coachAlerts({
+    wrongs, attempts, memory,
+    lastReportAt: latestReport?.created_at ?? null,
+    todayTasksDone: doneToday, todayTasksTotal: totalToday,
+  }), [wrongs, attempts, memory, latestReport, doneToday, totalToday]);
+
   if (loading) {
     return <div className="p-6 text-muted-foreground">Loading AI Coach…</div>;
   }
 
-  if (!snapshot) {
+  const hasAnyData = snapshot || wrongs.length > 0 || attempts.length > 0;
+  if (!hasAnyData) {
     return (
       <div className="max-w-3xl mx-auto p-6 space-y-4">
         <Button variant="ghost" onClick={() => navigate("/ai-mock-analyzer")}>
@@ -133,59 +180,215 @@ export default function AICoach() {
         </Button>
         <Card className="border-white/10 bg-white/5 backdrop-blur">
           <CardContent className="p-10 text-center space-y-3">
-            <Sparkles className="w-10 h-10 mx-auto text-primary" />
-            <h2 className="text-xl font-semibold">AI Coach is waiting for your first Mock</h2>
-            <p className="text-muted-foreground">Upload a Mock Test to unlock your personalised Study Planner, Coach Dashboard and Smart Goals.</p>
-            <Button asChild><Link to="/ai-mock-analyzer">Upload Mock Test</Link></Button>
+            <Brain className="w-10 h-10 mx-auto text-primary" />
+            <h2 className="text-xl font-semibold">Your AI Coach is warming up</h2>
+            <p className="text-muted-foreground">Attempt a Practice Test या Upload a Mock Test — फिर AI Coach आपकी personalised journey बनाना शुरू करेगा।</p>
+            <div className="flex gap-2 justify-center pt-2">
+              <Button asChild><Link to="/tests">Start Practice</Link></Button>
+              <Button asChild variant="outline"><Link to="/ai-mock-analyzer">Upload Mock</Link></Button>
+            </div>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  const rec = snapshot.recommendations ?? {};
-  const sync = snapshot.sync_summary ?? {};
+  const rec = snapshot?.recommendations ?? {};
+  const sync = snapshot?.sync_summary ?? {};
+  const readinessPct = Math.round(Number(latestReport?.readiness_score ?? snapshot ? (latestReport?.readiness_score ?? 0) : 0)) || 0;
+  const accPct = Math.round(Number(latestReport?.accuracy ?? 0)) || 0;
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/ai-mock-analyzer")}>
-            <ArrowLeft className="w-4 h-4 mr-1" /> Mock Analyzer
-          </Button>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-              <Sparkles className="w-6 h-6 text-primary" /> Personal AI Coach
-            </h1>
-            <p className="text-sm text-muted-foreground">Your daily study actions, generated from your latest Mock.</p>
+      {/* Greeting / hero */}
+      <Card className="border-white/10 bg-gradient-to-br from-primary/15 via-white/5 to-transparent backdrop-blur">
+        <CardContent className="p-5 md:p-6">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <div className="text-xs uppercase tracking-widest text-primary/80">AI Coach</div>
+              <h1 className="text-2xl md:text-3xl font-bold mt-1">{greeting(firstName)} 👋</h1>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xl">
+                {snapshot?.motivation ?? `${firstName}, आज एक छोटा target set करें और Smart Revision से शुरुआत करें।`}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="secondary"><Link to="/ai-coach/chat"><MessageSquare className="w-4 h-4 mr-1" /> Chat with Coach</Link></Button>
+              <Button asChild size="sm" variant="outline"><Link to="/smart-revision">Smart Revision</Link></Button>
+              <Button asChild size="sm" variant="ghost"><Link to="/ai-mock-analyzer"><ArrowLeft className="w-4 h-4 mr-1" /> Mock Analyzer</Link></Button>
+            </div>
           </div>
-        </div>
-        <Button asChild variant="outline"><Link to="/smart-revision">Open Smart Revision</Link></Button>
-      </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-5">
+            <Stat icon={<Target className="w-4 h-4" />} label="Today's Target" value={`${doneToday}/${totalToday || 0}`} />
+            <Stat icon={<Flame className="w-4 h-4" />} label="Current Streak" value={`${streak}🔥`} />
+            <Stat icon={<Brain className="w-4 h-4" />} label="Memory Strength" value={`${memory.strength}%`} />
+            <Stat icon={<ShieldCheck className="w-4 h-4" />} label="Readiness" value={`${readinessPct}%`} />
+            <Stat icon={<TrendingUp className="w-4 h-4" />} label="Latest Accuracy" value={`${accPct}%`} />
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Coach dashboard */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <CoachCard icon={<Target className="w-5 h-5" />} title="Today's Focus" tone="primary" text={snapshot.focus} />
-        <CoachCard icon={<AlertTriangle className="w-5 h-5" />} title="Today's Biggest Mistake" tone="orange" text={snapshot.biggest_mistake} />
-        <CoachCard icon={<TrendingUp className="w-5 h-5" />} title="Path to Target Score" tone="emerald" text={snapshot.target_score} />
-        <CoachCard icon={<BookOpen className="w-5 h-5" />} title="Today's Revision Goal" tone="blue" text={snapshot.revision_goal} />
-        <CoachCard icon={<Flame className="w-5 h-5" />} title="Today's Motivation" tone="pink" text={snapshot.motivation} />
+      {/* Alerts */}
+      {alerts.length > 0 && (
         <Card className="border-white/10 bg-white/5 backdrop-blur">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-primary" /> Today's Progress
-            </CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><Bell className="w-4 h-4 text-primary" /> AI Alerts</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {alerts.map((a, i) => (
+              <div key={i} className={`text-sm px-3 py-2 rounded-lg border ${
+                a.level === "danger" ? "bg-red-500/10 border-red-500/30 text-red-200"
+                : a.level === "warn" ? "bg-orange-500/10 border-orange-500/30 text-orange-200"
+                : "bg-blue-500/10 border-blue-500/30 text-blue-200"
+              }`}>{a.text}</div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+
+
+      {/* Coach dashboard (from latest mock) */}
+      {snapshot && (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <CoachCard icon={<Target className="w-5 h-5" />} title="Today's Focus" tone="primary" text={snapshot.focus} />
+          <CoachCard icon={<AlertTriangle className="w-5 h-5" />} title="Today's Biggest Mistake" tone="orange" text={snapshot.biggest_mistake} />
+          <CoachCard icon={<TrendingUp className="w-5 h-5" />} title="Path to Target Score" tone="emerald" text={snapshot.target_score} />
+          <CoachCard icon={<BookOpen className="w-5 h-5" />} title="Today's Revision Goal" tone="blue" text={snapshot.revision_goal} />
+          <CoachCard icon={<Flame className="w-5 h-5" />} title="Today's Motivation" tone="pink" text={snapshot.motivation} />
+          <Card className="border-white/10 bg-white/5 backdrop-blur">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-primary" /> Today's Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{doneToday}<span className="text-base text-muted-foreground">/{totalToday || 0}</span></div>
+              <Progress className="mt-2" value={totalToday ? (doneToday / totalToday) * 100 : 0} />
+              <p className="text-xs text-muted-foreground mt-2">
+                Smart Revision Sync — matched {sync.matched ?? 0}, priority bumped {sync.priority_bumped ?? 0}, added {sync.added ?? 0}.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Exam Readiness */}
+      {latestReport && (
+        <Card className="border-white/10 bg-white/5 backdrop-blur">
+          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="w-5 h-5 text-primary" /> Exam Readiness</CardTitle></CardHeader>
+          <CardContent className="grid md:grid-cols-3 gap-4">
+            <div>
+              <div className="text-xs text-muted-foreground">Current Readiness</div>
+              <div className="text-3xl font-bold">{readinessPct}%</div>
+              <Progress value={readinessPct} className="mt-2" />
+              <p className="text-xs text-muted-foreground mt-2">{latestReport.report?.readiness_reason ?? "Latest Mock के आधार पर calculated."}</p>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Strength Areas</div>
+              <div className="flex flex-wrap gap-1.5">
+                {((latestReport.report?.strong_subjects ?? []) as string[]).slice(0, 6).map((s, i) => (
+                  <Badge key={i} className="bg-emerald-500/15 border-emerald-500/30 text-emerald-200" variant="outline">{s}</Badge>
+                ))}
+                {(!latestReport.report?.strong_subjects || latestReport.report.strong_subjects.length === 0) && <p className="text-xs text-muted-foreground">—</p>}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Risk Areas</div>
+              <div className="flex flex-wrap gap-1.5">
+                {((latestReport.report?.priority_chapters ?? latestReport.report?.weak_chapters ?? []) as string[]).slice(0, 6).map((s, i) => (
+                  <Badge key={i} className="bg-red-500/15 border-red-500/30 text-red-200" variant="outline">{s}</Badge>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                {latestReport.report?.readiness_to_90 ?? "90% तक पहुँचने के लिए weak chapters की consistent Revision करें।"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Memory Engine + Forgetting Curve */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card className="border-white/10 bg-white/5 backdrop-blur">
+          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><Brain className="w-5 h-5 text-primary" /> AI Memory Engine</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <div className="text-xs text-muted-foreground">Overall Memory Strength</div>
+              <div className="text-2xl font-bold">{memory.strength}%</div>
+              <Progress value={memory.strength} className="mt-2" />
+            </div>
+            <MemoryList title="🔴 Urgent Revision" items={memory.urgent} tone="red" empty="Nothing critical right now." />
+            <MemoryList title="🟠 Likely to Forget Soon" items={memory.forgetSoon} tone="orange" empty="Memory holding up well." />
+            {memory.recentlyMastered.length > 0 && (
+              <div>
+                <div className="text-xs font-semibold mb-1">✅ Recently Mastered</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {memory.recentlyMastered.map((m) => (
+                    <Badge key={m.id} variant="outline" className="text-[10px] bg-emerald-500/10 border-emerald-500/30 text-emerald-200">
+                      {m.label} · {m.daysAgo}d ago
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/10 bg-white/5 backdrop-blur">
+          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><Clock className="w-5 h-5 text-primary" /> Forgetting Curve</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{doneToday}<span className="text-base text-muted-foreground">/{totalToday || 0}</span></div>
-            <Progress className="mt-2" value={totalToday ? (doneToday / totalToday) * 100 : 0} />
-            <p className="text-xs text-muted-foreground mt-2">
-              Smart Revision Sync — matched {sync.matched ?? 0}, priority bumped {sync.priority_bumped ?? 0}, added {sync.added ?? 0}.
-            </p>
+            {memory.all.length === 0 ? (
+              <p className="text-sm text-muted-foreground">जब आप Practice शुरू करेंगे, यहाँ Chapters की memory decay दिखेगी।</p>
+            ) : (
+              <div className="space-y-2">
+                {memory.all.slice(0, 8).map((m) => (
+                  <div key={m.id} className="p-2.5 rounded-lg border border-white/10 bg-white/5">
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-sm font-medium truncate">{m.label}</span>
+                      <Badge variant="outline" className={`text-[10px] ${
+                        m.risk === "critical" ? "bg-red-500/15 border-red-500/40 text-red-200"
+                        : m.risk === "high" ? "bg-orange-500/15 border-orange-500/40 text-orange-200"
+                        : m.risk === "medium" ? "bg-yellow-500/15 border-yellow-500/40 text-yellow-200"
+                        : "bg-emerald-500/15 border-emerald-500/40 text-emerald-200"
+                      }`}>{m.risk}</Badge>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <Progress value={m.retention} className="flex-1 h-1.5" />
+                      <span className="text-[11px] text-muted-foreground w-16 text-right">{m.retention}% · {m.daysSince}d</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">{m.action}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Learning Style + Personal Insights */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card className="border-white/10 bg-white/5 backdrop-blur">
+          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><Activity className="w-5 h-5 text-primary" /> Learning Style Detection</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {style.length === 0 ? (
+              <p className="text-sm text-muted-foreground">कम से कम 3 Practice attempts के बाद study pattern detect होगा।</p>
+            ) : style.map((s, i) => (
+              <div key={i} className="text-sm px-3 py-2 rounded-lg bg-white/5 border border-white/10">{s.text}</div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/10 bg-white/5 backdrop-blur">
+          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><Lightbulb className="w-5 h-5 text-primary" /> Personal Insights</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {insights.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Practice के साथ personalised insights यहाँ बनेंगे।</p>
+            ) : insights.map((s, i) => (
+              <div key={i} className="text-sm px-3 py-2 rounded-lg bg-white/5 border border-white/10">{s.text}</div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+
 
       {/* Planner */}
       <Card className="border-white/10 bg-white/5 backdrop-blur">
@@ -338,6 +541,43 @@ function RecList({ title, items, empty }: { title: string; items: { label: strin
             <Link key={i} to={it.href}><Badge variant="outline" className="hover:bg-white/10">{it.label}</Badge></Link>
           ) : (
             <Badge key={i} variant="outline">{it.label}</Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur px-3 py-2.5">
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">{icon}{label}</div>
+      <div className="text-lg font-bold mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+function MemoryList({ title, items, tone, empty }: {
+  title: string;
+  items: { id: string; label: string; retention: number; daysSince: number; action: string }[];
+  tone: "red" | "orange";
+  empty: string;
+}) {
+  return (
+    <div>
+      <div className="text-xs font-semibold mb-1.5">{title}</div>
+      {items.length === 0 ? (
+        <p className="text-xs text-muted-foreground">{empty}</p>
+      ) : (
+        <div className="space-y-1.5">
+          {items.map((m) => (
+            <div key={m.id} className={`px-2.5 py-1.5 rounded-md border ${tone === "red" ? "border-red-500/30 bg-red-500/5" : "border-orange-500/30 bg-orange-500/5"}`}>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium truncate">{m.label}</span>
+                <span className="text-[10px] text-muted-foreground">Last: {m.daysSince}d ago</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground">{m.action}</div>
+            </div>
           ))}
         </div>
       )}
