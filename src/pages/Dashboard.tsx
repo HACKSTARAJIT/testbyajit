@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { getSignedUrl } from "@/lib/storage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,16 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  BookOpen, Search, ChevronRight, Download, Smartphone,
-  Sparkles, Pin, Flame, Layers, FileText, ClipboardList, Target, Clock, AlertTriangle,
+  BookOpen, Search, ChevronRight, Sparkles, Pin, Flame,
+  Layers, FileText, ClipboardList, Clock, PlayCircle,
 } from "lucide-react";
-import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useHomeData } from "@/components/home/useHomeData";
-import {
-  HomeHero, TodaysMission, QuickStats, AIRecommendation, WeeklyProgress,
-  AchievementsRow, DailyChallenge, QuickActions, GoalsPanel, RecentActivity, OnboardingCards, HomeSkeleton,
-} from "@/components/home/HomeSections";
 import FloatingAIButton from "@/components/home/FloatingAIButton";
 
 interface Subject {
@@ -33,36 +27,38 @@ interface Subject {
   created_at: string;
   updated_at: string;
 }
-
 interface Counts { chapters: number; pdfs: number; tests: number }
 
-const fmtSize = (bytes?: number | null) => {
-  if (!bytes) return null;
-  const mb = bytes / (1024 * 1024);
-  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-};
-
 const isNew = (iso: string) => Date.now() - new Date(iso).getTime() < 7 * 864e5;
+
+// Distinct color themes per subject card (cycles by index)
+const CARD_THEMES = [
+  { grad: "from-fuchsia-500/25 via-purple-500/15 to-indigo-500/10", ring: "ring-fuchsia-400/30", icon: "from-fuchsia-500 to-purple-600", bar: "bg-fuchsia-500" },
+  { grad: "from-sky-500/25 via-cyan-500/15 to-blue-500/10", ring: "ring-cyan-400/30", icon: "from-sky-500 to-blue-600", bar: "bg-cyan-500" },
+  { grad: "from-emerald-500/25 via-teal-500/15 to-green-500/10", ring: "ring-emerald-400/30", icon: "from-emerald-500 to-teal-600", bar: "bg-emerald-500" },
+  { grad: "from-amber-500/25 via-orange-500/15 to-red-500/10", ring: "ring-amber-400/30", icon: "from-amber-500 to-orange-600", bar: "bg-amber-500" },
+  { grad: "from-rose-500/25 via-pink-500/15 to-red-500/10", ring: "ring-rose-400/30", icon: "from-rose-500 to-pink-600", bar: "bg-rose-500" },
+  { grad: "from-violet-500/25 via-indigo-500/15 to-blue-500/10", ring: "ring-violet-400/30", icon: "from-violet-500 to-indigo-600", bar: "bg-violet-500" },
+  { grad: "from-lime-500/25 via-green-500/15 to-emerald-500/10", ring: "ring-lime-400/30", icon: "from-lime-500 to-green-600", bar: "bg-lime-500" },
+  { grad: "from-yellow-500/25 via-amber-500/15 to-orange-500/10", ring: "ring-yellow-400/30", icon: "from-yellow-500 to-amber-600", bar: "bg-yellow-500" },
+];
 
 export default function Dashboard() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [counts, setCounts] = useState<Record<string, Counts>>({});
   const [pdfsBySubject, setPdfsBySubject] = useState<Record<string, string[]>>({});
-  const [release, setRelease] = useState<any | null>(null);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
-  const [downloading, setDownloading] = useState(false);
   const { user } = useAuth();
   const home = useHomeData(user?.id);
 
   useEffect(() => {
     (async () => {
-      const [subs, chapters, pdfs, tests, rel] = await Promise.all([
+      const [subs, chapters, pdfs, tests] = await Promise.all([
         supabase.from("subjects").select("*").order("is_pinned", { ascending: false }).order("sort_order").order("name"),
         supabase.from("chapters").select("subject_id"),
         supabase.from("pdfs").select("id,subject_id"),
         supabase.from("tests").select("subject_id"),
-        supabase.from("app_release").select("*").order("updated_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
       const map: Record<string, Counts> = {};
       const bySub: Record<string, string[]> = {};
@@ -80,12 +76,10 @@ export default function Dashboard() {
       setSubjects((subs.data as Subject[]) ?? []);
       setCounts(map);
       setPdfsBySubject(bySub);
-      setRelease(rel.data ?? null);
       setLoading(false);
     })();
   }, []);
 
-  // Per-subject stats derived from home data
   const [pdfProgress, setPdfProgress] = useState<any[]>([]);
   useEffect(() => {
     if (!user) { setPdfProgress([]); return; }
@@ -94,33 +88,32 @@ export default function Dashboard() {
   }, [user]);
 
   const subjectStats = useMemo(() => {
-    const stats: Record<string, { pending: number; lastOpened?: string; completionPct: number }> = {};
-    home.wrongs.forEach((w: any) => {
-      if (!w.subject_id || w.status !== "pending") return;
-      stats[w.subject_id] = stats[w.subject_id] ?? { pending: 0, completionPct: 0 };
-      stats[w.subject_id].pending += 1;
-    });
+    const stats: Record<string, { lastOpened?: string; completionPct: number }> = {};
     home.activity.forEach((a: any) => {
       if (!a.subject_id) return;
-      const s = stats[a.subject_id] = stats[a.subject_id] ?? { pending: 0, completionPct: 0 };
+      const s = stats[a.subject_id] = stats[a.subject_id] ?? { completionPct: 0 };
       if (!s.lastOpened || new Date(a.opened_at) > new Date(s.lastOpened)) s.lastOpened = a.opened_at;
     });
     Object.keys(pdfsBySubject).forEach((sid) => {
       const ids = new Set(pdfsBySubject[sid]);
       const done = pdfProgress.filter((p: any) => p.status === "completed" && ids.has(p.pdf_id)).length;
       const total = ids.size || 1;
-      const s = stats[sid] = stats[sid] ?? { pending: 0, completionPct: 0 };
+      const s = stats[sid] = stats[sid] ?? { completionPct: 0 };
       s.completionPct = Math.round((done / total) * 100);
     });
     return stats;
-  }, [home.wrongs, home.activity, pdfsBySubject, pdfProgress]);
+  }, [home.activity, pdfsBySubject, pdfProgress]);
 
-  const continueTo = useMemo(() => {
+  const continueLearning = useMemo(() => {
     const a = home.activity[0];
     if (!a) return null;
-    const path = a.subject_id ? `/subjects/${a.subject_id}` : "/subjects";
-    return { path, label: a.title ?? a.item_type };
-  }, [home.activity]);
+    const subj = subjects.find((s) => s.id === a.subject_id);
+    return {
+      path: a.subject_id ? `/subjects/${a.subject_id}` : "/subjects",
+      subject: subj?.name ?? "Study",
+      title: a.title ?? a.item_type ?? "Continue",
+    };
+  }, [home.activity, subjects]);
 
   const filtered = useMemo(
     () => subjects.filter((s) =>
@@ -129,169 +122,114 @@ export default function Dashboard() {
     [subjects, q]
   );
 
-  const handleDownload = async () => {
-    if (!release?.file_path) {
-      toast.error("APK अभी उपलब्ध नहीं है / App not available yet");
-      return;
-    }
-    setDownloading(true);
-    const url = await getSignedUrl(release.file_path, "app-releases");
-    setDownloading(false);
-    if (!url) { toast.error("Download failed, try again"); return; }
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ajit360-${release.version ?? "app"}.apk`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  };
-
-  const isNewStudent = !!user && !home.loading && home.testsCompleted === 0 && home.activity.length === 0;
-
   return (
-    <div className="space-y-6 pb-24">
-      {/* Signed-in hero + intelligence */}
-      {user ? (
-        home.loading ? <HomeSkeleton /> : (
-          <>
-            <HomeHero data={home} continueTo={continueTo} />
-            {isNewStudent ? <OnboardingCards /> : (
-              <>
-                <TodaysMission data={home} />
-                <QuickStats data={home} />
-                <AIRecommendation data={home} />
-                <DailyChallenge data={home} />
-                <WeeklyProgress data={home} />
-                <QuickActions />
-                <GoalsPanel data={home} />
-                <AchievementsRow data={home} />
-                <RecentActivity data={home} />
-              </>
-            )}
-          </>
-        )
-      ) : (
-        // Guest hero (unchanged look)
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-hero p-6 text-primary-foreground shadow-lg md:p-8 animate-fade-in">
-          <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-primary-foreground/10 blur-2xl" />
-          <div className="pointer-events-none absolute -bottom-12 -left-8 h-40 w-40 rounded-full bg-secondary/30 blur-2xl" />
-          <h1 className="text-2xl font-bold leading-tight md:text-3xl">AJIT 360</h1>
-          <p className="text-sm text-primary-foreground/85">प्रीमियम स्टडी लाइब्रेरी — सभी विषय एक जगह</p>
-          <Link to="/auth"><Button className="mt-4 bg-white text-primary hover:bg-white/90">Sign in to unlock AI</Button></Link>
-        </section>
-      )}
-
-      {/* APK download */}
-      <Card className="border-secondary/30 bg-gradient-to-br from-secondary/10 to-primary/5">
-        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-warm text-secondary-foreground shadow-md">
-              <Smartphone className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="flex items-center gap-2 font-semibold">📱 AJIT 360 App</p>
-              <p className="text-xs text-muted-foreground">
-                Version {release?.version ?? "1.0.0"}
-                {fmtSize(release?.file_size) && ` • ${fmtSize(release?.file_size)}`}
-                {release?.updated_at && ` • Updated ${new Date(release.updated_at).toLocaleDateString()}`}
-              </p>
-            </div>
-          </div>
-          <Button onClick={handleDownload} disabled={downloading} size="lg" className="w-full bg-gradient-warm shadow-md hover:opacity-90 sm:w-auto">
-            <Download className="mr-1 h-5 w-5" /> {downloading ? "Preparing..." : "Download Android App"}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Sticky search + count */}
-      <div className="sticky top-16 z-30 -mx-1 space-y-3 bg-background/80 px-1 py-2 backdrop-blur-lg">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input className="h-11 rounded-2xl pl-9 shadow-sm" placeholder="Search subjects... / विषय खोजें" value={q} onChange={(e) => setQ(e.target.value)} />
-          </div>
-          <div className="flex shrink-0 items-center gap-2 rounded-2xl border bg-card px-4 py-2 shadow-sm">
-            <BookOpen className="h-4 w-4 text-primary" />
-            <div className="leading-none">
-              <div className="text-lg font-bold">{subjects.length}</div>
-              <div className="text-[10px] text-muted-foreground">Subjects</div>
-            </div>
-          </div>
+    <div className="space-y-5 pb-24">
+      {/* Sticky search */}
+      <div className="sticky top-16 z-30 -mx-1 space-y-3 bg-background/70 px-1 py-2 backdrop-blur-xl">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="h-12 rounded-2xl border-border/60 bg-card/60 pl-9 shadow-sm backdrop-blur"
+            placeholder="Search subjects, chapters, PDFs, tests..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
         </div>
       </div>
 
-      {/* Subjects */}
+      {/* Continue Learning — compact */}
+      {user && continueLearning && (
+        <Link to={continueLearning.path} className="block animate-fade-in">
+          <Card className="overflow-hidden rounded-2xl border-primary/20 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent backdrop-blur">
+            <CardContent className="flex items-center gap-3 p-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-primary text-primary-foreground shadow">
+                <PlayCircle className="h-6 w-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Continue Learning</p>
+                <p className="truncate text-sm font-semibold">{continueLearning.subject}</p>
+                <p className="truncate text-xs text-muted-foreground">{continueLearning.title}</p>
+              </div>
+              <Button size="sm" className="shrink-0 rounded-full">Continue</Button>
+            </CardContent>
+          </Card>
+        </Link>
+      )}
+
+      {/* Subjects grid */}
       <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-semibold">All Subjects / सभी विषय</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold">All Subjects / सभी विषय</h2>
+          </div>
+          <span className="text-xs text-muted-foreground">{filtered.length} subjects</span>
         </div>
+
         {loading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-44 rounded-3xl" />)}
+            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-52 rounded-3xl" />)}
           </div>
         ) : filtered.length === 0 ? (
-          <Card><CardContent className="flex flex-col items-center gap-2 py-14 text-center text-muted-foreground">
-            <BookOpen className="h-10 w-10" />
-            <p>{q ? "कोई विषय नहीं मिला / No matching subjects" : "No subjects yet. Please check back soon!"}</p>
-          </CardContent></Card>
+          <Card>
+            <CardContent className="flex flex-col items-center gap-2 py-14 text-center text-muted-foreground">
+              <BookOpen className="h-10 w-10" />
+              <p>{q ? "कोई विषय नहीं मिला / No matching subjects" : "No subjects yet."}</p>
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((s) => {
+            {filtered.map((s, i) => {
               const c = counts[s.id] ?? { chapters: 0, pdfs: 0, tests: 0 };
-              const st = subjectStats[s.id] ?? { pending: 0, completionPct: 0, lastOpened: undefined as string | undefined };
-              const diff = st.pending >= 15 ? "Hard" : st.pending >= 5 ? "Medium" : "Easy";
-              const diffCls = diff === "Hard" ? "bg-rose-500/15 text-rose-600" : diff === "Medium" ? "bg-amber-500/15 text-amber-600" : "bg-emerald-500/15 text-emerald-600";
+              const st = subjectStats[s.id] ?? { completionPct: 0, lastOpened: undefined as string | undefined };
+              const t = CARD_THEMES[i % CARD_THEMES.length];
               return (
                 <Link key={s.id} to={`/subjects/${s.id}`} className="group animate-fade-in">
-                  <Card className="h-full overflow-hidden rounded-3xl border bg-card/70 backdrop-blur transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+                  <Card className={`relative h-full overflow-hidden rounded-3xl border border-border/40 bg-gradient-to-br ${t.grad} backdrop-blur-xl ring-1 ${t.ring} transition-all duration-200 hover:-translate-y-1 hover:shadow-xl`}>
                     <CardContent className="flex h-full flex-col gap-3 p-5">
                       <div className="flex items-start gap-3">
-                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-gradient-primary shadow-md">
+                        <div className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br ${t.icon} shadow-md`}>
                           {s.cover_image ? (
                             <img src={s.cover_image} alt={s.name} loading="lazy" className="h-full w-full object-cover" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center">
-                              <BookOpen className="h-6 w-6 text-primary-foreground" />
+                              <BookOpen className="h-6 w-6 text-white" />
                             </div>
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="mb-1 flex flex-wrap gap-1">
-                            {s.is_pinned && <Badge className="gap-1 bg-primary/15 text-primary"><Pin className="h-3 w-3" /> Pinned</Badge>}
-                            {s.is_popular && <Badge className="gap-1 bg-secondary/15 text-secondary"><Flame className="h-3 w-3" /> Popular</Badge>}
-                            {isNew(s.created_at) && <Badge className="gap-1 bg-accent/15 text-accent"><Sparkles className="h-3 w-3" /> New</Badge>}
-                            {user && <Badge className={`gap-1 ${diffCls}`}><Target className="h-3 w-3" />{diff}</Badge>}
+                            {s.is_pinned && <Badge className="gap-1 bg-primary/20 text-primary"><Pin className="h-3 w-3" /> Pinned</Badge>}
+                            {s.is_popular && <Badge className="gap-1 bg-secondary/20 text-secondary"><Flame className="h-3 w-3" /> Popular</Badge>}
+                            {isNew(s.created_at) && <Badge className="gap-1 bg-accent/20 text-accent"><Sparkles className="h-3 w-3" /> New</Badge>}
                           </div>
                           <h3 className="truncate font-semibold leading-tight">{s.name}</h3>
-                          {s.name_hi && <p className="truncate text-sm text-muted-foreground">{s.name_hi}</p>}
+                          {s.name_hi && <p className="truncate text-xs text-muted-foreground">{s.name_hi}</p>}
                         </div>
                         <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
                       </div>
 
-                      {user && (st.completionPct > 0 || st.pending > 0 || st.lastOpened) && (
-                        <div className="space-y-1.5 rounded-xl bg-muted/40 p-2.5">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-muted-foreground">Completion</span>
-                            <span className="font-semibold tabular-nums">{st.completionPct}%</span>
-                          </div>
-                          <Progress value={st.completionPct} className="h-1.5" />
-                          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                            {st.lastOpened ? (
-                              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(st.lastOpened).toLocaleDateString()}</span>
-                            ) : <span />}
-                            {st.pending > 0 && (
-                              <span className="flex items-center gap-1 font-medium text-orange-600"><AlertTriangle className="h-3 w-3" />{st.pending} to revise</span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="mt-auto grid grid-cols-3 gap-2 border-t pt-3 text-center">
+                      <div className="grid grid-cols-3 gap-2 text-center">
                         <Stat icon={Layers} value={c.chapters} label="Chapters" />
                         <Stat icon={FileText} value={c.pdfs} label="PDFs" />
                         <Stat icon={ClipboardList} value={c.tests} label="Tests" />
                       </div>
+
+                      {user && (
+                        <div className="mt-auto space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-muted-foreground">Completion</span>
+                            <span className="font-semibold tabular-nums">{st.completionPct}%</span>
+                          </div>
+                          <Progress value={st.completionPct} className="h-1.5" indicatorClassName={t.bar} />
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                              {st.lastOpened ? (<><Clock className="h-3 w-3" />{new Date(st.lastOpened).toLocaleDateString()}</>) : "Not started"}
+                            </span>
+                            <Button size="sm" variant="secondary" className="h-7 rounded-full px-3 text-[11px]">Continue</Button>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </Link>
@@ -308,9 +246,9 @@ export default function Dashboard() {
 
 function Stat({ icon: Icon, value, label }: { icon: any; value: number; label: string }) {
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <Icon className="h-4 w-4 text-muted-foreground" />
-      <span className="text-sm font-bold">{value}</span>
+    <div className="flex flex-col items-center gap-0.5 rounded-xl bg-background/40 py-1.5">
+      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      <span className="text-sm font-bold tabular-nums">{value}</span>
       <span className="text-[10px] text-muted-foreground">{label}</span>
     </div>
   );
