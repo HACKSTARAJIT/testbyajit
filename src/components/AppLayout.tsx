@@ -107,7 +107,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
+                <Button variant="ghost" size="icon" className="rounded-full" aria-label="Open account menu">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-gradient-primary text-primary-foreground text-xs">
                       {initials}
