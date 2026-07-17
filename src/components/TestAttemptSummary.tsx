@@ -47,7 +47,14 @@ export function TestAttemptSummary({
 }) {
   const [open, setOpen] = useState(false);
   const completed = attempts
-    .filter((a) => a.status !== "in_progress")
+    .filter((a) => {
+      // Include if explicitly not in_progress, OR if has any recorded activity
+      const hasData =
+        (a.correct_count || 0) > 0 ||
+        (a.incorrect_count || 0) > 0 ||
+        Number(a.marks_obtained || 0) > 0;
+      return a.status !== "in_progress" || hasData;
+    })
     .sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
 
   if (completed.length === 0) return null;
