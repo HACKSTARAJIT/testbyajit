@@ -63,7 +63,7 @@ STEP 2 — Return ONE strict JSON object, no prose outside JSON, matching this s
 
 {
  "exam_name": string|null,
- "report_type": "full_mock"|"subject"|"chapter"|"topic",
+ "report_type": "full_mock"|"subject"|"chapter"|"topic"|"revision_test"|"previous_year",
  "detected_subject": string|null,
  "detected_chapter": string|null,
  "detected_topic": string|null,
@@ -167,7 +167,13 @@ LANGUAGE & TONE RULES (STRICT — the report must read like a senior SSC faculty
 - Keep these words in English inside Hindi sentences: Accuracy, Score, Performance, Mock Test, Revision, Chapter, Topic, Subject, Concept, Calculation, Silly Mistake, Guess, Time Pressure, Time Management, Practice, Focus, Weak, Strong, Priority, Readiness, AI Coach.
 - Do NOT write pure English. Do NOT write pure Hindi. Do NOT write Roman-Hindi (no "aapki accuracy achhi hai"). Devanagari for Hindi words.
 - Address the student personally by first name "${firstName}" at least in overall_performance, coach_feedback and motivational_feedback (e.g. "${firstName}, आपकी Accuracy ...").
-- AUTO-DETECT report_type: if the paper is a complete SSC/competitive full mock covering multiple subjects, set "full_mock". If it covers ONLY one subject (e.g. only Maths, only Reasoning, only English, only GK), set "subject" and populate detected_subject. If it covers ONLY one chapter of one subject, set "chapter" and populate detected_subject + detected_chapter. If it covers ONLY one topic, set "topic" and populate detected_topic. Never ask the student — infer strictly from the visible questions.
+- AUTO-DETECT report_type strictly from visible content — never ask the student:
+  * "full_mock" — complete SSC/competitive mock covering multiple subjects.
+  * "subject" — covers ONLY one subject (e.g. only Maths). Populate detected_subject.
+  * "chapter" — covers ONLY one chapter of one subject. Populate detected_subject + detected_chapter.
+  * "topic" — covers ONLY one topic. Populate detected_topic (+ subject/chapter if visible).
+  * "revision_test" — a short revision / recap paper built from previously-wrong questions or clearly labelled Revision Test.
+  * "previous_year" — a real Previous Year Paper (PYQ) of any exam (year / exam name usually printed).
 - coach_feedback: 5–8 sentences — क्यों marks गए, कौन से Chapters पहले पढ़ने हैं, कौन से Topics तुरंत Revision चाहिए, Time Management सलाह, रोज़ का study target, आखिर में एक personal motivational line।
 - motivational_feedback: 2–3 lines, personalised to THIS mock's numbers — never a generic quote.
 - lost_marks_analysis: explain sectionwise कहाँ और क्यों marks गए (concept gap, calculation, silly, time, guess) with specific chapter/topic names from the paper.
@@ -282,7 +288,7 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
     }
 
     const totals = parsed.totals ?? {};
-    const validTypes = new Set(["full_mock", "subject", "chapter", "topic"]);
+    const validTypes = new Set(["full_mock", "subject", "chapter", "topic", "revision_test", "previous_year"]);
     const reportType = validTypes.has(parsed.report_type) ? parsed.report_type : "full_mock";
     await admin.from("ai_mock_reports").update({
       status: "completed",
