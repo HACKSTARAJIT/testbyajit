@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { AITestGenerator } from "@/components/AITestGenerator";
 import { TestDebugPanel } from "@/components/TestDebugPanel";
+import { TestAIReviewDialog } from "@/components/TestAIReviewDialog";
 
 export default function Admin() {
   const [subjects, setSubjects] = useState<any[]>([]);
