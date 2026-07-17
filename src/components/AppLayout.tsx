@@ -76,7 +76,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? (isGuest ? "GT" : "ST");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <SplashScreen />
       <header className="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-lg">
         <div className="container flex h-16 items-center justify-between gap-4">
