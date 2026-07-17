@@ -135,7 +135,7 @@ export default function PerformanceIntelligence() {
     <div className="space-y-6" ref={exportRef}>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Button asChild size="icon" variant="ghost"><Link to="/ai-mock-analyzer"><ArrowLeft className="h-4 w-4" /></Link></Button>
+          <Button asChild size="icon" variant="ghost" aria-label="Back"><Link to="/ai-mock-analyzer" aria-label="Back to AI Mock Analyzer"><ArrowLeft className="h-4 w-4" /></Link></Button>
           <div className="rounded-xl bg-gradient-to-br from-primary to-secondary p-2 text-primary-foreground shadow-lg shadow-primary/20">
             <TrendingUp className="h-6 w-6" />
           </div>

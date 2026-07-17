@@ -89,7 +89,7 @@ function Row({ title, sub, onDelete, children }: any) {
       </div>
       <div className="flex items-center gap-2">
         {children}
-        <Button size="icon" variant="ghost" onClick={onDelete}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+        <Button size="icon" variant="ghost" onClick={onDelete} aria-label="Delete"><Trash2 className="h-4 w-4 text-destructive" /></Button>
       </div>
     </div>
   );
@@ -321,7 +321,7 @@ function TestsTab({ subjects, chapters, tests, reload, del }: any) {
                   <div className="flex items-center gap-2">
                     <Input className="flex-1" placeholder={`Part ${i + 1}`} value={p.title} onChange={(e) => setPart(i, "title", e.target.value)} />
                     {parts.length > 1 && (
-                      <Button size="icon" variant="ghost" onClick={() => removePart(i)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <Button size="icon" variant="ghost" onClick={() => removePart(i)} aria-label="Remove part"><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     )}
                   </div>
                   <Input type="url" placeholder="https://... test link" value={p.link} onChange={(e) => setPart(i, "link", e.target.value)} />
@@ -360,7 +360,7 @@ function EditPdfDialog({ pdf, subjects, chapters, reload }: any) {
   };
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
+      <DialogTrigger asChild><Button size="icon" variant="ghost" aria-label="Edit"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
       <DialogContent><DialogHeader><DialogTitle>Edit PDF</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div><Label>Subject</Label><SubjectSelect subjects={subjects} value={subjectId} onChange={(v: string) => { setSubjectId(v); setChapterId(""); }} /></div>
@@ -399,7 +399,7 @@ function EditTestDialog({ test, subjects, chapters, reload }: any) {
   };
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
+      <DialogTrigger asChild><Button size="icon" variant="ghost" aria-label="Edit"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
       <DialogContent><DialogHeader><DialogTitle>Edit Test</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div><Label>Subject</Label><SubjectSelect subjects={subjects} value={subjectId} onChange={(v: string) => { setSubjectId(v); setChapterId(""); }} /></div>
@@ -503,7 +503,7 @@ function EditPerformanceDialog({ item, subjects, chapters, reload }: any) {
   };
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
+      <DialogTrigger asChild><Button size="icon" variant="ghost" aria-label="Edit"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Edit Performance</DialogTitle></DialogHeader>
         <PerformanceForm subjects={subjects} chapters={chapters} subjectId={subjectId} setSubjectId={setSubjectId} chapterId={chapterId} setChapterId={setChapterId} title={title} setTitle={setTitle} text={text} setText={setText} file={file} setFile={setFile} existingImage={item.image_path} />
         <DialogFooter><Button onClick={save} disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save</Button></DialogFooter>
