@@ -245,28 +245,150 @@ export default function AICoach() {
 
 
 
-      {/* Coach dashboard */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <CoachCard icon={<Target className="w-5 h-5" />} title="Today's Focus" tone="primary" text={snapshot.focus} />
-        <CoachCard icon={<AlertTriangle className="w-5 h-5" />} title="Today's Biggest Mistake" tone="orange" text={snapshot.biggest_mistake} />
-        <CoachCard icon={<TrendingUp className="w-5 h-5" />} title="Path to Target Score" tone="emerald" text={snapshot.target_score} />
-        <CoachCard icon={<BookOpen className="w-5 h-5" />} title="Today's Revision Goal" tone="blue" text={snapshot.revision_goal} />
-        <CoachCard icon={<Flame className="w-5 h-5" />} title="Today's Motivation" tone="pink" text={snapshot.motivation} />
+      {/* Coach dashboard (from latest mock) */}
+      {snapshot && (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <CoachCard icon={<Target className="w-5 h-5" />} title="Today's Focus" tone="primary" text={snapshot.focus} />
+          <CoachCard icon={<AlertTriangle className="w-5 h-5" />} title="Today's Biggest Mistake" tone="orange" text={snapshot.biggest_mistake} />
+          <CoachCard icon={<TrendingUp className="w-5 h-5" />} title="Path to Target Score" tone="emerald" text={snapshot.target_score} />
+          <CoachCard icon={<BookOpen className="w-5 h-5" />} title="Today's Revision Goal" tone="blue" text={snapshot.revision_goal} />
+          <CoachCard icon={<Flame className="w-5 h-5" />} title="Today's Motivation" tone="pink" text={snapshot.motivation} />
+          <Card className="border-white/10 bg-white/5 backdrop-blur">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-primary" /> Today's Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{doneToday}<span className="text-base text-muted-foreground">/{totalToday || 0}</span></div>
+              <Progress className="mt-2" value={totalToday ? (doneToday / totalToday) * 100 : 0} />
+              <p className="text-xs text-muted-foreground mt-2">
+                Smart Revision Sync — matched {sync.matched ?? 0}, priority bumped {sync.priority_bumped ?? 0}, added {sync.added ?? 0}.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Exam Readiness */}
+      {latestReport && (
         <Card className="border-white/10 bg-white/5 backdrop-blur">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-primary" /> Today's Progress
-            </CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="w-5 h-5 text-primary" /> Exam Readiness</CardTitle></CardHeader>
+          <CardContent className="grid md:grid-cols-3 gap-4">
+            <div>
+              <div className="text-xs text-muted-foreground">Current Readiness</div>
+              <div className="text-3xl font-bold">{readinessPct}%</div>
+              <Progress value={readinessPct} className="mt-2" />
+              <p className="text-xs text-muted-foreground mt-2">{latestReport.report?.readiness_reason ?? "Latest Mock के आधार पर calculated."}</p>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Strength Areas</div>
+              <div className="flex flex-wrap gap-1.5">
+                {((latestReport.report?.strong_subjects ?? []) as string[]).slice(0, 6).map((s, i) => (
+                  <Badge key={i} className="bg-emerald-500/15 border-emerald-500/30 text-emerald-200" variant="outline">{s}</Badge>
+                ))}
+                {(!latestReport.report?.strong_subjects || latestReport.report.strong_subjects.length === 0) && <p className="text-xs text-muted-foreground">—</p>}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Risk Areas</div>
+              <div className="flex flex-wrap gap-1.5">
+                {((latestReport.report?.priority_chapters ?? latestReport.report?.weak_chapters ?? []) as string[]).slice(0, 6).map((s, i) => (
+                  <Badge key={i} className="bg-red-500/15 border-red-500/30 text-red-200" variant="outline">{s}</Badge>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                {latestReport.report?.readiness_to_90 ?? "90% तक पहुँचने के लिए weak chapters की consistent Revision करें।"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Memory Engine + Forgetting Curve */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card className="border-white/10 bg-white/5 backdrop-blur">
+          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><Brain className="w-5 h-5 text-primary" /> AI Memory Engine</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <div className="text-xs text-muted-foreground">Overall Memory Strength</div>
+              <div className="text-2xl font-bold">{memory.strength}%</div>
+              <Progress value={memory.strength} className="mt-2" />
+            </div>
+            <MemoryList title="🔴 Urgent Revision" items={memory.urgent} tone="red" empty="Nothing critical right now." />
+            <MemoryList title="🟠 Likely to Forget Soon" items={memory.forgetSoon} tone="orange" empty="Memory holding up well." />
+            {memory.recentlyMastered.length > 0 && (
+              <div>
+                <div className="text-xs font-semibold mb-1">✅ Recently Mastered</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {memory.recentlyMastered.map((m) => (
+                    <Badge key={m.id} variant="outline" className="text-[10px] bg-emerald-500/10 border-emerald-500/30 text-emerald-200">
+                      {m.label} · {m.daysAgo}d ago
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/10 bg-white/5 backdrop-blur">
+          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><Clock className="w-5 h-5 text-primary" /> Forgetting Curve</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{doneToday}<span className="text-base text-muted-foreground">/{totalToday || 0}</span></div>
-            <Progress className="mt-2" value={totalToday ? (doneToday / totalToday) * 100 : 0} />
-            <p className="text-xs text-muted-foreground mt-2">
-              Smart Revision Sync — matched {sync.matched ?? 0}, priority bumped {sync.priority_bumped ?? 0}, added {sync.added ?? 0}.
-            </p>
+            {memory.all.length === 0 ? (
+              <p className="text-sm text-muted-foreground">जब आप Practice शुरू करेंगे, यहाँ Chapters की memory decay दिखेगी।</p>
+            ) : (
+              <div className="space-y-2">
+                {memory.all.slice(0, 8).map((m) => (
+                  <div key={m.id} className="p-2.5 rounded-lg border border-white/10 bg-white/5">
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-sm font-medium truncate">{m.label}</span>
+                      <Badge variant="outline" className={`text-[10px] ${
+                        m.risk === "critical" ? "bg-red-500/15 border-red-500/40 text-red-200"
+                        : m.risk === "high" ? "bg-orange-500/15 border-orange-500/40 text-orange-200"
+                        : m.risk === "medium" ? "bg-yellow-500/15 border-yellow-500/40 text-yellow-200"
+                        : "bg-emerald-500/15 border-emerald-500/40 text-emerald-200"
+                      }`}>{m.risk}</Badge>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <Progress value={m.retention} className="flex-1 h-1.5" />
+                      <span className="text-[11px] text-muted-foreground w-16 text-right">{m.retention}% · {m.daysSince}d</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">{m.action}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Learning Style + Personal Insights */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card className="border-white/10 bg-white/5 backdrop-blur">
+          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><Activity className="w-5 h-5 text-primary" /> Learning Style Detection</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {style.length === 0 ? (
+              <p className="text-sm text-muted-foreground">कम से कम 3 Practice attempts के बाद study pattern detect होगा।</p>
+            ) : style.map((s, i) => (
+              <div key={i} className="text-sm px-3 py-2 rounded-lg bg-white/5 border border-white/10">{s.text}</div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/10 bg-white/5 backdrop-blur">
+          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><Lightbulb className="w-5 h-5 text-primary" /> Personal Insights</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {insights.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Practice के साथ personalised insights यहाँ बनेंगे।</p>
+            ) : insights.map((s, i) => (
+              <div key={i} className="text-sm px-3 py-2 rounded-lg bg-white/5 border border-white/10">{s.text}</div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+
 
       {/* Planner */}
       <Card className="border-white/10 bg-white/5 backdrop-blur">
