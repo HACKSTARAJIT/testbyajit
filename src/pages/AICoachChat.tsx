@@ -129,7 +129,7 @@ export default function AICoachChat() {
       {/* Sidebar */}
       <aside className="md:w-72 shrink-0 md:border-r border-white/10 md:h-full flex flex-col">
         <div className="p-3 flex items-center gap-2 border-b border-white/10">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/ai-coach")}><ArrowLeft className="w-4 h-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/ai-coach")} aria-label="Back to AI Coach"><ArrowLeft className="w-4 h-4" /></Button>
           <div className="font-semibold text-sm flex-1">Chats</div>
           <Button size="sm" onClick={newChat}><Plus className="w-4 h-4 mr-1" />New</Button>
         </div>
@@ -231,7 +231,7 @@ export default function AICoachChat() {
               className="min-h-[44px] max-h-40 resize-none bg-white/5 border-white/10"
               disabled={sending || !threadId}
             />
-            <Button onClick={() => send()} disabled={sending || !input.trim() || !threadId} size="icon" className="h-11 w-11 shrink-0">
+            <Button onClick={() => send()} disabled={sending || !input.trim() || !threadId} size="icon" className="h-11 w-11 shrink-0" aria-label="Send message">
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
           </div>

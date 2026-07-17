@@ -64,7 +64,7 @@ export default function AdminAnalytics() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Link to="/admin"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
+          <Link to="/admin" aria-label="Back to Admin"><Button variant="ghost" size="icon" aria-label="Back"><ArrowLeft className="h-4 w-4" /></Button></Link>
           <BarChart3 className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Test Analytics</h1>
         </div>

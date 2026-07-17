@@ -76,7 +76,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? (isGuest ? "GT" : "ST");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <SplashScreen />
       <header className="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-lg">
         <div className="container flex h-16 items-center justify-between gap-4">
@@ -107,7 +107,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
+                <Button variant="ghost" size="icon" className="rounded-full" aria-label="Open account menu">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-gradient-primary text-primary-foreground text-xs">
                       {initials}
@@ -146,7 +146,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             <Sheet>
               <SheetTrigger asChild className="md:hidden">
-                <Button variant="ghost" size="icon"><Menu className="h-5 w-5" /></Button>
+                <Button variant="ghost" size="icon" aria-label="Open navigation menu"><Menu className="h-5 w-5" /></Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-64">
                 <div className="mt-8 flex flex-col gap-1">

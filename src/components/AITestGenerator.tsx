@@ -251,7 +251,7 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
                   <div className="flex items-start gap-2">
                     <Badge variant="outline" className="mt-1 shrink-0">Q{i + 1}</Badge>
                     <Textarea className="flex-1" value={q.question} onChange={(e) => update(i, "question", e.target.value)} placeholder="Question text" />
-                    <Button size="icon" variant="ghost" onClick={() => removeQ(i)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => removeQ(i)} aria-label="Remove question"><Trash2 className="h-4 w-4 text-destructive" /></Button>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {LETTERS.map((L) => {
