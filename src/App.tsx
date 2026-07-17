@@ -29,6 +29,7 @@ const SmartRevisionChapter = lazy(() => import("./pages/SmartRevisionChapter.tsx
 const Bookmarks = lazy(() => import("./pages/Bookmarks.tsx"));
 const Revision = lazy(() => import("./pages/Revision.tsx"));
 const RevisionDashboard = lazy(() => import("./pages/RevisionDashboard.tsx"));
+const StudentDashboard = lazy(() => import("./pages/StudentDashboard.tsx"));
 const RevisionRunner = lazy(() => import("./pages/RevisionRunner.tsx"));
 const About = lazy(() => import("./pages/About.tsx"));
 const Admin = lazy(() => import("./pages/Admin.tsx"));
@@ -79,6 +80,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={withLayout(<Dashboard />)} />
+            <Route path="/my-dashboard" element={withLayout(<StudentDashboard />)} />
             <Route path="/subjects" element={withLayout(<Subjects />)} />
             <Route path="/subjects/:id" element={withLayout(<SubjectDetail />)} />
             <Route path="/tests" element={withLayout(<Tests />)} />
