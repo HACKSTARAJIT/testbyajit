@@ -1226,6 +1226,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_exam_targets: {
+        Row: {
+          created_at: string
+          exam_date: string | null
+          exam_name: string
+          id: string
+          target_score: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          exam_date?: string | null
+          exam_name: string
+          id?: string
+          target_score?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          exam_date?: string | null
+          exam_name?: string
+          id?: string
+          target_score?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_goals: {
         Row: {
           created_at: string
