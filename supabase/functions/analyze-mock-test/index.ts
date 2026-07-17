@@ -247,6 +247,14 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       error: null,
     }).eq("id", reportId);
     console.log("report done", reportId);
+
+    // ---- Smart Revision sync + Planner/Coach/Goals persistence (non-fatal) ----
+    try {
+      await syncWithPracticeBook(admin, userId, reportId, parsed);
+    } catch (syncErr) {
+      console.error("sync failed", reportId, syncErr);
+    }
+
   } catch (e) {
     const msg = e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e);
     console.error("processReport failed", reportId, msg);
