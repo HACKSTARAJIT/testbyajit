@@ -67,22 +67,36 @@ Return strict JSON.`,
     }];
 
     for (const p of filePaths) {
-      const { data: signed } = await supabase.storage.from("mock-uploads").createSignedUrl(p, 60 * 30);
-      if (!signed?.signedUrl) continue;
-      const isPdf = p.toLowerCase().endsWith(".pdf");
-      if (isPdf) {
-        // Fetch and inline PDF as base64
+      try {
+        const { data: signed, error: signErr } = await supabase.storage.from("mock-uploads").createSignedUrl(p, 60 * 30);
+        if (signErr || !signed?.signedUrl) {
+          console.error("sign url failed", p, signErr);
+          continue;
+        }
+        const isPdf = p.toLowerCase().endsWith(".pdf");
         const res = await fetch(signed.signedUrl);
+        if (!res.ok) {
+          console.error("fetch upload failed", p, res.status);
+          continue;
+        }
         const buf = new Uint8Array(await res.arrayBuffer());
-        const b64 = btoa(String.fromCharCode(...buf));
-        contentParts.push({
-          type: "file",
-          file: { filename: p.split("/").pop() ?? "mock.pdf", file_data: `data:application/pdf;base64,${b64}` },
-        });
-      } else {
-        contentParts.push({ type: "image_url", image_url: { url: signed.signedUrl } });
+        const b64 = bytesToBase64(buf);
+        if (isPdf) {
+          contentParts.push({
+            type: "file",
+            file: { filename: p.split("/").pop() ?? "mock.pdf", file_data: `data:application/pdf;base64,${b64}` },
+          });
+        } else {
+          const ext = (p.split(".").pop() ?? "png").toLowerCase();
+          const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "webp" ? "image/webp" : "image/png";
+          contentParts.push({ type: "image_url", image_url: { url: `data:${mime};base64,${b64}` } });
+        }
+      } catch (fileErr) {
+        console.error("file processing error", p, fileErr);
       }
     }
+
+    console.log("prepared parts", { fileCount: filePaths.length, parts: contentParts.length });
 
     // Optional Practice Book context
     const [{ data: wrongs }, { data: attempts }] = await Promise.all([
