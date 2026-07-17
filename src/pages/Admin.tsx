@@ -42,14 +42,14 @@ export default function Admin() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
           <p className="text-muted-foreground">Manage subjects, chapters, study material & tests.</p>
         </div>
-        <div className="flex gap-2">
-          <a href="/admin/analytics"><Button variant="outline"><BarChart3 className="mr-2 h-4 w-4" />Test Analytics</Button></a>
-          <a href="/admin/intelligence"><Button><Sparkles className="mr-2 h-4 w-4" />Intelligence Center</Button></a>
+        <div className="flex flex-wrap gap-2">
+          <a href="/admin/analytics" className="flex-1 sm:flex-none"><Button variant="outline" className="w-full"><BarChart3 className="mr-2 h-4 w-4" />Test Analytics</Button></a>
+          <a href="/admin/intelligence" className="flex-1 sm:flex-none"><Button className="w-full bg-gradient-to-r from-primary to-secondary"><Sparkles className="mr-2 h-4 w-4" />Intelligence Center</Button></a>
         </div>
       </div>
 
