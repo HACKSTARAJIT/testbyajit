@@ -142,6 +142,9 @@ export function TestEngine({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Reset per-question timer on navigation
+  useEffect(() => { qStartTime.current = Date.now(); }, [current]);
+
   // autosave every 8s
   useEffect(() => {
     if (!canSave || submitted) return;
