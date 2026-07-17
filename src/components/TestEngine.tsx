@@ -224,15 +224,40 @@ export function TestEngine({
     setAnswers({});
     setMarked({});
     setRevealed({});
+    setGuessArmed({});
+    setGuesses({});
     setCurrent(0);
     setSubmitted(false);
     setResult(null);
     setSecondsLeft((test.duration_minutes ?? 30) * 60);
     startTime.current = Date.now();
+    qStartTime.current = Date.now();
     attemptId.current = null;
     savedWrong.current = new Set();
     if (canSave) persist("in_progress");
   };
+
+  // ---------- GUESS INTELLIGENCE ----------
+  const guessStats = useMemo(() => {
+    const gIds = Object.keys(guesses);
+    const total = gIds.length;
+    let gCorrect = 0, gWrong = 0, kCorrect = 0, kWrong = 0, kAttempted = 0;
+    for (const item of sessionQs) {
+      const ans = answers[item.id];
+      if (!ans) continue;
+      const isCorrect = ans === item.correct_option;
+      if (guesses[item.id]) {
+        if (isCorrect) gCorrect += 1; else gWrong += 1;
+      } else {
+        kAttempted += 1;
+        if (isCorrect) kCorrect += 1; else kWrong += 1;
+      }
+    }
+    const guessAccuracy = total ? Math.round((gCorrect / total) * 100) : 0;
+    const knowledgeAccuracy = kAttempted ? Math.round((kCorrect / kAttempted) * 100) : 0;
+    const guessPct = sessionQs.length ? Math.round((total / sessionQs.length) * 100) : 0;
+    return { total, gCorrect, gWrong, kCorrect, kWrong, kAttempted, guessAccuracy, knowledgeAccuracy, guessPct };
+  }, [guesses, answers, sessionQs]);
 
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
