@@ -221,7 +221,9 @@ export default function Dashboard() {
                             <span className="text-muted-foreground">Completion</span>
                             <span className="font-semibold tabular-nums">{st.completionPct}%</span>
                           </div>
-                          <Progress value={st.completionPct} className="h-1.5" indicatorClassName={t.bar} />
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60">
+                            <div className={`h-full ${t.bar} transition-all`} style={{ width: `${st.completionPct}%` }} />
+                          </div>
                           <div className="flex items-center justify-between pt-1">
                             <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                               {st.lastOpened ? (<><Clock className="h-3 w-3" />{new Date(st.lastOpened).toLocaleDateString()}</>) : "Not started"}
