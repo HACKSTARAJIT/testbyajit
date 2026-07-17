@@ -24,6 +24,7 @@ import RevisionDashboard from "./pages/RevisionDashboard.tsx";
 import RevisionRunner from "./pages/RevisionRunner.tsx";
 import About from "./pages/About.tsx";
 import Admin from "./pages/Admin.tsx";
+import AdminAnalytics from "./pages/AdminAnalytics.tsx";
 import Profile from "./pages/Profile.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
