@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart3, TrendingUp, Award, Activity, Sparkles, ChevronRight } from "lucide-react";
+import { BarChart3, TrendingUp, Award, Activity, Sparkles, ChevronRight, Dice5 } from "lucide-react";
 
 type Row = {
   id: string;
@@ -13,6 +13,9 @@ type Row = {
   incorrect_count: number;
   unattempted_count: number;
   created_at: string;
+  guesses: Record<string, { guess: true; selected: string; timeMs: number }> | null;
+  answers: Record<string, string> | null;
+  total_questions: number | null;
   tests: { title: string; subject_id: string | null; subjects: { name: string } | null } | null;
 };
 
