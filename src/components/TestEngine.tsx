@@ -181,7 +181,11 @@ export function TestEngine({
 
   const choose = (letter: string) => {
     if (mode === "practice" && revealed[q.id]) return; // locked after reveal
+    const timeMs = Date.now() - qStartTime.current;
     setAnswers((a) => ({ ...a, [q.id]: letter }));
+    if (guessArmed[q.id]) {
+      setGuesses((g) => ({ ...g, [q.id]: { guess: true, selected: letter, timeMs } }));
+    }
     if (mode === "practice") {
       setRevealed((r) => ({ ...r, [q.id]: true }));
       if (letter === q.correct_option) {
@@ -191,6 +195,18 @@ export function TestEngine({
       }
     }
   };
+
+  const toggleGuess = () =>
+    setGuessArmed((g) => {
+      const next = { ...g, [q.id]: !g[q.id] };
+      // If already answered and user un-arms guess, drop the record.
+      if (!next[q.id]) setGuesses((gg) => { const { [q.id]: _drop, ...rest } = gg; return rest; });
+      // If already answered and user arms it, retro-tag as guess.
+      if (next[q.id] && answers[q.id]) {
+        setGuesses((gg) => ({ ...gg, [q.id]: { guess: true, selected: answers[q.id], timeMs: Date.now() - qStartTime.current } }));
+      }
+      return next;
+    });
 
   const toggleMark = (state: MarkState) =>
     setMarked((m) => ({ ...m, [q.id]: m[q.id] === state ? (undefined as any) : state }));
