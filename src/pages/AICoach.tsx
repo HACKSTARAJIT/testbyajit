@@ -547,3 +547,40 @@ function RecList({ title, items, empty }: { title: string; items: { label: strin
     </div>
   );
 }
+
+function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur px-3 py-2.5">
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">{icon}{label}</div>
+      <div className="text-lg font-bold mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+function MemoryList({ title, items, tone, empty }: {
+  title: string;
+  items: { id: string; label: string; retention: number; daysSince: number; action: string }[];
+  tone: "red" | "orange";
+  empty: string;
+}) {
+  return (
+    <div>
+      <div className="text-xs font-semibold mb-1.5">{title}</div>
+      {items.length === 0 ? (
+        <p className="text-xs text-muted-foreground">{empty}</p>
+      ) : (
+        <div className="space-y-1.5">
+          {items.map((m) => (
+            <div key={m.id} className={`px-2.5 py-1.5 rounded-md border ${tone === "red" ? "border-red-500/30 bg-red-500/5" : "border-orange-500/30 bg-orange-500/5"}`}>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium truncate">{m.label}</span>
+                <span className="text-[10px] text-muted-foreground">Last: {m.daysSince}d ago</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground">{m.action}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
