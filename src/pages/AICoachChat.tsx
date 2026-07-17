@@ -165,7 +165,7 @@ export default function AICoachChat() {
           <Brain className="w-5 h-5 text-primary" />
           <div>
             <div className="font-semibold text-sm">{activeThread?.title || "AI Coach"}</div>
-            <div className="text-[11px] text-muted-foreground">Grounded on your Practice Book data — no generic advice.</div>
+            <div className="text-[11px] text-muted-foreground">Grounded on your AJIT 360 data — no generic advice.</div>
           </div>
         </div>
 
@@ -236,7 +236,7 @@ export default function AICoachChat() {
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground mt-1.5">
-            AI Coach केवल आपकी Practice Book data पर आधारित है — Selection guarantee नहीं देता।
+            AI Coach केवल आपकी AJIT 360 data पर आधारित है — Selection guarantee नहीं देता।
           </p>
         </div>
       </section>

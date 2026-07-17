@@ -12,8 +12,8 @@ export default function About() {
       <Button variant="ghost" size="sm" asChild><Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> Back to Home</Link></Button>
 
       <div className="glass-card rounded-3xl p-8 text-center">
-        <img src={pbLogo} alt="Practice Book logo" width={96} height={96} loading="lazy" className="mx-auto h-24 w-24 drop-shadow" />
-        <h1 className="mt-4 text-3xl font-bold gradient-text">Practice Book By Ajit</h1>
+        <img src={pbLogo} alt="AJIT 360 logo" width={96} height={96} loading="lazy" className="mx-auto h-24 w-24 drop-shadow" />
+        <h1 className="mt-4 text-3xl font-bold gradient-text">AJIT 360</h1>
         <p className="mt-2 text-muted-foreground">A premium, intelligent study platform — read PDFs, attempt tests, and let the app auto-build your personalised revision from every mistake.</p>
       </div>
 
@@ -27,7 +27,7 @@ export default function About() {
         <CardContent className="space-y-2 p-6 text-sm">
           <Row label="Developer" value="Ajit Singh" />
           <Row label="Version" value={APP_VERSION} />
-          <Row label="Copyright" value={`© ${new Date().getFullYear()} Practice Book By Ajit`} />
+          <Row label="Copyright" value={`© ${new Date().getFullYear()} AJIT 360`} />
         </CardContent>
       </Card>
 

@@ -219,7 +219,7 @@ Return strict JSON only.`,
     if ((wrongs?.length ?? 0) + (attempts?.length ?? 0) > 0) {
       contentParts.push({
         type: "text",
-        text: `Existing Practice Book history for context (use if useful, do not invent):
+        text: `Existing AJIT 360 history for context (use if useful, do not invent):
 recent_wrong_topics: ${JSON.stringify(wrongs ?? [])}
 recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       });
@@ -308,7 +308,7 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
 
     // ---- Smart Revision sync + Planner/Coach/Goals persistence (non-fatal) ----
     try {
-      await syncWithPracticeBook(admin, userId, reportId, parsed);
+      await syncWithAjit360(admin, userId, reportId, parsed);
     } catch (syncErr) {
       console.error("sync failed", reportId, syncErr);
     }
@@ -384,7 +384,7 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-// ------------------- Practice Book sync -------------------
+// ------------------- AJIT 360 sync -------------------
 
 function normalize(s: string) {
   return (s ?? "").toLowerCase().replace(/[^a-z0-9\u0900-\u097f]+/g, " ").replace(/\s+/g, " ").trim();
@@ -405,7 +405,7 @@ function bumpPriority(current: string) {
   return "medium";
 }
 
-async function syncWithPracticeBook(admin: any, userId: string, reportId: string, parsed: any) {
+async function syncWithAjit360(admin: any, userId: string, reportId: string, parsed: any) {
   const questions: any[] = Array.isArray(parsed?.questions) ? parsed.questions : [];
   const chapterAnalysis: any[] = Array.isArray(parsed?.chapter_analysis) ? parsed.chapter_analysis : [];
 

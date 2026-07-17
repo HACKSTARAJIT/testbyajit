@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
             model: "google/gemini-2.5-flash",
             response_format: { type: "json_object" },
             messages: [
-              { role: "system", content: `You are the "Preparation 360°" brain for student "${firstName}" inside Practice Book. Look at the DATA (JSON of their full preparation) and return a STRICT JSON object with these keys ONLY:
+              { role: "system", content: `You are the "Preparation 360°" brain for student "${firstName}" inside AJIT 360. Look at the DATA (JSON of their full preparation) and return a STRICT JSON object with these keys ONLY:
 {
  "insights": string[],              // 4-6 data-backed one-liners. Every sentence MUST cite a real number/name from DATA (e.g. "Geometry accuracy last 3 mocks: 62%→71%→78% — clear improvement"). NEVER generic advice.
  "current_recommendation": string,  // single most important next action, 1 sentence.

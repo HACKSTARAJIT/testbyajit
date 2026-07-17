@@ -81,8 +81,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-lg">
         <div className="container flex h-16 items-center justify-between gap-4">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <img src={pbLogo} alt="Practice Book logo" width={36} height={36} className="h-9 w-9 rounded-xl" />
-            <span className="text-base font-bold font-display leading-tight">Practice Book<br className="hidden sm:block" /> <span className="text-secondary">By Ajit</span></span>
+            <img src={pbLogo} alt="AJIT 360 logo" width={36} height={36} className="h-9 w-9 rounded-xl" />
+            <span className="text-base font-bold font-display leading-tight">AJIT 360<br className="hidden sm:block" /> <span className="text-secondary">By Ajit</span></span>
           </Link>
 
 
@@ -164,8 +164,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </header>
       <main className="container py-6 animate-fade-in">{children}</main>
       <footer className="border-t py-6 text-center text-xs text-muted-foreground">
-        <img src={pbLogo} alt="Practice Book logo" width={28} height={28} className="mx-auto mb-2 h-7 w-7 rounded-lg" loading="lazy" />
-        <p>© {new Date().getFullYear()} Practice Book By Ajit</p>
+        <img src={pbLogo} alt="AJIT 360 logo" width={28} height={28} className="mx-auto mb-2 h-7 w-7 rounded-lg" loading="lazy" />
+        <p>© {new Date().getFullYear()} AJIT 360</p>
         <p className="mt-0.5">Designed &amp; Developed by Ajit Singh</p>
         <Link to="/about" className="story-link mt-1 inline-block text-primary">About</Link>
       </footer>

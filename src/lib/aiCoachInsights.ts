@@ -1,4 +1,4 @@
-// Pure functions that turn the student's existing Practice Book data into
+// Pure functions that turn the student's existing AJIT 360 data into
 // AI-Coach insights (memory engine, forgetting curve, learning style,
 // insights, alerts, streak, greeting). No AI calls — deterministic locally.
 
