@@ -145,11 +145,34 @@ export default function AICoach() {
     }).eq("id", t.id);
   }
 
+  // ---- Insights / Memory / Alerts (derived) ----
+  const tasksByDate = useMemo(() => {
+    const m = new Map<string, { done: number; total: number }>();
+    tasks.forEach((t) => {
+      if (!t.task_date) return;
+      const cur = m.get(t.task_date) ?? { done: 0, total: 0 };
+      cur.total++; if (t.status === "done") cur.done++;
+      m.set(t.task_date, cur);
+    });
+    return m;
+  }, [tasks]);
+
+  const memory = useMemo(() => memoryEngine(wrongs, chapters), [wrongs, chapters]);
+  const style = useMemo(() => learningStyle(attempts), [attempts]);
+  const insights = useMemo(() => personalInsights({ wrongs, chapters, subjects, attempts }), [wrongs, chapters, subjects, attempts]);
+  const streak = useMemo(() => currentStreak(attempts, tasksByDate), [attempts, tasksByDate]);
+  const alerts = useMemo(() => coachAlerts({
+    wrongs, attempts, memory,
+    lastReportAt: latestReport?.created_at ?? null,
+    todayTasksDone: doneToday, todayTasksTotal: totalToday,
+  }), [wrongs, attempts, memory, latestReport, doneToday, totalToday]);
+
   if (loading) {
     return <div className="p-6 text-muted-foreground">Loading AI Coach…</div>;
   }
 
-  if (!snapshot) {
+  const hasAnyData = snapshot || wrongs.length > 0 || attempts.length > 0;
+  if (!hasAnyData) {
     return (
       <div className="max-w-3xl mx-auto p-6 space-y-4">
         <Button variant="ghost" onClick={() => navigate("/ai-mock-analyzer")}>
@@ -157,36 +180,70 @@ export default function AICoach() {
         </Button>
         <Card className="border-white/10 bg-white/5 backdrop-blur">
           <CardContent className="p-10 text-center space-y-3">
-            <Sparkles className="w-10 h-10 mx-auto text-primary" />
-            <h2 className="text-xl font-semibold">AI Coach is waiting for your first Mock</h2>
-            <p className="text-muted-foreground">Upload a Mock Test to unlock your personalised Study Planner, Coach Dashboard and Smart Goals.</p>
-            <Button asChild><Link to="/ai-mock-analyzer">Upload Mock Test</Link></Button>
+            <Brain className="w-10 h-10 mx-auto text-primary" />
+            <h2 className="text-xl font-semibold">Your AI Coach is warming up</h2>
+            <p className="text-muted-foreground">Attempt a Practice Test या Upload a Mock Test — फिर AI Coach आपकी personalised journey बनाना शुरू करेगा।</p>
+            <div className="flex gap-2 justify-center pt-2">
+              <Button asChild><Link to="/tests">Start Practice</Link></Button>
+              <Button asChild variant="outline"><Link to="/ai-mock-analyzer">Upload Mock</Link></Button>
+            </div>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  const rec = snapshot.recommendations ?? {};
-  const sync = snapshot.sync_summary ?? {};
+  const rec = snapshot?.recommendations ?? {};
+  const sync = snapshot?.sync_summary ?? {};
+  const readinessPct = Math.round(Number(latestReport?.readiness_score ?? snapshot ? (latestReport?.readiness_score ?? 0) : 0)) || 0;
+  const accPct = Math.round(Number(latestReport?.accuracy ?? 0)) || 0;
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/ai-mock-analyzer")}>
-            <ArrowLeft className="w-4 h-4 mr-1" /> Mock Analyzer
-          </Button>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-              <Sparkles className="w-6 h-6 text-primary" /> Personal AI Coach
-            </h1>
-            <p className="text-sm text-muted-foreground">Your daily study actions, generated from your latest Mock.</p>
+      {/* Greeting / hero */}
+      <Card className="border-white/10 bg-gradient-to-br from-primary/15 via-white/5 to-transparent backdrop-blur">
+        <CardContent className="p-5 md:p-6">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <div className="text-xs uppercase tracking-widest text-primary/80">AI Coach</div>
+              <h1 className="text-2xl md:text-3xl font-bold mt-1">{greeting(firstName)} 👋</h1>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xl">
+                {snapshot?.motivation ?? `${firstName}, आज एक छोटा target set करें और Smart Revision से शुरुआत करें।`}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="secondary"><Link to="/ai-coach/chat"><MessageSquare className="w-4 h-4 mr-1" /> Chat with Coach</Link></Button>
+              <Button asChild size="sm" variant="outline"><Link to="/smart-revision">Smart Revision</Link></Button>
+              <Button asChild size="sm" variant="ghost"><Link to="/ai-mock-analyzer"><ArrowLeft className="w-4 h-4 mr-1" /> Mock Analyzer</Link></Button>
+            </div>
           </div>
-        </div>
-        <Button asChild variant="outline"><Link to="/smart-revision">Open Smart Revision</Link></Button>
-      </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-5">
+            <Stat icon={<Target className="w-4 h-4" />} label="Today's Target" value={`${doneToday}/${totalToday || 0}`} />
+            <Stat icon={<Flame className="w-4 h-4" />} label="Current Streak" value={`${streak}🔥`} />
+            <Stat icon={<Brain className="w-4 h-4" />} label="Memory Strength" value={`${memory.strength}%`} />
+            <Stat icon={<ShieldCheck className="w-4 h-4" />} label="Readiness" value={`${readinessPct}%`} />
+            <Stat icon={<TrendingUp className="w-4 h-4" />} label="Latest Accuracy" value={`${accPct}%`} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Alerts */}
+      {alerts.length > 0 && (
+        <Card className="border-white/10 bg-white/5 backdrop-blur">
+          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><Bell className="w-4 h-4 text-primary" /> AI Alerts</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {alerts.map((a, i) => (
+              <div key={i} className={`text-sm px-3 py-2 rounded-lg border ${
+                a.level === "danger" ? "bg-red-500/10 border-red-500/30 text-red-200"
+                : a.level === "warn" ? "bg-orange-500/10 border-orange-500/30 text-orange-200"
+                : "bg-blue-500/10 border-blue-500/30 text-blue-200"
+              }`}>{a.text}</div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+
 
       {/* Coach dashboard */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
