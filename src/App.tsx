@@ -25,6 +25,7 @@ import RevisionRunner from "./pages/RevisionRunner.tsx";
 import About from "./pages/About.tsx";
 import Admin from "./pages/Admin.tsx";
 import AdminAnalytics from "./pages/AdminAnalytics.tsx";
+import AdminIntelligence from "./pages/AdminIntelligence.tsx";
 import AIMockAnalyzer from "./pages/AIMockAnalyzer.tsx";
 import PerformanceIntelligence from "./pages/PerformanceIntelligence.tsx";
 import AICoach from "./pages/AICoach.tsx";
@@ -78,6 +79,7 @@ const App = () => (
 
             <Route path="/admin" element={<AdminRoute><AppLayout><Admin /></AppLayout></AdminRoute>} />
             <Route path="/admin/analytics" element={<AdminRoute><AppLayout><AdminAnalytics /></AppLayout></AdminRoute>} />
+            <Route path="/admin/intelligence" element={<AdminRoute><AppLayout><AdminIntelligence /></AppLayout></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </SaveGateProvider>

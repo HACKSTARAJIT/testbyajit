@@ -1,58 +1,52 @@
+# Admin Intelligence Center
 
-## Preparation 360° — Central Intelligence Hub
+Hidden admin-only module. Zero changes to existing student modules — purely additive.
 
-Transform the AI Performance Center into a full preparation brain without touching existing modules. All changes are additive.
+## Access & routing
+- New route `/admin/intelligence` wrapped in the existing `AdminRoute` guard (already checks `has_role(auth.uid(), 'admin')`).
+- Add a link inside the existing Admin dashboard (`/admin`) only. No entry in student nav (`AppLayout` nav stays as-is).
+- Server-side role check on every edge function via `has_role` RPC before returning any data.
 
-### 1. New "🧠 Preparation 360°" primary tab (default)
-Add as first tab in `AIPerformanceCenter.tsx`, before Overview. Layout:
+## Data sources (all existing tables — no schema changes needed)
+- `profiles`, `user_roles`, `auth.users` (via existing `admin_get_user_emails` RPC)
+- `test_attempts`, `tests`, `questions`, `subjects`, `chapters`
+- `wrong_questions`, `revision_items`, `revision_tests`
+- `ai_mock_reports`, `ai_coach_snapshots`, `ai_chat_threads`, `study_plan_tasks`
+- `study_activity`, `performance`, `smart_goals`
 
-- **Hero metrics grid** (18 chips): Preparation Score, Overall Accuracy, Exam Readiness, Progress %, Study Streak, Today Target, Weekly Target, Monthly Target, Pending Revision, Most Improved Subject, Weakest Subject, Strongest Subject, Most Improved Chapter, Weakest Chapter, Most Improved Topic, Weakest Topic, Most Common Mistake, Current AI Recommendation.
-- **AI Insights panel** — data-backed one-liners generated server-side (e.g. "Geometry accuracy +12% over last 3 mocks").
-- **AI Recommendations panel** — actionable links into Practice Tests, Smart Revision, PDF notes, weak chapters/topics.
-- **Refresh button** — recomputes via edge function.
+## New edge functions (admin-only, JWT + has_role check)
+1. `admin-overview` — aggregate counts: total students, online-now (activity in last 5 min), active today/week, new registrations (last 7d), premium/guest breakdown.
+2. `admin-live-activity` — recent `study_activity` + latest `test_attempts` joined with profile/email/subject/chapter/test for a live feed.
+3. `admin-students-list` — paginated + searchable list with per-student aggregates (readiness, accuracy, questions solved, wrong count, revision pending/done, streak).
+4. `admin-student-detail` — full 360° for one student: subject/chapter/topic accuracy, mock history, test history, AI reports, revision progress, weak/strong areas, trend, planner, coach threads.
+5. `admin-leaderboard` — top accuracy / score / most active / most improved / longest streak / highest revision completion.
+6. `admin-insights` — Gemini via Lovable AI: generates 4–6 short data-backed one-liners from aggregated stats.
 
-Data sources (all already in DB):
-- `ai_mock_reports` (all types, chronological → improvement/decline detection)
-- `test_attempts` (practice history + streak)
-- `wrong_questions` (common mistakes, weak areas, revision backlog)
-- `revision_items` / `revision_tests` (retention, memory)
-- `study_activity` (streak, targets)
-- `performance` (subject-level trend)
-- `smart_goals` (targets)
+All 6 functions:
+- Verify JWT from `Authorization` header, call `has_role(user_id, 'admin')` with service-role client, 403 otherwise.
+- Return JSON; no raw SQL from client.
 
-### 2. New edge function `preparation-360`
-Aggregates ALL data server-side and calls Gemini for AI-only fields (insights, recommendations, common mistake). Deterministic fields (scores, streaks, most-improved) computed in code, not by AI. Persists a snapshot to `ai_coach_snapshots` for reuse. Returns:
+## Frontend (new files only)
+- `src/pages/AdminIntelligence.tsx` — tabbed shell (Overview / Live Activity / Students / Leaderboard / Insights).
+- `src/components/admin-intel/OverviewTab.tsx` — hero stat grid + Insights panel.
+- `src/components/admin-intel/LiveActivityTab.tsx` — polling every 15s.
+- `src/components/admin-intel/StudentsTab.tsx` — search, filters (subject, chapter, accuracy, readiness, reg date, last login, streak, premium, guest), CSV export.
+- `src/components/admin-intel/StudentDetailDrawer.tsx` — opens on row click; shows full 360° profile, mock history, test history, AI report, revision, planner, coach threads.
+- `src/components/admin-intel/LeaderboardTab.tsx`.
+- Export helpers: CSV (client-side), Excel via `xlsx` npm pkg, PDF via existing `jspdf` if present else CSV+print.
 
-```
-{
-  scores: {preparation, accuracy, readiness, progress},
-  streak, targets: {today, week, month, pending_revision},
-  subjects: {strongest, weakest, most_improved},
-  chapters: {weakest, most_improved},
-  topics:   {weakest, most_improved},
-  common_mistake, current_recommendation,
-  insights: string[],           // AI, data-backed
-  recommendations: [{label,type,ref}]
-}
-```
+## Router wiring
+- `src/App.tsx`: add `<Route path="/admin/intelligence" element={<AdminRoute><AppLayout><AdminIntelligence /></AppLayout></AdminRoute>} />`.
+- `src/pages/Admin.tsx`: add one card linking to `/admin/intelligence`.
 
-### 3. Expand AI Coach context
-Update `supabase/functions/ai-coach-chat/index.ts` system prompt payload to include: practice attempts, wrong questions, revision items, previous reports, performance trend, dashboard stats — not just latest mock. Explicit instruction: never answer from a single upload; reason across the whole preparation history.
+## Security
+- No client-side role trust: every fetch hits an edge function that re-verifies admin via `has_role`.
+- No new RLS policies needed — edge functions use service role after admin check, mirroring existing `admin-get-user-emails` pattern.
+- Route double-guarded by `AdminRoute` + server check.
 
-### 4. Auto-detection expanded
-Update `analyze-mock-test` classifier prompt so `report_type` can also be `revision_test` or `previous_year` (in addition to full_mock / subject / chapter / topic). Add matching filters/labels in the UI tabs (Full Mock tab already renders these; label helper updated).
+## Out of scope (kept intact)
+Practice Tests, Smart Revision, AI Mock Analyzer, AI Performance Center, Dashboard, PDF Library, Auth, existing Admin & AdminAnalytics pages, student nav.
 
-### 5. UI polish (no redesign)
-- Add tab pill "🧠 Preparation 360°" as first tab, keep every other tab intact.
-- Reuse existing card + gradient tokens — no new visual language.
-- Skeletons while `preparation-360` is loading.
-
-### Files
-- **Edit** `src/pages/AIPerformanceCenter.tsx` — add Preparation 360° tab + panels.
-- **New** `src/components/prep360/Preparation360.tsx` — self-contained hub UI.
-- **New** `supabase/functions/preparation-360/index.ts` — aggregator + AI.
-- **Edit** `supabase/functions/ai-coach-chat/index.ts` — full-history context.
-- **Edit** `supabase/functions/analyze-mock-test/index.ts` — extend report_type enum.
-
-### Out of scope (kept intact)
-Practice Tests, Smart Revision, AI Mock Analyzer upload flow, Dashboard, PDF Library, Auth, Admin Panel. No schema migration needed — existing tables cover every field.
+## Notes
+- "Premium Users" and "Phone" fields don't exist in current schema → shown as "—" with a small "not tracked" note. No migration added since spec says do not modify existing functionality; can wire up later if user confirms adding columns.
+- "Online now" = `study_activity.updated_at` within last 5 minutes (best available signal without new presence infra).

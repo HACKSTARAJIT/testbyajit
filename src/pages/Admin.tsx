@@ -47,7 +47,10 @@ export default function Admin() {
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
           <p className="text-muted-foreground">Manage subjects, chapters, study material & tests.</p>
         </div>
-        <a href="/admin/analytics"><Button variant="outline"><BarChart3 className="mr-2 h-4 w-4" />Test Analytics</Button></a>
+        <div className="flex gap-2">
+          <a href="/admin/analytics"><Button variant="outline"><BarChart3 className="mr-2 h-4 w-4" />Test Analytics</Button></a>
+          <a href="/admin/intelligence"><Button><Sparkles className="mr-2 h-4 w-4" />Intelligence Center</Button></a>
+        </div>
       </div>
 
       <Tabs defaultValue="subjects">
