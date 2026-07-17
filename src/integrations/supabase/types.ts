@@ -1001,6 +1001,7 @@ export type Database = {
           correct_count: number
           created_at: string
           current_index: number
+          guesses: Json
           id: string
           incorrect_count: number
           marked: Json | null
@@ -1021,6 +1022,7 @@ export type Database = {
           correct_count?: number
           created_at?: string
           current_index?: number
+          guesses?: Json
           id?: string
           incorrect_count?: number
           marked?: Json | null
@@ -1041,6 +1043,7 @@ export type Database = {
           correct_count?: number
           created_at?: string
           current_index?: number
+          guesses?: Json
           id?: string
           incorrect_count?: number
           marked?: Json | null

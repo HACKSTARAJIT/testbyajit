@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
   Clock, CheckCircle2, XCircle, ArrowLeft, ArrowRight, Trophy, Flag,
-  Target, RotateCcw, ListChecks, Sparkles, Info,
+  Target, RotateCcw, ListChecks, Sparkles, Info, Dice5, Brain,
 } from "lucide-react";
 import { recordAttempt } from "@/lib/revisionEngine";
 
@@ -71,6 +71,10 @@ export function TestEngine({
   const [current, setCurrent] = useState(resume?.current_index ?? 0);
   const [answers, setAnswers] = useState<Record<string, string>>(resume?.answers ?? {});
   const [marked, setMarked] = useState<Record<string, MarkState>>(resume?.marked ?? {});
+  // Guess Intelligence — per-question guess flag, does not affect scoring.
+  // `guessArmed` = toggle state before answering; `guesses` = frozen at answer time.
+  const [guessArmed, setGuessArmed] = useState<Record<string, boolean>>({});
+  const [guesses, setGuesses] = useState<Record<string, { guess: true; selected: string; timeMs: number }>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>(
     mode === "practice" ? Object.fromEntries(Object.keys(resume?.answers ?? {}).map((k) => [k, true])) : {}
   );
@@ -78,6 +82,7 @@ export function TestEngine({
   const [result, setResult] = useState<any>(null);
   const [secondsLeft, setSecondsLeft] = useState((test.duration_minutes ?? 30) * 60);
   const startTime = useRef<number>(Date.now());
+  const qStartTime = useRef<number>(Date.now());
   const attemptId = useRef<string | null>(resume?.attemptId ?? null);
   const savedWrong = useRef<Set<string>>(new Set());
 
@@ -120,6 +125,7 @@ export function TestEngine({
       current_index: current,
       answers,
       marked,
+      guesses,
       time_taken_seconds: timeTaken ?? Math.round((Date.now() - startTime.current) / 1000),
     };
     if (attemptId.current) {
@@ -128,13 +134,16 @@ export function TestEngine({
       const { data } = await supabase.from("test_attempts").insert(payload).select("id").single();
       if (data) attemptId.current = data.id;
     }
-  }, [canSave, userId, test.id, stats, sessionQs.length, mode, current, answers, marked]);
+  }, [canSave, userId, test.id, stats, sessionQs.length, mode, current, answers, marked, guesses]);
 
   // create/resume attempt on mount
   useEffect(() => {
     if (canSave && !attemptId.current) persist("in_progress");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reset per-question timer on navigation
+  useEffect(() => { qStartTime.current = Date.now(); }, [current]);
 
   // autosave every 8s
   useEffect(() => {
@@ -175,7 +184,11 @@ export function TestEngine({
 
   const choose = (letter: string) => {
     if (mode === "practice" && revealed[q.id]) return; // locked after reveal
+    const timeMs = Date.now() - qStartTime.current;
     setAnswers((a) => ({ ...a, [q.id]: letter }));
+    if (guessArmed[q.id]) {
+      setGuesses((g) => ({ ...g, [q.id]: { guess: true, selected: letter, timeMs } }));
+    }
     if (mode === "practice") {
       setRevealed((r) => ({ ...r, [q.id]: true }));
       if (letter === q.correct_option) {
@@ -185,6 +198,18 @@ export function TestEngine({
       }
     }
   };
+
+  const toggleGuess = () =>
+    setGuessArmed((g) => {
+      const next = { ...g, [q.id]: !g[q.id] };
+      // If already answered and user un-arms guess, drop the record.
+      if (!next[q.id]) setGuesses((gg) => { const { [q.id]: _drop, ...rest } = gg; return rest; });
+      // If already answered and user arms it, retro-tag as guess.
+      if (next[q.id] && answers[q.id]) {
+        setGuesses((gg) => ({ ...gg, [q.id]: { guess: true, selected: answers[q.id], timeMs: Date.now() - qStartTime.current } }));
+      }
+      return next;
+    });
 
   const toggleMark = (state: MarkState) =>
     setMarked((m) => ({ ...m, [q.id]: m[q.id] === state ? (undefined as any) : state }));
@@ -199,15 +224,40 @@ export function TestEngine({
     setAnswers({});
     setMarked({});
     setRevealed({});
+    setGuessArmed({});
+    setGuesses({});
     setCurrent(0);
     setSubmitted(false);
     setResult(null);
     setSecondsLeft((test.duration_minutes ?? 30) * 60);
     startTime.current = Date.now();
+    qStartTime.current = Date.now();
     attemptId.current = null;
     savedWrong.current = new Set();
     if (canSave) persist("in_progress");
   };
+
+  // ---------- GUESS INTELLIGENCE ----------
+  const guessStats = useMemo(() => {
+    const gIds = Object.keys(guesses);
+    const total = gIds.length;
+    let gCorrect = 0, gWrong = 0, kCorrect = 0, kWrong = 0, kAttempted = 0;
+    for (const item of sessionQs) {
+      const ans = answers[item.id];
+      if (!ans) continue;
+      const isCorrect = ans === item.correct_option;
+      if (guesses[item.id]) {
+        if (isCorrect) gCorrect += 1; else gWrong += 1;
+      } else {
+        kAttempted += 1;
+        if (isCorrect) kCorrect += 1; else kWrong += 1;
+      }
+    }
+    const guessAccuracy = total ? Math.round((gCorrect / total) * 100) : 0;
+    const knowledgeAccuracy = kAttempted ? Math.round((kCorrect / kAttempted) * 100) : 0;
+    const guessPct = sessionQs.length ? Math.round((total / sessionQs.length) * 100) : 0;
+    return { total, gCorrect, gWrong, kCorrect, kWrong, kAttempted, guessAccuracy, knowledgeAccuracy, guessPct };
+  }, [guesses, answers, sessionQs]);
 
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
@@ -236,6 +286,30 @@ export function TestEngine({
           <ResultStat label="Questions" value={sessionQs.length} className="glass-card" icon={Sparkles} />
         </div>
 
+        {guessStats.total > 0 && (
+          <div className="rounded-3xl border border-primary/20 bg-gradient-to-br from-card to-primary/5 p-5 shadow-md">
+            <div className="mb-3 flex items-center gap-2">
+              <Dice5 className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Guess Intelligence</h3>
+              <Badge variant="secondary" className="ml-auto text-[10px]">AI Analysis</Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <MiniStat label="Guessed" value={guessStats.total} />
+              <MiniStat label="Guess ✓" value={guessStats.gCorrect} tone="success" />
+              <MiniStat label="Guess ✗" value={guessStats.gWrong} tone="danger" />
+              <MiniStat label="Guess Acc." value={`${guessStats.guessAccuracy}%`} />
+              <MiniStat label="Knowledge ✓" value={guessStats.kCorrect} tone="success" />
+              <MiniStat label="Knowledge ✗" value={guessStats.kWrong} tone="danger" />
+              <MiniStat label="Knowledge Acc." value={`${guessStats.knowledgeAccuracy}%`} />
+              <MiniStat label="Guess %" value={`${guessStats.guessPct}%`} />
+            </div>
+            <p className="mt-3 rounded-xl bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">
+              <Brain className="mr-1 inline h-3.5 w-3.5 text-primary" />
+              {guessInsight(guessStats)}
+            </p>
+          </div>
+        )}
+
         {userId && attemptId.current && (
           <Link to={`/analysis/${attemptId.current}`} className="block">
             <Button className="btn-ripple w-full bg-gradient-hero text-white shadow-lg">
@@ -263,7 +337,14 @@ export function TestEngine({
           const chosen = answers[item.id];
           return (
             <div key={item.id} className="rounded-2xl border bg-card p-4 shadow-sm">
-              <p className="font-medium">Q{i + 1}. {item.question_text}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium">Q{i + 1}. {item.question_text}</p>
+                {guesses[item.id] && (
+                  <Badge variant="secondary" className="shrink-0 gap-1 text-[10px]">
+                    <Dice5 className="h-3 w-3" /> Guess
+                  </Badge>
+                )}
+              </div>
               <div className="mt-2 space-y-1.5">
                 {LETTERS.map((L) => {
                   const val = item[`option_${L.toLowerCase()}` as keyof EngineQuestion] as string;
@@ -341,10 +422,26 @@ export function TestEngine({
 
       {/* Question card */}
       <div key={q.id} className="animate-fade-in rounded-3xl border border-primary/10 bg-gradient-to-br from-card to-muted/30 p-5 shadow-md">
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-gradient-royal px-3 py-1 text-xs font-bold text-white">Q{current + 1}</span>
           {marked[q.id] === "review" && <Badge className="bg-warning text-white">Marked for Review</Badge>}
           {marked[q.id] === "doubt" && <Badge className="bg-warning text-white">Doubt</Badge>}
+          <button
+            type="button"
+            onClick={toggleGuess}
+            aria-pressed={!!guessArmed[q.id]}
+            aria-label="Toggle guess mode for this question"
+            className={cn(
+              "ml-auto inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+              guessArmed[q.id]
+                ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                : "border-border bg-muted/50 text-muted-foreground hover:border-primary/50"
+            )}
+            title="Mark this answer as a guess (does not affect scoring)"
+          >
+            <Dice5 className="h-3.5 w-3.5" />
+            🎲 Guess {guessArmed[q.id] ? "ON" : "OFF"}
+          </button>
         </div>
         <p className="text-lg font-semibold leading-relaxed">{q.question_text}</p>
 
@@ -478,4 +575,36 @@ function ResultStat({ label, value, className, icon: Icon }: { label: string; va
       <p className="mt-1 text-xs opacity-90">{label}</p>
     </div>
   );
+}
+
+function MiniStat({ label, value, tone }: { label: string; value: any; tone?: "success" | "danger" }) {
+  return (
+    <div className={cn(
+      "rounded-xl border p-2 text-center",
+      tone === "success" && "border-success/30 bg-success/10",
+      tone === "danger" && "border-destructive/30 bg-destructive/10",
+      !tone && "border-border bg-muted/40",
+    )}>
+      <p className="text-base font-bold leading-none">{value}</p>
+      <p className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+function guessInsight(s: {
+  total: number; gCorrect: number; guessAccuracy: number;
+  knowledgeAccuracy: number; guessPct: number;
+}) {
+  const parts: string[] = [];
+  parts.push(`You guessed ${s.total} question${s.total === 1 ? "" : "s"}.`);
+  parts.push(`Your Guess Accuracy is ${s.guessAccuracy}%.`);
+  if (s.guessPct >= 40) parts.push("High Guess Dependency — try to strengthen core concepts instead of relying on guesses.");
+  else if (s.guessPct >= 20) parts.push("Balanced Guess Strategy — keep improving your first-instinct accuracy.");
+  else parts.push("Low Guess Dependency — most answers are knowledge-based, keep it up!");
+  if (s.guessAccuracy >= 60 && s.total >= 3) parts.push("Your educated-guessing skill is strong.");
+  else if (s.total >= 3 && s.guessAccuracy < 35) parts.push("Try eliminating 1–2 options before guessing to raise your odds.");
+  if (s.knowledgeAccuracy && s.knowledgeAccuracy - s.guessAccuracy >= 25) {
+    parts.push("Knowledge answers are significantly more accurate than guesses — trust what you know.");
+  }
+  return parts.join(" ");
 }

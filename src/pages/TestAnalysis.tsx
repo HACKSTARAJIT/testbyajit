@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart3, TrendingUp, Award, Activity, Sparkles, ChevronRight } from "lucide-react";
+import { BarChart3, TrendingUp, Award, Activity, Sparkles, ChevronRight, Dice5 } from "lucide-react";
 
 type Row = {
   id: string;
@@ -13,6 +13,9 @@ type Row = {
   incorrect_count: number;
   unattempted_count: number;
   created_at: string;
+  guesses: Record<string, { guess: true; selected: string; timeMs: number }> | null;
+  answers: Record<string, string> | null;
+  total_questions: number | null;
   tests: { title: string; subject_id: string | null; subjects: { name: string } | null } | null;
 };
 
@@ -60,6 +63,33 @@ export default function TestAnalysis() {
     best: Math.max(...s.m),
   })).sort((a, b) => b.count - a.count);
 
+  // ---- Guess Intelligence (long-term) ----
+  const guessSeries = rows
+    .slice()
+    .reverse()
+    .map((r) => {
+      const g = r.guesses ?? {};
+      const a = r.answers ?? {};
+      const ids = Object.keys(g);
+      let gc = 0;
+      // We can only know correctness if a matching question was scored.
+      // We derive it from stored answers vs the guess.selected — if a guess selection was correct,
+      // the row's correct_count already includes it, but we still need per-guess correctness.
+      // We approximate: assume each guess is correct if its selected option matches the answer key we kept in-memory.
+      // The engine records `guesses[id].selected` — we compare against answers[id] which is the same value.
+      // Without correct_option here, we cannot recompute; we fall back to counting only totals.
+      // (Per-attempt accuracy is shown on the individual analysis page.)
+      for (const id of ids) if (a[id] && g[id].selected === a[id]) gc += 0; // no-op
+      return { total: ids.length, count: r.total_questions ?? 0, date: r.created_at };
+    });
+  const guessTotals = guessSeries.reduce((acc, x) => ({
+    tests: acc.tests + (x.count > 0 ? 1 : 0),
+    guessed: acc.guessed + x.total,
+    questions: acc.questions + x.count,
+  }), { tests: 0, guessed: 0, questions: 0 });
+  const avgGuessPerTest = guessTotals.tests ? Math.round((guessTotals.guessed / guessTotals.tests) * 10) / 10 : 0;
+  const guessFrequency = guessTotals.questions ? Math.round((guessTotals.guessed / guessTotals.questions) * 100) : 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -100,6 +130,23 @@ export default function TestAnalysis() {
               ))}
             </CardContent>
           </Card>
+
+          {guessTotals.guessed > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Dice5 className="h-5 w-5 text-primary" /> Guess Intelligence (long-term)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <Metric label="Total Guesses" value={guessTotals.guessed} />
+                <Metric label="Avg Guesses / Test" value={avgGuessPerTest} />
+                <Metric label="Guess Frequency %" value={guessFrequency} />
+              </CardContent>
+            </Card>
+          )}
+
+
 
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Activity className="h-5 w-5 text-primary" /> Recent Activity</CardTitle></CardHeader>

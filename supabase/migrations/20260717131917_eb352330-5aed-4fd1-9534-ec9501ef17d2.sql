@@ -1,0 +1,1 @@
+ALTER TABLE public.test_attempts ADD COLUMN IF NOT EXISTS guesses jsonb NOT NULL DEFAULT '{}'::jsonb;
