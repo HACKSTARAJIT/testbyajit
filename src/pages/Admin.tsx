@@ -42,9 +42,12 @@ export default function Admin() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Manage subjects, chapters, study material & tests.</p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+          <p className="text-muted-foreground">Manage subjects, chapters, study material & tests.</p>
+        </div>
+        <a href="/admin/analytics"><Button variant="outline"><BarChart3 className="mr-2 h-4 w-4" />Test Analytics</Button></a>
       </div>
 
       <Tabs defaultValue="subjects">
