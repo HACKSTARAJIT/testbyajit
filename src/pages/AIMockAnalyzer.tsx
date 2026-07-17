@@ -445,7 +445,14 @@ function friendly(msg?: string) {
   if (/ocr/i.test(msg)) return "OCR failed. Please retry.";
   if (/timeout|timed out/i.test(msg)) return "Request timed out. Please retry.";
   if (/network|fetch/i.test(msg)) return "Network error. Check your connection.";
-  return msg.length > 140 ? "Something went wrong. Please retry." : msg;
+  return msg.length > 220 ? msg.slice(0, 220) + "..." : msg;
+}
+
+function hasValidReport(report: any) {
+  if (!report || typeof report !== "object" || Object.keys(report).length === 0) return false;
+  const totals = report.totals ?? {};
+  const questions = Number(totals.questions ?? totals.total_questions ?? totals.total ?? 0);
+  return questions > 0 && report.accuracy != null && Array.isArray(report.subject_analysis) && report.subject_analysis.length > 0;
 }
 
 function StatCard({ icon, label, value, sub, tint, small }: { icon: React.ReactNode; label: string; value: any; sub?: string; tint: string; small?: boolean }) {
@@ -465,6 +472,7 @@ function ReportCard({ r, onOpen, onAnalyze, onRename, onDuplicate, onDelete, ana
   r: Report; onOpen: () => void; onAnalyze: () => void; onRename: () => void; onDuplicate: () => void; onDelete: () => void; analyzing: boolean;
 }) {
   const pages = r.file_paths?.length ?? 0;
+  const validReport = r.status === "completed" && hasValidReport(r.report);
   return (
     <Card className="group relative overflow-hidden bg-card/60 backdrop-blur transition hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5">
       <CardContent className="space-y-3 p-4">
@@ -484,14 +492,14 @@ function ReportCard({ r, onOpen, onAnalyze, onRename, onDuplicate, onDelete, ana
           <Mini label="Score" value={r.overall_score ?? "—"} />
           <Mini label="Readiness" value={r.readiness_score ? `${r.readiness_score}%` : "—"} />
         </div>
-        {r.error && r.status === "failed" && (
+        {((r.error && r.status === "failed") || (r.status === "completed" && !validReport)) && (
           <div className="flex items-start gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>AI Analysis Failed. Please retry.</span>
+            <span>{r.error || "AI Analysis returned empty values. Please reanalyze."}</span>
           </div>
         )}
         <div className="flex flex-wrap gap-1">
-          {r.status === "completed" ? (
+          {validReport ? (
             <Button size="sm" variant="secondary" onClick={onOpen} className="flex-1">Open</Button>
           ) : r.status === "analyzing" ? (
             <Button size="sm" disabled className="flex-1"><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Analyzing</Button>
@@ -558,11 +566,14 @@ function EmptyState({ hasAny }: { hasAny: boolean }) {
 /* ---------- Existing detailed report view (unchanged rendering) ---------- */
 function ReportView({ r, onAnalyze, analyzing }: { r: Report; onAnalyze: () => void; analyzing: boolean }) {
   const d = r.report ?? {};
-  if (r.status !== "completed" || !r.report) {
+  if (r.status !== "completed" || !hasValidReport(r.report)) {
     return (
       <div className="space-y-3">
         <DialogHeader><DialogTitle>{r.title}</DialogTitle></DialogHeader>
-        <p className="text-sm text-muted-foreground">This report has not been analyzed yet.</p>
+        <p className="text-sm text-muted-foreground">
+          {r.status === "completed" ? "AI analysis returned empty values and was blocked from display. Please reanalyze." : "This report has not been analyzed yet."}
+        </p>
+        {r.error && <p className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">{r.error}</p>}
         <Button onClick={onAnalyze} disabled={analyzing}>
           {analyzing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</> : <><Sparkles className="mr-2 h-4 w-4" />Analyze Mock</>}
         </Button>

@@ -170,6 +170,8 @@ LANGUAGE & TONE RULES (STRICT — the report must read like a senior SSC faculty
 - Each task in plan_7_day / plan_30_day reads like a short teacher instruction (e.g. "Trigonometry के Height & Distance के 25 Practice questions solve करें और गलतियों की Revision करें").
 - mistake_reasons: one entry per non-zero mistake_categories key, explaining WHY that class of mistake happened in this paper.
 - Every string must be specific to THIS paper. Avoid repetitive sentences, avoid generic advice, avoid hallucinations. If a field cannot be determined, use null / [] / 0.
+- Never return an empty object, placeholder-only object, or all-zero report. If the file is readable, extract the visible totals and analysis. If the file is not readable, still return a valid JSON object with ocr_text explaining what was visible/unreadable and leave unknown fields null / [] / 0.
+- A report is INVALID if totals.questions is 0/null, accuracy is missing, subject_analysis is empty, and all feedback fields are blank. Do not output that shape.
 
 Return strict JSON only.`,
     }];
@@ -244,13 +246,20 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       lastRaw = typeof raw === "string" ? raw : JSON.stringify(raw);
       console.log("AI response", { reportId, attempt, finish, len: lastRaw.length });
 
+      if (finish === "length" || finish === "max_tokens") {
+        lastErr = `AI response was truncated (${finish}); retrying with full JSON requirement`;
+        console.error("truncated response", reportId, attempt, lastErr);
+        continue;
+      }
+
       try {
         const candidate = typeof raw === "string" ? extractJSON(raw) : raw;
-        if (validateReport(candidate)) {
+        const validationError = getReportValidationError(candidate);
+        if (!validationError) {
           parsed = candidate;
           break;
         }
-        lastErr = "Response missing required fields (totals/accuracy/subject_analysis)";
+        lastErr = validationError;
         console.error("validation failed", reportId, attempt, lastErr);
       } catch (parseErr) {
         lastErr = `JSON parse failed: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`;
@@ -260,6 +269,11 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
 
     if (!parsed) {
       throw new Error(`AI analysis failed after retries. ${lastErr}. Raw head: ${lastRaw.slice(0, 400)}`);
+    }
+
+    const finalValidationError = getReportValidationError(parsed);
+    if (finalValidationError) {
+      throw new Error(`AI analysis produced an invalid report and was not saved. ${finalValidationError}. Raw head: ${lastRaw.slice(0, 400)}`);
     }
 
     const totals = parsed.totals ?? {};
@@ -321,17 +335,27 @@ function toNum(v: any): number | null {
   return m ? Number(m[0]) : null;
 }
 
-function validateReport(r: any): boolean {
-  if (!r || typeof r !== "object") return false;
-  if (!r.totals || typeof r.totals !== "object") return false;
+function getReportValidationError(r: any): string | null {
+  if (!r || typeof r !== "object" || Array.isArray(r)) return "AI returned no JSON report object";
+  if (Object.keys(r).length === 0) return "AI returned an empty JSON object";
+  if (!r.totals || typeof r.totals !== "object") return "AI report is missing totals";
   const t = r.totals;
-  if (typeof t.questions !== "number" || t.questions <= 0) return false;
-  if (r.accuracy === undefined || r.accuracy === null) return false;
-  if (!Array.isArray(r.subject_analysis)) return false;
+  const questions = toNum(t.questions ?? t.total_questions ?? t.total);
+  if (questions === null || questions <= 0) return "AI report has no detected question count";
+  if (toNum(r.accuracy) === null) return "AI report is missing accuracy";
+  if (toNum(r.readiness_score) === null) return "AI report is missing readiness score";
+  if (!Array.isArray(r.subject_analysis)) return "AI report is missing subject analysis";
+  if (r.subject_analysis.length === 0) return "AI report has empty subject analysis";
   // At least one narrative field must be non-empty
   const narratives = [r.coach_feedback, r.overall_performance, r.performance_summary];
-  if (!narratives.some((x) => typeof x === "string" && x.trim().length > 20)) return false;
-  return true;
+  if (!narratives.some((x) => typeof x === "string" && x.trim().length > 20 && x.trim() !== "-")) return "AI report has no usable coach feedback";
+  const usefulArrays = [
+    r.strong_subjects, r.weak_subjects, r.weak_chapters, r.weak_topics,
+    r.priority_chapters, r.priority_topics, r.improvement_areas, r.questions,
+  ];
+  const hasUsefulArray = usefulArrays.some((x) => Array.isArray(x) && x.length > 0);
+  if (!hasUsefulArray && questions > 1) return "AI report contains only default/empty analysis fields";
+  return null;
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
