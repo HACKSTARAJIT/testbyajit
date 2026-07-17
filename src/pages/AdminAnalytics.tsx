@@ -130,11 +130,11 @@ function TestAnalyticsPanel({ test }: { test: Test }) {
       const uids = [...new Set(atts.map(a => a.user_id))];
       if (uids.length) {
         const [emRes, prRes] = await Promise.all([
-          supabase.rpc("admin_get_user_emails", { _user_ids: uids }),
+          supabase.functions.invoke("admin-get-user-emails", { body: { user_ids: uids } }),
           supabase.from("profiles").select("id, display_name").in("id", uids),
         ]);
         const em: Record<string, string> = {};
-        (emRes.data as any[])?.forEach(r => (em[r.user_id] = r.email));
+        ((emRes.data as any)?.data as any[] | undefined)?.forEach(r => (em[r.user_id] = r.email));
         setEmails(em);
         const nm: Record<string, string> = {};
         (prRes.data as any[])?.forEach(r => (nm[r.id] = r.display_name || ""));

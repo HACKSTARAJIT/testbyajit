@@ -26,7 +26,7 @@ export default function TestRunner() {
   useEffect(() => {
     (async () => {
       // Single shared loader — identical to Admin validation & debug panel
-      const loaded = await loadTestWithQuestions(id!);
+      const loaded = await loadTestWithQuestions(id!, user?.id ?? null);
       setTest(loaded.test);
       setQuestions(loaded.questions);
       setLoadError(loaded.testError || loaded.questionsError);
