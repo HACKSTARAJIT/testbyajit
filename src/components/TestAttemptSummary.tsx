@@ -9,7 +9,12 @@ type ExtendedAttempt = Attempt & {
   accuracy?: number | null;
   total_questions?: number | null;
   time_taken_seconds?: number | null;
+  updated_at?: string | null;
 };
+
+function attemptDate(a: ExtendedAttempt) {
+  return a.updated_at || a.created_at;
+}
 
 function relDate(iso: string) {
   const d = new Date(iso);
@@ -52,10 +57,12 @@ export function TestAttemptSummary({
       const hasData =
         (a.correct_count || 0) > 0 ||
         (a.incorrect_count || 0) > 0 ||
-        Number(a.marks_obtained || 0) > 0;
+        Number(a.marks_obtained || 0) > 0 ||
+        (a.accuracy != null && Number.isFinite(Number(a.accuracy))) ||
+        (a.total_questions || 0) > 0;
       return a.status !== "in_progress" || hasData;
     })
-    .sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+    .sort((a, b) => +new Date(attemptDate(a)) - +new Date(attemptDate(b)));
 
   if (completed.length === 0) return null;
 
@@ -100,7 +107,7 @@ export function TestAttemptSummary({
               <p className="text-sm font-bold text-primary">
                 {lastMarks}{denom ? `/${denom}` : ""}
               </p>
-              <p className="text-[10px] text-muted-foreground">{lastAcc}% · {relDate(latest.created_at)}</p>
+              <p className="text-[10px] text-muted-foreground">{lastAcc}% · {relDate(attemptDate(latest))}</p>
             </button>
           </DialogTrigger>
           <DialogContent className="max-w-sm">
@@ -122,7 +129,7 @@ export function TestAttemptSummary({
                         Attempt {i + 1} {isLatest && <span className="text-[10px] text-primary">· Latest</span>}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(a.created_at).toLocaleDateString()}
+                        {new Date(attemptDate(a)).toLocaleDateString()}
                       </span>
                     </div>
                     <div className="mt-1 grid grid-cols-3 gap-2 text-xs text-muted-foreground">

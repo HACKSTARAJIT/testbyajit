@@ -12,19 +12,36 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TestTracker, type Attempt } from "@/components/TestTracker";
 import { TestAttemptSummary } from "@/components/TestAttemptSummary";
 
+type AttemptWithTest = Attempt & {
+  tests?: { title?: string | null; test_part?: string | null } | null;
+};
+
+const norm = (value?: string | null) => (value ?? "").trim().toLowerCase();
+
+const attemptsForTest = (attempts: AttemptWithTest[], test: any) =>
+  attempts.filter((a) => {
+    if (a.test_id === test.id) return true;
+    const attemptedTest = a.tests;
+    if (!attemptedTest?.title) return false;
+    return norm(attemptedTest.title) === norm(test.title) && norm(attemptedTest.test_part) === norm(test.test_part);
+  });
+
 export default function Tests() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [tests, setTests] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
-  const [attempts, setAttempts] = useState<Attempt[]>([]);
+  const [attempts, setAttempts] = useState<AttemptWithTest[]>([]);
   const [q, setQ] = useState("");
   const [subject, setSubject] = useState("all");
   const [loading, setLoading] = useState(true);
 
   const loadAttempts = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase.from("test_attempts").select("*").eq("user_id", user.id);
+    const { data } = await supabase
+      .from("test_attempts")
+      .select("*, tests(title, test_part)")
+      .eq("user_id", user.id);
     setAttempts((data as any) ?? []);
   }, [user]);
 
@@ -76,7 +93,9 @@ export default function Tests() {
         </CardContent></Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {filtered.map((t) => (
+          {filtered.map((t) => {
+            const testAttempts = attemptsForTest(attempts, t);
+            return (
             <Card key={t.id} className="flex flex-col transition-shadow hover:shadow-md">
               <CardContent className="flex flex-1 flex-col p-5">
                 <div className="mb-2 flex items-center gap-2">
@@ -92,12 +111,12 @@ export default function Tests() {
                 {t.test_link ? (
                   <>
                     <TestAttemptSummary
-                      attempts={attempts.filter((a) => a.test_id === t.id)}
+                      attempts={testAttempts}
                       totalMarks={t.total_marks ?? t.total_questions ?? null}
                     />
                     <TestTracker
                       test={{ id: t.id, title: t.title, test_link: t.test_link, subject_id: t.subject_id, chapter_id: t.chapter_id }}
-                      attempts={attempts.filter((a) => a.test_id === t.id)}
+                      attempts={testAttempts}
                       onSaved={loadAttempts}
                       triggerClassName="mt-4 w-full"
                     />
@@ -108,7 +127,7 @@ export default function Tests() {
                       {t.total_questions} Questions · {t.total_marks ?? t.total_questions} Marks · {t.duration_minutes} min
                     </p>
                     <TestAttemptSummary
-                      attempts={attempts.filter((a) => a.test_id === t.id)}
+                      attempts={testAttempts}
                       totalMarks={t.total_marks ?? t.total_questions ?? null}
                     />
                     <Button className="mt-4 w-full" onClick={() => navigate(`/test/${t.id}`)}>
@@ -118,8 +137,8 @@ export default function Tests() {
                 )}
               </CardContent>
             </Card>
-
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
