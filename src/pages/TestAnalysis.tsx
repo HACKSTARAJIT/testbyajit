@@ -131,6 +131,23 @@ export default function TestAnalysis() {
             </CardContent>
           </Card>
 
+          {guessTotals.guessed > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Dice5 className="h-5 w-5 text-primary" /> Guess Intelligence (long-term)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <Metric label="Total Guesses" value={guessTotals.guessed} />
+                <Metric label="Avg Guesses / Test" value={avgGuessPerTest} />
+                <Metric label="Guess Frequency %" value={guessFrequency} />
+              </CardContent>
+            </Card>
+          )}
+
+
+
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Activity className="h-5 w-5 text-primary" /> Recent Activity</CardTitle></CardHeader>
             <CardContent className="space-y-1.5">
