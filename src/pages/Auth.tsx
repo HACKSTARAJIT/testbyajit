@@ -85,8 +85,8 @@ export default function Auth() {
           <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-hero">
             <GraduationCap className="h-7 w-7 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl font-display">Practice Book By Ajit</CardTitle>
-          <CardDescription>प्रतियोगी परीक्षा की तैयारी / Practice & Study</CardDescription>
+          <CardTitle className="text-2xl font-display">AJIT 360</CardTitle>
+          <CardDescription>Learn • Practice • Analyze • Succeed</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login">

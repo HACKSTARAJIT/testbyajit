@@ -12,7 +12,7 @@ import {
   Sparkles, Pin, Flame, Layers, FileText, ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
-import appIcon from "@/assets/app-icon.png";
+import brandLogo from "@/assets/ajit360-logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchActivity } from "@/lib/study";
 
@@ -118,9 +118,9 @@ export default function Dashboard() {
         <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-primary-foreground/10 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-12 -left-8 h-40 w-40 rounded-full bg-secondary/30 blur-2xl" />
         <div className="relative flex items-center gap-4">
-          <img src={appIcon} alt="Practice Book By Ajit app logo" width={56} height={56} className="h-14 w-14 rounded-2xl bg-primary-foreground/15 p-1 backdrop-blur" />
+          <img src={brandLogo} alt="AJIT 360 app logo" width={56} height={56} className="h-14 w-14 rounded-2xl bg-primary-foreground/15 p-1 backdrop-blur" />
           <div>
-            <h1 className="text-2xl font-bold leading-tight md:text-3xl">Practice Book By Ajit</h1>
+            <h1 className="text-2xl font-bold leading-tight md:text-3xl">AJIT 360</h1>
             <p className="text-sm text-primary-foreground/85">प्रीमियम स्टडी लाइब्रेरी — सभी विषय एक जगह</p>
           </div>
         </div>
@@ -134,7 +134,7 @@ export default function Dashboard() {
               <Smartphone className="h-6 w-6" />
             </div>
             <div>
-              <p className="flex items-center gap-2 font-semibold">📱 Practice Book By Ajit App</p>
+              <p className="flex items-center gap-2 font-semibold">📱 AJIT 360 App</p>
               <p className="text-xs text-muted-foreground">
                 Version {release?.version ?? "1.0.0"}
                 {fmtSize(release?.file_size) && ` • ${fmtSize(release?.file_size)}`}
