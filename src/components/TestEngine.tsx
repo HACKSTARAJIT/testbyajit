@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
   Clock, CheckCircle2, XCircle, ArrowLeft, ArrowRight, Trophy, Flag,
-  Target, RotateCcw, ListChecks, Sparkles, Info,
+  Target, RotateCcw, ListChecks, Sparkles, Info, Dice5, Brain,
 } from "lucide-react";
 import { recordAttempt } from "@/lib/revisionEngine";
 
