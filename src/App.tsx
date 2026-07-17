@@ -103,6 +103,7 @@ const App = () => (
             <Route path="/ai-mock-analyzer" element={withLayout(<AIMockAnalyzer />)} />
             <Route path="/ai-performance-center" element={withLayout(<AIPerformanceCenter />)} />
             <Route path="/selection-intelligence" element={withLayout(<SelectionIntelligence />)} />
+            <Route path="/accountability" element={withLayout(<Accountability />)} />
             <Route path="/performance" element={withLayout(<PerformanceIntelligence />)} />
             <Route path="/ai-coach" element={withLayout(<AICoach />)} />
             <Route path="/ai-coach/chat" element={withLayout(<AICoachChat />)} />
