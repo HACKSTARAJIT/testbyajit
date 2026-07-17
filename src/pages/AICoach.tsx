@@ -77,31 +77,50 @@ export default function AICoach() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [wrongs, setWrongs] = useState<CoachWrong[]>([]);
+  const [attempts, setAttempts] = useState<CoachAttempt[]>([]);
+  const [chapters, setChapters] = useState<ChapterRef[]>([]);
+  const [subjects, setSubjects] = useState<SubjectRef[]>([]);
+  const [latestReport, setLatestReport] = useState<any>(null);
+  const [firstName, setFirstName] = useState("Student");
 
   useEffect(() => {
     if (!user) return;
     (async () => {
       setLoading(true);
-      // Latest snapshot
-      const { data: snaps } = await (supabase as any)
-        .from("ai_coach_snapshots").select("*")
-        .eq("user_id", user.id).order("created_at", { ascending: false }).limit(1);
-      const snap = snaps?.[0] ?? null;
+      const [snapRes, taskRes, goalRes, wrongRes, attemptRes, chapRes, subRes, reportRes, profRes] = await Promise.all([
+        (supabase as any).from("ai_coach_snapshots").select("*")
+          .eq("user_id", user.id).order("created_at", { ascending: false }).limit(1),
+        (supabase as any).from("study_plan_tasks").select("*").eq("user_id", user.id).order("task_date"),
+        (supabase as any).from("smart_goals").select("*")
+          .eq("user_id", user.id).eq("status", "active").order("deadline"),
+        supabase.from("wrong_questions")
+          .select("id, chapter_id, subject_id, priority, status, wrong_count, correct_revision_count, consecutive_correct, last_attempt_at, mastered_at, topic")
+          .eq("user_id", user.id),
+        supabase.from("test_attempts").select("accuracy, marks_obtained, created_at")
+          .eq("user_id", user.id).order("created_at", { ascending: false }).limit(20),
+        supabase.from("chapters").select("id, name, subject_id"),
+        supabase.from("subjects").select("id, name"),
+        supabase.from("ai_mock_reports").select("*")
+          .eq("user_id", user.id).eq("status", "completed").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
+      ]);
+      const snap = snapRes.data?.[0] ?? null;
       setSnapshot(snap);
-
-      // Tasks for latest report (or all if none)
       const reportFilter = snap?.report_id;
-      const q = (supabase as any).from("study_plan_tasks").select("*").eq("user_id", user.id);
-      const { data: t } = reportFilter ? await q.eq("report_id", reportFilter).order("task_date") : await q.order("task_date");
-      setTasks(t ?? []);
-
-      const { data: g } = await (supabase as any)
-        .from("smart_goals").select("*")
-        .eq("user_id", user.id).eq("status", "active").order("deadline");
-      setGoals(g ?? []);
+      setTasks((taskRes.data ?? []).filter((t: any) => !reportFilter || t.report_id === reportFilter || !t.report_id));
+      setGoals(goalRes.data ?? []);
+      setWrongs((wrongRes.data as any) ?? []);
+      setAttempts((attemptRes.data as any) ?? []);
+      setChapters((chapRes.data as any) ?? []);
+      setSubjects((subRes.data as any) ?? []);
+      setLatestReport(reportRes.data ?? null);
+      const dn = (profRes.data?.display_name ?? "").trim();
+      if (dn) setFirstName(dn.split(/\s+/)[0]);
       setLoading(false);
     })();
   }, [user]);
+
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const grouped = useMemo(() => ({
