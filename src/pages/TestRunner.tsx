@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { GraduationCap, Zap, ArrowLeft, Clock, ListChecks, Award, PlayCircle, AlertTriangle } from "lucide-react";
 import { TestEngine, type EngineQuestion, type EngineTest } from "@/components/TestEngine";
 import { loadTestWithQuestions } from "@/lib/testLoader";
+import { PreTestDashboard } from "@/components/PreTestDashboard";
 
 type Mode = "practice" | "exam";
 
