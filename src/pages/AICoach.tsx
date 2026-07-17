@@ -8,11 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "@/hooks/use-toast";
 import {
   Sparkles, Target, Flame, BookOpen, CalendarDays, CheckCircle2,
   ArrowLeft, TrendingUp, AlertTriangle, ListChecks, Trophy,
+  Brain, Clock, Bell, Lightbulb, MessageSquare, Activity, ShieldCheck,
 } from "lucide-react";
+import {
+  greeting, memoryEngine, learningStyle, coachAlerts, personalInsights, currentStreak,
+  type CoachWrong, type CoachAttempt, type ChapterRef, type SubjectRef,
+} from "@/lib/aiCoachInsights";
+
 
 type Snapshot = {
   id: string;
