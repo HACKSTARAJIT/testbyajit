@@ -49,21 +49,25 @@ Deno.serve(async (req) => {
       .from("ai_chat_messages").select("role, content")
       .eq("thread_id", threadId).order("created_at").limit(40);
 
-    // Build student context (only their own data)
-    const [prof, latestReport, coach, wrongs, attempts, weakGoals, plan] = await Promise.all([
+    // Build FULL student context — never rely on a single upload.
+    const [prof, reports, coach, wrongs, attempts, weakGoals, plan, revItems, revTests, activity, perf] = await Promise.all([
       admin.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
-      admin.from("ai_mock_reports").select("exam_name, accuracy, readiness_score, overall_score, report, created_at")
-        .eq("user_id", userId).eq("status", "completed").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      admin.from("ai_mock_reports").select("title, exam_name, report_type, detected_subject, detected_chapter, detected_topic, accuracy, readiness_score, overall_score, report, created_at")
+        .eq("user_id", userId).eq("status", "completed").order("created_at", { ascending: false }).limit(8),
       admin.from("ai_coach_snapshots").select("focus, biggest_mistake, target_score, motivation, revision_goal, recommendations")
         .eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       admin.from("wrong_questions").select("chapter_id, subject_id, priority, status, wrong_count, last_attempt_at, topic")
-        .eq("user_id", userId).limit(200),
-      admin.from("test_attempts").select("accuracy, marks_obtained, created_at")
-        .eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
+        .eq("user_id", userId).limit(400),
+      admin.from("test_attempts").select("accuracy, marks_obtained, total_questions, correct_count, incorrect_count, created_at")
+        .eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
       admin.from("smart_goals").select("title, target_value, current_value, unit, deadline, status")
         .eq("user_id", userId).eq("status", "active").limit(10),
       admin.from("study_plan_tasks").select("title, chapter, topic, priority, status, task_date")
         .eq("user_id", userId).gte("task_date", new Date().toISOString().slice(0, 10)).order("task_date").limit(20),
+      admin.from("revision_items").select("item_type, subject_id, created_at").eq("user_id", userId).limit(200),
+      admin.from("revision_tests").select("title, question_count, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
+      admin.from("study_activity").select("opened_at").eq("user_id", userId).order("opened_at", { ascending: false }).limit(60),
+      admin.from("performance").select("*").eq("user_id", userId).limit(50),
     ]);
 
     const firstName = (prof.data?.display_name ?? "Student").trim().split(/\s+/)[0] || "Student";
@@ -72,42 +76,58 @@ Deno.serve(async (req) => {
     const masteredCount = wrongsData.filter((w: any) => w.status === "mastered").length;
     const criticalCount = wrongsData.filter((w: any) => w.priority === "critical" && w.status !== "mastered").length;
 
-    const rep = latestReport.data?.report ?? {};
+    // Study streak from study_activity (distinct days)
+    const days = new Set((activity.data ?? []).map((r: any) => (r.opened_at ?? "").slice(0, 10)));
+    let streak = 0;
+    for (let i = 0; i < 60; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      if (days.has(d.toISOString().slice(0, 10))) streak++; else break;
+    }
+
+    const reportSummaries = (reports.data ?? []).map((r: any) => ({
+      title: r.title, type: r.report_type, subject: r.detected_subject, chapter: r.detected_chapter, topic: r.detected_topic,
+      accuracy: r.accuracy, readiness: r.readiness_score, score: r.overall_score,
+      weak_chapters: r.report?.priority_chapters ?? r.report?.weak_chapters ?? [],
+      weak_topics: r.report?.priority_topics ?? r.report?.weak_topics ?? [],
+      strong_subjects: r.report?.strong_subjects ?? [],
+      biggest_weakness: r.report?.biggest_weakness,
+      date: r.created_at,
+    }));
+
     const context = {
       student_name: firstName,
-      latest_mock: latestReport.data ? {
-        exam: latestReport.data.exam_name,
-        accuracy: latestReport.data.accuracy,
-        readiness: latestReport.data.readiness_score,
-        score: latestReport.data.overall_score,
-        weak_chapters: rep.priority_chapters ?? rep.weak_chapters ?? [],
-        weak_topics: rep.priority_topics ?? rep.weak_topics ?? [],
-        strong_subjects: rep.strong_subjects ?? [],
-        biggest_weakness: rep.biggest_weakness,
-        date: latestReport.data.created_at,
-      } : null,
-      coach_snapshot: coach.data ?? null,
-      revision_stats: {
-        pending_wrong_questions: pendingCount,
-        mastered: masteredCount,
-        critical_priority: criticalCount,
+      preparation_summary: {
+        total_ai_reports: reportSummaries.length,
+        total_practice_tests: (attempts.data ?? []).length,
+        study_streak_days: streak,
+        pending_revision: pendingCount,
+        mastered_wrong_questions: masteredCount,
+        critical_wrong_questions: criticalCount,
+        revision_items_saved: (revItems.data ?? []).length,
+        revision_tests_taken: (revTests.data ?? []).length,
       },
-      recent_attempts: (attempts.data ?? []).slice(0, 10),
+      all_reports_recent_first: reportSummaries,
+      coach_snapshot: coach.data ?? null,
+      recent_practice_attempts: (attempts.data ?? []).slice(0, 20),
+      subject_performance: perf.data ?? [],
       active_goals: weakGoals.data ?? [],
       upcoming_tasks: plan.data ?? [],
     };
 
-    const systemPrompt = `You are ${firstName}'s Personal AI Exam Coach inside "Practice Book by Ajit". You know this student's full preparation journey through the CONTEXT below. You are NOT a generic chatbot — you are their personal mentor.
 
-RULES:
+    const systemPrompt = `You are ${firstName}'s Personal AI Exam Coach inside "Practice Book by Ajit". You know this student's FULL preparation journey — every AI report, every Practice Test attempt, every Wrong Question, every Smart Revision item, every active goal — through the CONTEXT below.
+
+CRITICAL RULES:
+- NEVER answer based only on the latest uploaded mock. Always reason across the student's COMPLETE preparation history in CONTEXT (all_reports_recent_first, recent_practice_attempts, subject_performance, preparation_summary, coach_snapshot, active_goals, upcoming_tasks).
 - Address the student as "${firstName}" naturally.
-- Answer ONLY using the student's own data in CONTEXT. Never invent numbers, chapters, topics, or history.
-- If the data doesn't cover the question, say so honestly and suggest which action would generate that data (e.g. "upload a Mock Test", "attempt a Practice Test on Geometry").
+- Every claim (numbers, chapters, trends, improvements, declines) MUST come from CONTEXT. Never invent a chapter/topic/number/history that isn't there.
+- Prefer comparisons across reports/attempts ("पिछले 3 mocks में Trigonometry accuracy 62% → 71% → 78% — clear improvement").
+- If the data doesn't cover the question, say so honestly and suggest which action would generate that data.
 - NEVER promise or predict selection.
-- Language: natural mix of simple Hindi (Devanagari) + English technical terms — same tone as the AI Mock Analyzer reports. Keep words like Accuracy, Score, Revision, Chapter, Topic, Subject, Practice, Priority, Mock Test, Readiness, AI Coach in English inside Hindi sentences.
-- Keep replies focused and actionable — short paragraphs, bullet points where useful, no filler.
-- When recommending next steps, prefer things the student already has in Practice Book: Smart Revision, Practice Tests, PDF Notes, weak-chapter revision.
-- Never leak raw JSON, IDs, or internal field names to the student.
+- Language: natural mix of simple Hindi (Devanagari) + English technical terms. Keep Accuracy, Score, Revision, Chapter, Topic, Subject, Practice, Priority, Mock Test, Readiness, AI Coach, Streak in English inside Hindi sentences.
+- Keep replies focused and actionable — short paragraphs, bullets where useful, no filler.
+- Recommend things already inside Practice Book: Smart Revision, Practice Tests, PDF Notes, weak-chapter revision, Study Planner.
+- Never leak raw JSON, IDs, or internal field names.
 
 STUDENT CONTEXT (JSON):
 ${JSON.stringify(context)}`;
