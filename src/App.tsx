@@ -41,6 +41,7 @@ const AICoach = lazy(() => import("./pages/AICoach.tsx"));
 const AICoachChat = lazy(() => import("./pages/AICoachChat.tsx"));
 const AIPerformanceCenter = lazy(() => import("./pages/AIPerformanceCenter.tsx"));
 const SelectionIntelligence = lazy(() => import("./pages/SelectionIntelligence.tsx"));
+const Accountability = lazy(() => import("./pages/Accountability.tsx"));
 const Profile = lazy(() => import("./pages/Profile.tsx"));
 
 const queryClient = new QueryClient({
@@ -102,6 +103,7 @@ const App = () => (
             <Route path="/ai-mock-analyzer" element={withLayout(<AIMockAnalyzer />)} />
             <Route path="/ai-performance-center" element={withLayout(<AIPerformanceCenter />)} />
             <Route path="/selection-intelligence" element={withLayout(<SelectionIntelligence />)} />
+            <Route path="/accountability" element={withLayout(<Accountability />)} />
             <Route path="/performance" element={withLayout(<PerformanceIntelligence />)} />
             <Route path="/ai-coach" element={withLayout(<AICoach />)} />
             <Route path="/ai-coach/chat" element={withLayout(<AICoachChat />)} />

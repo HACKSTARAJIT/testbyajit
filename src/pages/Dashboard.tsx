@@ -13,6 +13,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useHomeData } from "@/components/home/useHomeData";
 import FloatingAIButton from "@/components/home/FloatingAIButton";
+import TodayTargetCard from "@/components/accountability/TodayTargetCard";
+import DayEndReviewDialog from "@/components/accountability/DayEndReviewDialog";
 
 interface Subject {
   id: string;
@@ -136,6 +138,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Today's Target — Daily Accountability */}
+      {user && <TodayTargetCard userId={user.id} />}
+
       {/* Continue Learning — compact */}
       {user && continueLearning && (
         <Link to={continueLearning.path} className="block animate-fade-in">
@@ -241,6 +246,7 @@ export default function Dashboard() {
       </section>
 
       {user && <FloatingAIButton />}
+      {user && <DayEndReviewDialog userId={user.id} />}
     </div>
   );
 }
