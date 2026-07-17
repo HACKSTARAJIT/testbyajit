@@ -40,6 +40,7 @@ const PerformanceIntelligence = lazy(() => import("./pages/PerformanceIntelligen
 const AICoach = lazy(() => import("./pages/AICoach.tsx"));
 const AICoachChat = lazy(() => import("./pages/AICoachChat.tsx"));
 const AIPerformanceCenter = lazy(() => import("./pages/AIPerformanceCenter.tsx"));
+const SelectionIntelligence = lazy(() => import("./pages/SelectionIntelligence.tsx"));
 const Profile = lazy(() => import("./pages/Profile.tsx"));
 
 const queryClient = new QueryClient({
