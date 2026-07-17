@@ -63,6 +63,10 @@ STEP 2 — Return ONE strict JSON object, no prose outside JSON, matching this s
 
 {
  "exam_name": string|null,
+ "report_type": "full_mock"|"subject"|"chapter"|"topic",
+ "detected_subject": string|null,
+ "detected_chapter": string|null,
+ "detected_topic": string|null,
  "totals": { "questions": number, "attempted": number, "correct": number, "wrong": number, "skipped": number, "score": number|null, "max_score": number|null, "time_minutes": number|null },
  "accuracy": number,
  "readiness_score": number,
