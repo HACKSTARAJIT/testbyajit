@@ -79,7 +79,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-hero p-4">
+    <div className="flex min-h-dvh items-center justify-center bg-gradient-hero p-4">
       <Card className="w-full max-w-md shadow-lg animate-scale-in">
         <CardHeader className="text-center">
           <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-hero">
