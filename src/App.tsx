@@ -29,6 +29,7 @@ import AIMockAnalyzer from "./pages/AIMockAnalyzer.tsx";
 import PerformanceIntelligence from "./pages/PerformanceIntelligence.tsx";
 import AICoach from "./pages/AICoach.tsx";
 import AICoachChat from "./pages/AICoachChat.tsx";
+import AIPerformanceCenter from "./pages/AIPerformanceCenter.tsx";
 
 
 import Profile from "./pages/Profile.tsx";
@@ -68,6 +69,7 @@ const App = () => (
             <Route path="/about" element={withLayout(<About />)} />
             <Route path="/profile" element={withLayout(<Profile />)} />
             <Route path="/ai-mock-analyzer" element={withLayout(<AIMockAnalyzer />)} />
+            <Route path="/ai-performance-center" element={withLayout(<AIPerformanceCenter />)} />
             <Route path="/performance" element={withLayout(<PerformanceIntelligence />)} />
             <Route path="/ai-coach" element={withLayout(<AICoach />)} />
             <Route path="/ai-coach/chat" element={withLayout(<AICoachChat />)} />
