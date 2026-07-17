@@ -28,6 +28,8 @@ import AdminAnalytics from "./pages/AdminAnalytics.tsx";
 import AIMockAnalyzer from "./pages/AIMockAnalyzer.tsx";
 import PerformanceIntelligence from "./pages/PerformanceIntelligence.tsx";
 import AICoach from "./pages/AICoach.tsx";
+import AICoachChat from "./pages/AICoachChat.tsx";
+
 
 import Profile from "./pages/Profile.tsx";
 import NotFound from "./pages/NotFound.tsx";
