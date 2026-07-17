@@ -26,6 +26,7 @@ import About from "./pages/About.tsx";
 import Admin from "./pages/Admin.tsx";
 import AdminAnalytics from "./pages/AdminAnalytics.tsx";
 import AIMockAnalyzer from "./pages/AIMockAnalyzer.tsx";
+import PerformanceIntelligence from "./pages/PerformanceIntelligence.tsx";
 import Profile from "./pages/Profile.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
