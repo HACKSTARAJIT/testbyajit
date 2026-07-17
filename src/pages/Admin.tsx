@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2, BookOpen, Layers, FileText, ClipboardList, Loader2, Pencil, BarChart3, Smartphone, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import { AITestGenerator } from "@/components/AITestGenerator";
 import { TestDebugPanel } from "@/components/TestDebugPanel";
 
@@ -48,8 +49,8 @@ export default function Admin() {
           <p className="text-muted-foreground">Manage subjects, chapters, study material & tests.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <a href="/admin/analytics" className="flex-1 sm:flex-none"><Button variant="outline" className="w-full"><BarChart3 className="mr-2 h-4 w-4" />Test Analytics</Button></a>
-          <a href="/admin/intelligence" className="flex-1 sm:flex-none"><Button className="w-full bg-gradient-to-r from-primary to-secondary"><Sparkles className="mr-2 h-4 w-4" />Intelligence Center</Button></a>
+          <Link to="/admin/analytics" className="flex-1 sm:flex-none"><Button variant="outline" className="w-full"><BarChart3 className="mr-2 h-4 w-4" />Test Analytics</Button></Link>
+          <Link to="/admin/intelligence" className="flex-1 sm:flex-none"><Button className="w-full bg-gradient-to-r from-primary to-secondary"><Sparkles className="mr-2 h-4 w-4" />Intelligence Center</Button></Link>
         </div>
       </div>
 
