@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  Home, Shield, LogOut, Menu, User, Moon, Sun, XCircle, LogIn, Info, Brain,
+  Home, Shield, LogOut, Menu, User, Moon, Sun, XCircle, LogIn, Info, Brain, Sparkles,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetTrigger,
@@ -20,6 +20,7 @@ import pbLogo from "@/assets/pb-logo.png";
 const navItems = [
   { to: "/dashboard", label: "होम / Home", icon: Home },
   { to: "/smart-revision", label: "स्मार्ट रिवीजन / Smart Revision", icon: Brain },
+  { to: "/ai-mock-analyzer", label: "AI Mock Analyzer", icon: Sparkles },
 ];
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
