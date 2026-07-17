@@ -509,14 +509,14 @@ function ReportCard({ r, onOpen, onAnalyze, onRename, onDuplicate, onDelete, ana
             </Button>
           )}
           {r.status === "completed" && (
-            <Button size="icon" variant="ghost" title="Reanalyze" onClick={onAnalyze}><RotateCw className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" title="Reanalyze" aria-label="Reanalyze" onClick={onAnalyze}><RotateCw className="h-4 w-4" /></Button>
           )}
           {r.status === "failed" && (
-            <Button size="icon" variant="ghost" title="Retry" onClick={onAnalyze}><RotateCw className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" title="Retry" aria-label="Retry" onClick={onAnalyze}><RotateCw className="h-4 w-4" /></Button>
           )}
-          <Button size="icon" variant="ghost" title="Rename" onClick={onRename}><Pencil className="h-4 w-4" /></Button>
-          <Button size="icon" variant="ghost" title="Duplicate" onClick={onDuplicate}><Copy className="h-4 w-4" /></Button>
-          <Button size="icon" variant="ghost" title="Delete" onClick={onDelete}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+          <Button size="icon" variant="ghost" title="Rename" aria-label="Rename" onClick={onRename}><Pencil className="h-4 w-4" /></Button>
+          <Button size="icon" variant="ghost" title="Duplicate" aria-label="Duplicate" onClick={onDuplicate}><Copy className="h-4 w-4" /></Button>
+          <Button size="icon" variant="ghost" title="Delete" aria-label="Delete" onClick={onDelete}><Trash2 className="h-4 w-4 text-destructive" /></Button>
         </div>
       </CardContent>
     </Card>
