@@ -589,6 +589,143 @@ function ReportView({ r, onAnalyze, analyzing }: { r: Report; onAnalyze: () => v
         <BigStat label="Time" value={totals.time_minutes ? `${totals.time_minutes}m` : "-"} icon={<Clock />} />
       </div>
 
+      {d.overall_performance && (
+        <Section title="🎯 Overall Performance">
+          <p className="whitespace-pre-wrap text-sm">{d.overall_performance}</p>
+        </Section>
+      )}
+
+      {d.performance_summary && (
+        <Section title="📋 Performance Summary">
+          <p className="whitespace-pre-wrap text-sm">{d.performance_summary}</p>
+        </Section>
+      )}
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {d.biggest_strength && (
+          <Section title="💪 Biggest Strength"><p className="text-sm">{d.biggest_strength}</p></Section>
+        )}
+        {d.biggest_weakness && (
+          <Section title="⚠️ Biggest Weakness"><p className="text-sm">{d.biggest_weakness}</p></Section>
+        )}
+        {d.positive_points?.length > 0 && (
+          <Section title="✅ Positive Points"><Bullets items={d.positive_points} tone="green" /></Section>
+        )}
+        {d.negative_points?.length > 0 && (
+          <Section title="❌ Negative Points"><Bullets items={d.negative_points} tone="red" /></Section>
+        )}
+      </div>
+
+      {d.lost_marks_analysis && (
+        <Section title="📉 Lost Marks Analysis">
+          <p className="whitespace-pre-wrap text-sm">{d.lost_marks_analysis}</p>
+        </Section>
+      )}
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {d.improvement_areas?.length > 0 && (
+          <Section title="🚀 Improvement Areas"><Bullets items={d.improvement_areas} /></Section>
+        )}
+        {d.priority_chapters?.length > 0 && (
+          <Section title="📚 Priority Chapters"><Chips items={d.priority_chapters} tone="red" /></Section>
+        )}
+        {d.priority_topics?.length > 0 && (
+          <Section title="🎯 Priority Topics"><Chips items={d.priority_topics} tone="red" /></Section>
+        )}
+        {d.immediate_revision_topics?.length > 0 && (
+          <Section title="⏱️ Immediate Revision"><Chips items={d.immediate_revision_topics} tone="red" /></Section>
+        )}
+      </div>
+
+      {d.question_level && (
+        <Section title="🧮 Question Level Analysis">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              ["Easy Lost", d.question_level.easy_lost],
+              ["Medium Lost", d.question_level.medium_lost],
+              ["Hard Lost", d.question_level.hard_lost],
+              ["Skipped", d.question_level.skipped],
+              ["Guessed", d.question_level.guessed],
+              ["Wrong", d.question_level.wrong],
+              ["Correct", d.question_level.correct],
+            ].map(([label, val]) => (
+              <div key={label as string} className="rounded-lg border p-2 text-center">
+                <p className="text-lg font-bold">{val ?? 0}</p>
+                <p className="text-[11px] text-muted-foreground">{label}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {d.subject_analysis?.length > 0 && (
+        <Section title="📚 Subject Analysis">
+          <div className="space-y-2">
+            {d.subject_analysis.map((s: any, i: number) => (
+              <div key={i} className="rounded-lg border p-2 text-sm">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <p className="font-semibold">{s.subject}</p>
+                  <div className="flex gap-1">
+                    <Badge variant="outline" className="text-[10px]">Accuracy {s.accuracy ?? 0}%</Badge>
+                    <Badge variant="outline" className={`text-[10px] ${priorityBadge(s.revision_priority)}`}>{s.revision_priority}</Badge>
+                    <Badge variant="outline" className="text-[10px] capitalize">Conf: {s.confidence_level}</Badge>
+                  </div>
+                </div>
+                <p className="text-xs"><span className="font-medium">Strength:</span> {s.strength}</p>
+                <p className="text-xs"><span className="font-medium">Weakness:</span> {s.weakness}</p>
+                <p className="text-xs text-muted-foreground"><span className="font-medium">Expected Improvement:</span> {s.expected_improvement}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {d.chapter_analysis?.length > 0 && (
+        <Section title="📖 Chapter Analysis">
+          <div className="space-y-2">
+            {d.chapter_analysis.map((c: any, i: number) => (
+              <div key={i} className="rounded-lg border p-2 text-sm">
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-1">
+                  <p className="font-semibold">{c.chapter}{c.subject ? ` · ${c.subject}` : ""}</p>
+                  <div className="flex gap-1">
+                    <Badge variant="outline" className="text-[10px]">Acc {c.accuracy ?? 0}%</Badge>
+                    <Badge variant="outline" className="text-[10px]">{c.attempted ?? 0} att · {c.wrong ?? 0} wrong</Badge>
+                    <Badge variant="outline" className={`text-[10px] ${priorityBadge(c.priority)}`}>{c.priority}</Badge>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">{c.ai_advice}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      <div className="grid gap-3 md:grid-cols-3">
+        {d.strong_topics?.length > 0 && (
+          <Section title="🟢 Strong Topics"><Chips items={d.strong_topics} tone="green" /></Section>
+        )}
+        {d.weak_topics?.length > 0 && (
+          <Section title="🟠 Weak Topics"><Chips items={d.weak_topics} /></Section>
+        )}
+        {d.critical_topics?.length > 0 && (
+          <Section title="🔴 Critical Topics"><Chips items={d.critical_topics} tone="red" /></Section>
+        )}
+      </div>
+
+      {d.ai_coach && (
+        <Section title="👨‍🏫 AI Coach">
+          <div className="space-y-2 text-sm">
+            {d.ai_coach.why_marks_lost && <p><span className="font-semibold">Why Marks Lost:</span> {d.ai_coach.why_marks_lost}</p>}
+            {d.ai_coach.study_today && <p><span className="font-semibold">Study Today:</span> {d.ai_coach.study_today}</p>}
+            {d.ai_coach.can_wait && <p><span className="font-semibold">Can Wait:</span> {d.ai_coach.can_wait}</p>}
+            {d.ai_coach.revise_tomorrow && <p><span className="font-semibold">Revise Tomorrow:</span> {d.ai_coach.revise_tomorrow}</p>}
+            {d.ai_coach.biggest_opportunity && <p><span className="font-semibold">Biggest Opportunity:</span> {d.ai_coach.biggest_opportunity}</p>}
+            {d.ai_coach.common_mistakes && <p><span className="font-semibold">Common Mistakes:</span> {d.ai_coach.common_mistakes}</p>}
+            {d.ai_coach.how_to_score_more_next_mock && <p><span className="font-semibold">Next Mock Strategy:</span> {d.ai_coach.how_to_score_more_next_mock}</p>}
+          </div>
+        </Section>
+      )}
+
       <Section title="🧠 AI Coach Feedback">
         <p className="whitespace-pre-wrap text-sm">{d.coach_feedback ?? "-"}</p>
       </Section>
