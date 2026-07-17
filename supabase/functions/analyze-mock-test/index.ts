@@ -271,6 +271,292 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+// ------------------- Practice Book sync -------------------
+
+function normalize(s: string) {
+  return (s ?? "").toLowerCase().replace(/[^a-z0-9\u0900-\u097f]+/g, " ").replace(/\s+/g, " ").trim();
+}
+function jaccard(a: string, b: string) {
+  const A = new Set(normalize(a).split(" ").filter(Boolean));
+  const B = new Set(normalize(b).split(" ").filter(Boolean));
+  if (A.size === 0 || B.size === 0) return 0;
+  let inter = 0; for (const t of A) if (B.has(t)) inter++;
+  return inter / (A.size + B.size - inter);
+}
+function priorityRank(p: string) {
+  return p === "critical" ? 4 : p === "high" ? 3 : p === "medium" ? 2 : 1;
+}
+function bumpPriority(current: string) {
+  if (current === "critical" || current === "high") return "critical";
+  if (current === "medium") return "high";
+  return "medium";
+}
+
+async function syncWithPracticeBook(admin: any, userId: string, reportId: string, parsed: any) {
+  const questions: any[] = Array.isArray(parsed?.questions) ? parsed.questions : [];
+  const chapterAnalysis: any[] = Array.isArray(parsed?.chapter_analysis) ? parsed.chapter_analysis : [];
+
+  // Load lookup: subjects + chapters (id + name)
+  const [{ data: subs }, { data: chaps }] = await Promise.all([
+    admin.from("subjects").select("id, name"),
+    admin.from("chapters").select("id, name, subject_id"),
+  ]);
+  const subjByName = new Map<string, string>();
+  (subs ?? []).forEach((s: any) => subjByName.set(normalize(s.name), s.id));
+  const chapByKey = new Map<string, { id: string; subject_id: string }>();
+  (chaps ?? []).forEach((c: any) => chapByKey.set(normalize(c.name), { id: c.id, subject_id: c.subject_id }));
+
+  // Collect candidate chapter ids from mock (for question matching + priority bump)
+  const chapterIds = new Set<string>();
+  const chapterNameHits = new Map<string, { subject_id: string | null; chapter_id: string | null }>();
+  const collectChapter = (name: string | null | undefined) => {
+    if (!name) return;
+    const key = normalize(name);
+    const hit = chapByKey.get(key);
+    if (hit) {
+      chapterIds.add(hit.id);
+      chapterNameHits.set(key, { subject_id: hit.subject_id, chapter_id: hit.id });
+    } else {
+      chapterNameHits.set(key, { subject_id: null, chapter_id: null });
+    }
+  };
+  questions.forEach((q) => collectChapter(q?.chapter));
+  chapterAnalysis.forEach((c) => collectChapter(c?.chapter));
+
+  // Fetch candidate DB questions from tests belonging to those chapters (bounded)
+  let candidates: any[] = [];
+  if (chapterIds.size > 0) {
+    const { data: tests } = await admin
+      .from("tests")
+      .select("id, subject_id, chapter_id")
+      .in("chapter_id", [...chapterIds])
+      .limit(400);
+    const testIds = (tests ?? []).map((t: any) => t.id);
+    const testMeta = new Map<string, { subject_id: string; chapter_id: string }>();
+    (tests ?? []).forEach((t: any) => testMeta.set(t.id, { subject_id: t.subject_id, chapter_id: t.chapter_id }));
+    if (testIds.length > 0) {
+      const { data: qs } = await admin
+        .from("questions")
+        .select("id, question_text, correct_option, explanation, test_id")
+        .in("test_id", testIds)
+        .limit(2000);
+      candidates = (qs ?? []).map((q: any) => ({ ...q, ...(testMeta.get(q.test_id) ?? {}) }));
+    }
+  }
+
+  // Existing wrong_questions to check duplicates + bump
+  const { data: existingWrongs } = await admin
+    .from("wrong_questions")
+    .select("id, question_id, chapter_id, priority, wrong_count, status")
+    .eq("user_id", userId);
+  const existingByQid = new Map<string, any>();
+  (existingWrongs ?? []).forEach((w: any) => { if (w.question_id) existingByQid.set(w.question_id, w); });
+
+  let matched = 0, priorityBumped = 0, added = 0;
+
+  // Match each wrong/skipped mock question to a candidate
+  for (const mq of questions) {
+    const status = mq?.status;
+    if (status !== "wrong" && status !== "skipped") continue;
+    const text: string = mq?.text ?? "";
+    if (!text || text.length < 8) continue;
+
+    let best: { q: any; score: number } | null = null;
+    for (const c of candidates) {
+      const s = jaccard(text, c.question_text ?? "");
+      if (!best || s > best.score) best = { q: c, score: s };
+    }
+
+    if (best && best.score >= 0.55) {
+      matched++;
+      const existing = existingByQid.get(best.q.id);
+      if (existing) {
+        const newPriority = bumpPriority(existing.priority);
+        await admin.from("wrong_questions").update({
+          priority: newPriority,
+          wrong_count: (existing.wrong_count ?? 1) + 1,
+          status: "pending",
+          last_attempt_at: new Date().toISOString(),
+          source_report_id: reportId,
+        }).eq("id", existing.id);
+        if (priorityRank(newPriority) > priorityRank(existing.priority)) priorityBumped++;
+      } else {
+        await admin.from("wrong_questions").insert({
+          user_id: userId,
+          question_id: best.q.id,
+          subject_id: best.q.subject_id ?? null,
+          chapter_id: best.q.chapter_id ?? null,
+          question_text: best.q.question_text ?? text,
+          correct_option: best.q.correct_option ?? mq.correct ?? null,
+          selected_option: mq.marked ?? null,
+          explanation: best.q.explanation ?? null,
+          priority: "high",
+          status: "pending",
+          source: "ai_mock",
+          source_report_id: reportId,
+          topic: mq.topic ?? null,
+          last_attempt_at: new Date().toISOString(),
+        });
+        added++;
+      }
+    } else {
+      // Fallback: chapter/topic tagging — bump priority on any pending wrong_questions of that chapter
+      const chKey = normalize(mq?.chapter ?? "");
+      const hit = chapterNameHits.get(chKey);
+      if (hit?.chapter_id) {
+        const inChap = (existingWrongs ?? []).filter((w: any) => w.chapter_id === hit.chapter_id && w.status !== "mastered");
+        for (const w of inChap.slice(0, 5)) {
+          const newP = bumpPriority(w.priority);
+          if (priorityRank(newP) > priorityRank(w.priority)) {
+            await admin.from("wrong_questions").update({ priority: newP, source_report_id: reportId }).eq("id", w.id);
+            priorityBumped++;
+          }
+        }
+      }
+    }
+  }
+
+  // -------- Persist AI Coach snapshot --------
+  const ai_coach = parsed?.ai_coach ?? {};
+  const rec = {
+    tests: [] as any[],
+    pdfs: [] as any[],
+    chapters: (parsed?.priority_chapters ?? parsed?.important_chapters ?? []).slice(0, 10),
+    topics: (parsed?.priority_topics ?? parsed?.important_topics ?? []).slice(0, 15),
+    revision_sets: (parsed?.immediate_revision_topics ?? []).slice(0, 10),
+  };
+  // Recommend Practice Tests + PDFs from weak chapters
+  if (chapterIds.size > 0) {
+    const [{ data: recTests }, { data: recPdfs }] = await Promise.all([
+      admin.from("tests").select("id, title, chapter_id").in("chapter_id", [...chapterIds]).limit(6),
+      admin.from("pdfs").select("id, title, chapter_id").in("chapter_id", [...chapterIds]).limit(6),
+    ]);
+    rec.tests = recTests ?? [];
+    rec.pdfs = recPdfs ?? [];
+  }
+
+  await admin.from("ai_coach_snapshots").upsert({
+    user_id: userId,
+    report_id: reportId,
+    focus: ai_coach.study_today ?? parsed?.biggest_weakness ?? null,
+    biggest_mistake: ai_coach.common_mistakes ?? (parsed?.frequent_mistakes ?? [])[0] ?? null,
+    target_score: parsed?.readiness_to_90 ?? null,
+    motivation: parsed?.motivational_feedback ?? null,
+    revision_goal: ai_coach.revise_tomorrow ?? parsed?.revision_advice ?? null,
+    recommendations: rec,
+    sync_summary: { matched, priority_bumped: priorityBumped, added, candidates: candidates.length },
+  }, { onConflict: "report_id" });
+
+  // -------- Persist Study Plan tasks --------
+  // Clear previous tasks for this report so re-runs don't duplicate
+  await admin.from("study_plan_tasks").delete().eq("report_id", reportId);
+
+  const plan7: any[] = Array.isArray(parsed?.plan_7_day) ? parsed.plan_7_day : [];
+  const plan30: any[] = Array.isArray(parsed?.plan_30_day) ? parsed.plan_30_day : [];
+  const today = new Date();
+  const toDate = (offset: number) => {
+    const d = new Date(today); d.setDate(d.getDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const tasksToInsert: any[] = [];
+  plan7.forEach((day: any, i: number) => {
+    const dayNum = Number(day?.day ?? i + 1);
+    const offset = Math.max(0, dayNum - 1);
+    const scope = offset === 0 ? "today" : offset === 1 ? "tomorrow" : "week";
+    const tasks: string[] = Array.isArray(day?.tasks) ? day.tasks : [];
+    const chapters = Array.isArray(day?.chapters) ? day.chapters : [];
+    const topics = Array.isArray(day?.topics) ? day.topics : [];
+    (tasks.length ? tasks : [day?.focus ?? "Revision"]).forEach((t: string, ti: number) => {
+      tasksToInsert.push({
+        user_id: userId,
+        report_id: reportId,
+        scope,
+        task_date: toDate(offset),
+        day_index: dayNum,
+        title: String(t).slice(0, 200),
+        description: day?.focus ?? null,
+        subject: null,
+        chapter: chapters[ti] ?? chapters[0] ?? null,
+        topic: topics[ti] ?? topics[0] ?? null,
+        estimated_minutes: 45,
+        practice_questions: Number(day?.practice_questions ?? 0) || 0,
+        revision_minutes: Number(day?.revision_minutes ?? 0) || 0,
+        priority: ti === 0 ? "high" : "medium",
+      });
+    });
+  });
+  plan30.forEach((wk: any, i: number) => {
+    const weekNum = Number(wk?.week ?? i + 1);
+    const tasks: string[] = Array.isArray(wk?.tasks) ? wk.tasks : [];
+    const chapters = Array.isArray(wk?.chapters) ? wk.chapters : [];
+    const topics = Array.isArray(wk?.topics) ? wk.topics : [];
+    (tasks.length ? tasks : [wk?.focus ?? "Weekly focus"]).forEach((t: string, ti: number) => {
+      tasksToInsert.push({
+        user_id: userId,
+        report_id: reportId,
+        scope: "month",
+        week_index: weekNum,
+        task_date: toDate(7 * (weekNum - 1)),
+        title: String(t).slice(0, 200),
+        description: wk?.focus ?? null,
+        chapter: chapters[ti] ?? chapters[0] ?? null,
+        topic: topics[ti] ?? topics[0] ?? null,
+        estimated_minutes: 60,
+        practice_questions: 0,
+        revision_minutes: 0,
+        priority: "medium",
+      });
+    });
+  });
+  if (tasksToInsert.length > 0) {
+    await admin.from("study_plan_tasks").insert(tasksToInsert);
+  }
+
+  // -------- Smart Goals --------
+  await admin.from("smart_goals").delete().eq("report_id", reportId);
+  const goals: any[] = [];
+  const acc = Number(parsed?.accuracy ?? 0);
+  if (acc < 90) {
+    goals.push({
+      user_id: userId, report_id: reportId,
+      title: "Reach 90% Accuracy",
+      description: `Current Accuracy ${acc}% — aim for 90% in next mock.`,
+      target_value: 90, current_value: acc, unit: "%",
+      deadline: toDate(14),
+    });
+  }
+  const weakCh: string[] = (parsed?.priority_chapters ?? []).slice(0, 3);
+  if (weakCh.length) {
+    goals.push({
+      user_id: userId, report_id: reportId,
+      title: `Finish ${weakCh.length} Weak Chapters`,
+      description: weakCh.join(", "),
+      target_value: weakCh.length, current_value: 0, unit: "chapters",
+      deadline: toDate(10),
+    });
+  }
+  goals.push({
+    user_id: userId, report_id: reportId,
+    title: "Complete 200 Practice Questions",
+    description: "Focus on weak chapters flagged by AI.",
+    target_value: 200, current_value: 0, unit: "questions",
+    deadline: toDate(7),
+  });
+  goals.push({
+    user_id: userId, report_id: reportId,
+    title: "Complete Smart Revision before Sunday",
+    description: "Clear all pending revision items generated from this mock.",
+    target_value: 1, current_value: 0, unit: "task",
+    deadline: toDate(7),
+  });
+  if (goals.length) await admin.from("smart_goals").insert(goals);
+
+  console.log("sync done", reportId, { matched, priorityBumped, added, tasks: tasksToInsert.length, goals: goals.length });
+}
+
+
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
