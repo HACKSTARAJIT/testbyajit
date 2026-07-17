@@ -246,6 +246,7 @@ export default function Dashboard() {
       </section>
 
       {user && <FloatingAIButton />}
+      {user && <DayEndReviewDialog userId={user.id} />}
     </div>
   );
 }
