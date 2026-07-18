@@ -43,8 +43,27 @@ export default function RevisionRunner() {
         const filter = searchParams.get("filter");
         const modeParam = searchParams.get("mode2");
         const scopeTestId = searchParams.get("scopeTestId");
+        const subjectId = searchParams.get("subjectId");
+        const chapterId = searchParams.get("chapterId");
+        const topicParam = searchParams.get("topic");
+        const idsParam = searchParams.get("ids");
         const limit = Number(searchParams.get("limit")) || 50;
-        if (filter || modeParam === "final" || scopeTestId) {
+
+        if (filter === "ids" && idsParam) {
+          ids = idsParam.split(",").filter(Boolean).slice(0, limit);
+          setTitle("Mock Revision");
+        } else if (filter === "topic" && topicParam) {
+          const { data } = await supabase
+            .from("wrong_questions")
+            .select("question_id, priority, wrong_count")
+            .eq("user_id", user.id)
+            .eq("status", "pending")
+            .eq("topic", topicParam)
+            .not("question_id", "is", null);
+          const rows = ((data as any[]) ?? []).sort((a, b) => (b.wrong_count ?? 0) - (a.wrong_count ?? 0));
+          ids = [...new Set(rows.map((r) => r.question_id).filter(Boolean))].slice(0, limit) as string[];
+          setTitle(`Topic Revision · ${topicParam}`);
+        } else if (filter || modeParam === "final" || scopeTestId || subjectId || chapterId) {
           const f: CommandFilter = {
             onlyGuess: filter === "guess",
             onlyMarked: filter === "marked",
@@ -54,6 +73,9 @@ export default function RevisionRunner() {
             onlyNeverCorrect: filter === "never-correct",
             onlyFinalMode: modeParam === "final",
             testId: scopeTestId,
+            subjectId: subjectId ?? undefined,
+            chapterId: chapterId ?? undefined,
+            priority: filter === "high" ? "high" : undefined,
           };
           ids = await loadFilteredRevisionIds(user.id, f, limit);
           const labels: Record<string, string> = {
@@ -63,6 +85,9 @@ export default function RevisionRunner() {
             repeated: "Repeated Mistakes",
             skipped: "Skipped Question Revision",
             "never-correct": "Never Solved Correctly",
+            high: "High Priority Revision",
+            subject: "Subject Revision",
+            chapter: "Chapter Revision",
           };
           setTitle(
             modeParam === "final"
