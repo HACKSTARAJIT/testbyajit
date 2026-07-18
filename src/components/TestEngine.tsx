@@ -169,7 +169,7 @@ export function TestEngine({
     if (userId && !isPreview) {
       try {
         if (onSubmit) await onSubmit(answers, sessionQs);
-        else if (autoRecord) await recordAttempt(userId, test, sessionQs, answers);
+        else if (autoRecord) await recordAttempt(userId, test, sessionQs, answers, { marked, guesses });
       } catch (e) { console.error(e); }
     }
   }, [submitted, stats, persist, userId, isPreview, onSubmit, autoRecord, test, sessionQs, answers]);
