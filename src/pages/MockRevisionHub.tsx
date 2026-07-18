@@ -576,3 +576,46 @@ function EmptySection({ icon: Icon, text }: { icon: any; text: string }) {
     </div>
   );
 }
+
+function topKey<T>(m: Map<T, number>): T | null {
+  let best: T | null = null; let n = 0;
+  m.forEach((v, k) => { if (v > n) { n = v; best = k; } });
+  return best;
+}
+
+function QuickAction({ label, count, tint, onClick }: {
+  label: string; count: number; tint: string; onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={count === 0}
+      className={`btn-ripple rounded-xl border ${tint} p-2.5 text-left transition disabled:opacity-40`}
+    >
+      <p className="text-xs font-semibold leading-tight">{label}</p>
+      <p className="mt-0.5 text-lg font-bold leading-none">{count}</p>
+    </button>
+  );
+}
+
+function ChipRow({ icon, label, items }: {
+  icon: string; label: string;
+  items: Array<{ label: string; count: number; onClick: () => void }>;
+}) {
+  return (
+    <div>
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{icon} {label} Wise</p>
+      <div className="flex flex-wrap gap-1.5">
+        {items.map((it, i) => (
+          <button
+            key={i}
+            onClick={it.onClick}
+            className="btn-ripple rounded-lg border bg-background/50 px-2 py-1 text-[11px] font-medium hover:bg-accent/40"
+          >
+            {it.label} <span className="ml-1 text-muted-foreground">· {it.count}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
