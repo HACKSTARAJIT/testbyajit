@@ -18,6 +18,7 @@ import PerformanceIntelligence from "./PerformanceIntelligence";
 import AICoach from "./AICoach";
 import Preparation360 from "@/components/prep360/Preparation360";
 import AIMemory from "./AIMemory";
+import AcademicIntelligence from "./AcademicIntelligence";
 
 type Report = {
   id: string; title: string; status: string; created_at: string; report: any;
@@ -128,6 +129,7 @@ export default function AIPerformanceCenter() {
         <TabsList className="flex flex-wrap h-auto justify-start bg-card/60 backdrop-blur">
           <TabsTrigger value="prep360"><Brain className="mr-1 h-3.5 w-3.5" />🧠 Preparation 360°</TabsTrigger>
           <TabsTrigger value="memory"><Brain className="mr-1 h-3.5 w-3.5" />🧠 AI Memory</TabsTrigger>
+          <TabsTrigger value="academic"><Brain className="mr-1 h-3.5 w-3.5" />🎓 Academic Intelligence</TabsTrigger>
           <TabsTrigger value="overview"><BarChart3 className="mr-1 h-3.5 w-3.5" />📊 Overview</TabsTrigger>
           <TabsTrigger value="mock"><FileText className="mr-1 h-3.5 w-3.5" />📝 Full Mock</TabsTrigger>
           <TabsTrigger value="subject"><BookOpen className="mr-1 h-3.5 w-3.5" />📚 Subject</TabsTrigger>
@@ -143,6 +145,11 @@ export default function AIPerformanceCenter() {
 
         {/* -------- AI MEMORY -------- */}
         <TabsContent value="memory"><AIMemory /></TabsContent>
+
+        {/* -------- ACADEMIC INTELLIGENCE -------- */}
+        <TabsContent value="academic"><AcademicIntelligence /></TabsContent>
+
+
 
 
 
