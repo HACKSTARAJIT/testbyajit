@@ -141,6 +141,10 @@ export default function AIPerformanceCenter() {
         {/* -------- PREPARATION 360° -------- */}
         <TabsContent value="prep360"><Preparation360 /></TabsContent>
 
+        {/* -------- AI MEMORY -------- */}
+        <TabsContent value="memory"><AIMemory /></TabsContent>
+
+
 
         {/* -------- OVERVIEW -------- */}
         <TabsContent value="overview" className="space-y-4">
