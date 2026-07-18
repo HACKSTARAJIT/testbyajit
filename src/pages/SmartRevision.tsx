@@ -98,6 +98,100 @@ export default function SmartRevision() {
         </div>
       </div>
 
+      {/* ============ AI Revision Command Center ============ */}
+      {cmdStats && (cmdStats.pending > 0 || cmdStats.mastered > 0) && (
+        <div className="space-y-4">
+          {/* Compact command cards */}
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+            <CmdCard icon={Flame} label="Pending" value={cmdStats.pending} tint="text-orange-500" />
+            <CmdCard icon={ShieldAlert} label="Critical" value={cmdStats.critical} tint="text-red-500" />
+            <CmdCard icon={AlertTriangle} label="Due Today" value={cmdStats.dueToday} tint="text-amber-500" />
+            <CmdCard icon={Trophy} label="Mastered" value={cmdStats.mastered} tint="text-emerald-500" />
+            <CmdCard icon={Layers} label="Subjects" value={cmdStats.subjectsPending} tint="text-primary" />
+            <CmdCard icon={BookOpen} label="Topics" value={cmdStats.topicsPending} tint="text-cyan-500" />
+          </div>
+
+          {/* Filter shortcuts */}
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <Wand2 className="h-4 w-4 text-secondary" />
+              <h3 className="text-sm font-bold">Smart Revision Sets</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <FilterButton
+                grad="bg-gradient-warm" icon={ShieldAlert} label="Critical"
+                count={cmdStats.critical}
+                onClick={() => navigate(`/revise?filter=critical`)}
+              />
+              <FilterButton
+                grad="bg-gradient-exam" icon={Repeat} label="Repeated"
+                count={cmdStats.repeatedMistakes}
+                onClick={() => navigate(`/revise?filter=repeated`)}
+              />
+              <FilterButton
+                grad="bg-gradient-royal" icon={Dice5} label="Guess Wrong"
+                count={cmdStats.guessBank}
+                onClick={() => navigate(`/revise?filter=guess`)}
+              />
+              <FilterButton
+                grad="bg-gradient-practice" icon={Flag} label="Marked"
+                count={cmdStats.markedBank}
+                onClick={() => navigate(`/revise?filter=marked`)}
+              />
+            </div>
+          </div>
+
+          {/* Final Revision Mode */}
+          <button
+            onClick={() => navigate(`/revise?mode2=final&limit=60`)}
+            disabled={cmdStats.critical + cmdStats.repeatedMistakes === 0}
+            className="btn-ripple w-full overflow-hidden rounded-3xl bg-gradient-to-br from-red-600 via-orange-600 to-amber-500 p-5 text-left text-white shadow-lg transition-transform hover:scale-[1.01] disabled:opacity-50"
+          >
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-white/20 p-3"><Target className="h-6 w-6" /></div>
+              <div className="flex-1">
+                <p className="text-lg font-bold">🎯 Final Revision Mode</p>
+                <p className="text-xs text-white/85">
+                  Only critical, repeated & never-mastered · perfect before your exam
+                </p>
+              </div>
+              <ChevronRight className="h-5 w-5" />
+            </div>
+          </button>
+
+          {/* AI Insights */}
+          <div className="glass-card rounded-3xl p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-secondary" />
+                <h3 className="text-sm font-bold">AJIT AI Revision Coach</h3>
+              </div>
+              <Button size="sm" variant="secondary" onClick={runAICoach} disabled={aiLoading} className="rounded-xl">
+                {aiLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Wand2 className="mr-1 h-3.5 w-3.5" />}
+                {insights.length ? "Refresh" : "Generate"}
+              </Button>
+            </div>
+            {coach && <p className="mb-3 text-sm leading-relaxed">{coach}</p>}
+            {insights.length > 0 ? (
+              <ul className="space-y-2">
+                {insights.map((t, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <Badge variant="secondary" className="mt-0.5 shrink-0 rounded-md px-1.5 py-0 text-[10px]">{i + 1}</Badge>
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              !aiLoading && !coach && (
+                <p className="text-xs text-muted-foreground">
+                  Tap Generate to let AJIT AI analyse your revision bank and suggest exactly what to revise next.
+                </p>
+              )
+            )}
+          </div>
+        </div>
+      )}
+
       <Tabs defaultValue="pending" className="w-full">
         <TabsList className="grid w-full grid-cols-3 rounded-2xl">
           <TabsTrigger value="pending" className="rounded-xl">🔴 Pending</TabsTrigger>
