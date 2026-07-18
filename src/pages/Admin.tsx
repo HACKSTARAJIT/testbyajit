@@ -336,6 +336,7 @@ function TestsTab({ subjects, chapters, tests, reload, del }: any) {
           </div>
           <DialogFooter><Button onClick={save} disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save</Button></DialogFooter>
         </DialogContent></Dialog>
+      </div>
     </CardHeader>
     <CardContent className="space-y-2">
       {tests.length === 0 && <p className="text-sm text-muted-foreground">No tests yet.</p>}
