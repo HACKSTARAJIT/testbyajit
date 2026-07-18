@@ -193,18 +193,28 @@ export default function SmartRevision() {
         </div>
       )}
 
-      <Tabs defaultValue="hub" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 rounded-2xl">
-          <TabsTrigger value="hub" className="rounded-xl">🧠 Hub</TabsTrigger>
+      {/* 🧠 Mock Revision Hub — single entry card to a dedicated page */}
+      <button
+        onClick={() => navigate("/mock-revision-hub")}
+        className="btn-ripple relative flex w-full items-center gap-3 overflow-hidden rounded-3xl bg-gradient-to-br from-fuchsia-600 via-purple-600 to-indigo-700 p-5 text-left text-white shadow-lg transition-transform hover:scale-[1.01]"
+      >
+        <Sparkles className="absolute -right-4 -top-4 h-24 w-24 opacity-15" />
+        <div className="rounded-2xl bg-white/20 p-3 backdrop-blur-sm"><Brain className="h-6 w-6" /></div>
+        <div className="flex-1">
+          <p className="text-lg font-bold">🧠 Mock Revision Hub</p>
+          <p className="text-xs text-white/85">
+            Automatically generated revision tests from your Full Mocks & Practice Tests.
+          </p>
+        </div>
+        <ChevronRight className="h-5 w-5" />
+      </button>
+
+      <Tabs defaultValue="pending" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 rounded-2xl">
           <TabsTrigger value="pending" className="rounded-xl">🔴 Pending</TabsTrigger>
           <TabsTrigger value="mastered" className="rounded-xl">⭐ Mastered</TabsTrigger>
           <TabsTrigger value="progress" className="rounded-xl">📈 Progress</TabsTrigger>
         </TabsList>
-
-        {/* ---------------- MOCK REVISION HUB ---------------- */}
-        <TabsContent value="hub" className="mt-5">
-          <MockRevisionHub userId={user.id} />
-        </TabsContent>
 
 
         {/* ---------------- PENDING ---------------- */}
