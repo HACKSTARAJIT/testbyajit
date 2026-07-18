@@ -1,19 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import {
   Brain, ChevronRight, Flame, Star, TrendingUp, Zap, Trophy, Target,
-  BookOpen, Search, Sparkles, Layers,
+  BookOpen, Search, Sparkles, Layers, AlertTriangle, Dice5, Flag,
+  Repeat, ShieldAlert, Wand2, Loader2,
 } from "lucide-react";
 import {
   loadSubjectSummaries, loadOverallStats, loadMastered,
   type SubjectSummary, type OverallStats, type MasteredRow,
 } from "@/lib/smartRevision";
+import { loadCommandStats, type CommandStats } from "@/lib/smartRevisionCommand";
 
 const CARD_GRADIENTS = [
   "bg-gradient-royal", "bg-gradient-exam", "bg-gradient-warm",
@@ -26,23 +29,45 @@ export default function SmartRevision() {
   const [subjects, setSubjects] = useState<SubjectSummary[]>([]);
   const [stats, setStats] = useState<OverallStats | null>(null);
   const [mastered, setMastered] = useState<MasteredRow[]>([]);
+  const [cmdStats, setCmdStats] = useState<CommandStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [insights, setInsights] = useState<string[]>([]);
+  const [coach, setCoach] = useState<string>("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
       if (!user) { setLoading(false); return; }
-      const [s, st, m] = await Promise.all([
+      const [s, st, m, cs] = await Promise.all([
         loadSubjectSummaries(user.id),
         loadOverallStats(user.id),
         loadMastered(user.id),
+        loadCommandStats(user.id),
       ]);
       setSubjects(s);
       setStats(st);
       setMastered(m);
+      setCmdStats(cs);
       setLoading(false);
     })();
   }, [user]);
+
+  async function runAICoach() {
+    if (!user || aiLoading) return;
+    setAiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("smart-revision-insights", { body: {} });
+      if (error) throw error;
+      setInsights((data as any)?.insights ?? []);
+      setCoach((data as any)?.coachMessage ?? "");
+    } catch (e) {
+      console.error(e);
+      setInsights(["Could not generate insights right now. Try again in a moment."]);
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   const filteredMastered = useMemo(
     () => mastered.filter((m) => (m.question_text ?? "").toLowerCase().includes(search.toLowerCase())),
@@ -72,6 +97,100 @@ export default function SmartRevision() {
           </div>
         </div>
       </div>
+
+      {/* ============ AI Revision Command Center ============ */}
+      {cmdStats && (cmdStats.pending > 0 || cmdStats.mastered > 0) && (
+        <div className="space-y-4">
+          {/* Compact command cards */}
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+            <CmdCard icon={Flame} label="Pending" value={cmdStats.pending} tint="text-orange-500" />
+            <CmdCard icon={ShieldAlert} label="Critical" value={cmdStats.critical} tint="text-red-500" />
+            <CmdCard icon={AlertTriangle} label="Due Today" value={cmdStats.dueToday} tint="text-amber-500" />
+            <CmdCard icon={Trophy} label="Mastered" value={cmdStats.mastered} tint="text-emerald-500" />
+            <CmdCard icon={Layers} label="Subjects" value={cmdStats.subjectsPending} tint="text-primary" />
+            <CmdCard icon={BookOpen} label="Topics" value={cmdStats.topicsPending} tint="text-cyan-500" />
+          </div>
+
+          {/* Filter shortcuts */}
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <Wand2 className="h-4 w-4 text-secondary" />
+              <h3 className="text-sm font-bold">Smart Revision Sets</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <FilterButton
+                grad="bg-gradient-warm" icon={ShieldAlert} label="Critical"
+                count={cmdStats.critical}
+                onClick={() => navigate(`/revise?filter=critical`)}
+              />
+              <FilterButton
+                grad="bg-gradient-exam" icon={Repeat} label="Repeated"
+                count={cmdStats.repeatedMistakes}
+                onClick={() => navigate(`/revise?filter=repeated`)}
+              />
+              <FilterButton
+                grad="bg-gradient-royal" icon={Dice5} label="Guess Wrong"
+                count={cmdStats.guessBank}
+                onClick={() => navigate(`/revise?filter=guess`)}
+              />
+              <FilterButton
+                grad="bg-gradient-practice" icon={Flag} label="Marked"
+                count={cmdStats.markedBank}
+                onClick={() => navigate(`/revise?filter=marked`)}
+              />
+            </div>
+          </div>
+
+          {/* Final Revision Mode */}
+          <button
+            onClick={() => navigate(`/revise?mode2=final&limit=60`)}
+            disabled={cmdStats.critical + cmdStats.repeatedMistakes === 0}
+            className="btn-ripple w-full overflow-hidden rounded-3xl bg-gradient-to-br from-red-600 via-orange-600 to-amber-500 p-5 text-left text-white shadow-lg transition-transform hover:scale-[1.01] disabled:opacity-50"
+          >
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-white/20 p-3"><Target className="h-6 w-6" /></div>
+              <div className="flex-1">
+                <p className="text-lg font-bold">🎯 Final Revision Mode</p>
+                <p className="text-xs text-white/85">
+                  Only critical, repeated & never-mastered · perfect before your exam
+                </p>
+              </div>
+              <ChevronRight className="h-5 w-5" />
+            </div>
+          </button>
+
+          {/* AI Insights */}
+          <div className="glass-card rounded-3xl p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-secondary" />
+                <h3 className="text-sm font-bold">AJIT AI Revision Coach</h3>
+              </div>
+              <Button size="sm" variant="secondary" onClick={runAICoach} disabled={aiLoading} className="rounded-xl">
+                {aiLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Wand2 className="mr-1 h-3.5 w-3.5" />}
+                {insights.length ? "Refresh" : "Generate"}
+              </Button>
+            </div>
+            {coach && <p className="mb-3 text-sm leading-relaxed">{coach}</p>}
+            {insights.length > 0 ? (
+              <ul className="space-y-2">
+                {insights.map((t, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <Badge variant="secondary" className="mt-0.5 shrink-0 rounded-md px-1.5 py-0 text-[10px]">{i + 1}</Badge>
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              !aiLoading && !coach && (
+                <p className="text-xs text-muted-foreground">
+                  Tap Generate to let AJIT AI analyse your revision bank and suggest exactly what to revise next.
+                </p>
+              )
+            )}
+          </div>
+        </div>
+      )}
 
       <Tabs defaultValue="pending" className="w-full">
         <TabsList className="grid w-full grid-cols-3 rounded-2xl">
@@ -263,5 +382,33 @@ function EmptyState() {
       <p className="mt-3 font-semibold">No revision needed right now 🎉</p>
       <p className="mt-1 text-sm">Attempt any test — your wrong &amp; skipped questions will appear here automatically.</p>
     </div>
+  );
+}
+
+function CmdCard({ icon: Icon, label, value, tint }: { icon: any; label: string; value: number; tint: string }) {
+  return (
+    <div className="glass-card rounded-2xl p-2.5 text-center">
+      <Icon className={`mx-auto h-4 w-4 ${tint}`} />
+      <p className="mt-1 text-lg font-bold leading-none">{value}</p>
+      <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+function FilterButton({
+  icon: Icon, label, count, grad, onClick,
+}: { icon: any; label: string; count: number; grad: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={count === 0}
+      className={`btn-ripple rounded-2xl ${grad} p-3 text-left text-white shadow-md disabled:opacity-40`}
+    >
+      <div className="flex items-center justify-between">
+        <Icon className="h-4 w-4" />
+        <span className="text-lg font-bold">{count}</span>
+      </div>
+      <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-white/90">{label}</p>
+    </button>
   );
 }

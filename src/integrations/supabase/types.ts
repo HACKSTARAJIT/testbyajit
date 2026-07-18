@@ -1404,15 +1404,21 @@ export type Database = {
           correct_option: string | null
           correct_revision_count: number
           created_at: string
+          difficulty: string | null
           explanation: string | null
           id: string
           image_path: string | null
+          is_guess: boolean
+          is_marked: boolean
+          is_skipped: boolean
           last_attempt_at: string | null
           mastered_at: string | null
+          mistake_type: string | null
           note: string | null
           priority: string
           question_id: string | null
           question_text: string | null
+          question_type: string | null
           selected_option: string | null
           source: string
           source_report_id: string | null
@@ -1431,15 +1437,21 @@ export type Database = {
           correct_option?: string | null
           correct_revision_count?: number
           created_at?: string
+          difficulty?: string | null
           explanation?: string | null
           id?: string
           image_path?: string | null
+          is_guess?: boolean
+          is_marked?: boolean
+          is_skipped?: boolean
           last_attempt_at?: string | null
           mastered_at?: string | null
+          mistake_type?: string | null
           note?: string | null
           priority?: string
           question_id?: string | null
           question_text?: string | null
+          question_type?: string | null
           selected_option?: string | null
           source?: string
           source_report_id?: string | null
@@ -1458,15 +1470,21 @@ export type Database = {
           correct_option?: string | null
           correct_revision_count?: number
           created_at?: string
+          difficulty?: string | null
           explanation?: string | null
           id?: string
           image_path?: string | null
+          is_guess?: boolean
+          is_marked?: boolean
+          is_skipped?: boolean
           last_attempt_at?: string | null
           mastered_at?: string | null
+          mistake_type?: string | null
           note?: string | null
           priority?: string
           question_id?: string | null
           question_text?: string | null
+          question_type?: string | null
           selected_option?: string | null
           source?: string
           source_report_id?: string | null

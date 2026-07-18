@@ -8,6 +8,7 @@ import { GraduationCap, Zap, ArrowLeft, ListChecks } from "lucide-react";
 import { TestEngine, type EngineQuestion, type EngineTest } from "@/components/TestEngine";
 import { loadQuestionsByIds, loadTodaysRevisionIds, recordRevisionAttempt } from "@/lib/revisionEngine";
 import { loadQuickRevisionIds } from "@/lib/smartRevision";
+import { loadFilteredRevisionIds, type CommandFilter } from "@/lib/smartRevisionCommand";
 
 type Mode = "practice" | "exam";
 
@@ -39,7 +40,28 @@ export default function RevisionRunner() {
         ids = await loadQuickRevisionIds(user.id, countParam);
         setTitle(`Quick Revision · ${countParam} Questions`);
       } else {
-        ids = await loadTodaysRevisionIds(user.id);
+        const filter = searchParams.get("filter");
+        const modeParam = searchParams.get("mode2");
+        const limit = Number(searchParams.get("limit")) || 50;
+        if (filter || modeParam === "final") {
+          const f: CommandFilter = {
+            onlyGuess: filter === "guess",
+            onlyMarked: filter === "marked",
+            onlyCritical: filter === "critical",
+            onlyRepeated: filter === "repeated",
+            onlyFinalMode: modeParam === "final",
+          };
+          ids = await loadFilteredRevisionIds(user.id, f, limit);
+          const labels: Record<string, string> = {
+            guess: "Guess Wrong Revision",
+            marked: "Marked for Review",
+            critical: "Critical Revision",
+            repeated: "Repeated Mistakes",
+          };
+          setTitle(modeParam === "final" ? "🎯 Final Revision Mode" : (labels[filter ?? ""] ?? "Smart Revision"));
+        } else {
+          ids = await loadTodaysRevisionIds(user.id);
+        }
       }
       setQuestions(await loadQuestionsByIds(ids));
       setLoading(false);
