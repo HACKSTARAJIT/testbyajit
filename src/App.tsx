@@ -100,6 +100,7 @@ const App = () => (
             <Route path="/revision-dashboard" element={withLayout(<RevisionDashboard />)} />
             <Route path="/revise" element={withLayout(<RevisionRunner />)} />
             <Route path="/revise/:testId" element={withLayout(<RevisionRunner />)} />
+            <Route path="/mock-revision-hub" element={withLayout(<MockRevisionHub />)} />
             <Route path="/about" element={withLayout(<About />)} />
             <Route path="/profile" element={withLayout(<Profile />)} />
             <Route path="/ai-mock-analyzer" element={withLayout(<AIMockAnalyzer />)} />
