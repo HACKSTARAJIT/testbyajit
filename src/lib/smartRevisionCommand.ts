@@ -4,10 +4,13 @@ export type CommandFilter = {
   onlyGuess?: boolean;
   onlyMarked?: boolean;
   onlyCritical?: boolean;
-  onlyRepeated?: boolean; // wrong 2+ times
-  onlyFinalMode?: boolean; // critical + high + never-mastered
+  onlyRepeated?: boolean;      // wrong 2+ times
+  onlySkipped?: boolean;       // is_skipped = true
+  onlyNeverCorrect?: boolean;  // correct_revision_count = 0
+  onlyFinalMode?: boolean;     // critical + high + never-mastered
   subjectId?: string | null;
   chapterId?: string | null;
+  testId?: string | null;      // scope to a single source test / mock
   priority?: "critical" | "high" | "medium" | "low";
   dueTodayOnly?: boolean;
 };
@@ -69,18 +72,21 @@ export async function loadFilteredRevisionIds(
 ): Promise<string[]> {
   let q = supabase
     .from("wrong_questions")
-    .select("question_id, priority, wrong_count, last_attempt_at, is_guess, is_marked, consecutive_correct")
+    .select("question_id, priority, wrong_count, last_attempt_at, is_guess, is_marked, is_skipped, consecutive_correct, correct_revision_count")
     .eq("user_id", userId)
     .eq("status", "pending")
     .not("question_id", "is", null);
 
   if (filter.subjectId) q = q.eq("subject_id", filter.subjectId);
   if (filter.chapterId) q = q.eq("chapter_id", filter.chapterId);
+  if (filter.testId) q = q.eq("test_id", filter.testId);
   if (filter.priority) q = q.eq("priority", filter.priority);
   if (filter.onlyGuess) q = q.eq("is_guess", true);
   if (filter.onlyMarked) q = q.eq("is_marked", true);
+  if (filter.onlySkipped) q = q.eq("is_skipped", true);
   if (filter.onlyCritical) q = q.eq("priority", "critical");
   if (filter.onlyRepeated) q = q.gte("wrong_count", 2);
+  if (filter.onlyNeverCorrect) q = q.eq("correct_revision_count", 0);
 
   const { data } = await q;
   let rows = (data as any[]) ?? [];
