@@ -384,3 +384,31 @@ function EmptyState() {
     </div>
   );
 }
+
+function CmdCard({ icon: Icon, label, value, tint }: { icon: any; label: string; value: number; tint: string }) {
+  return (
+    <div className="glass-card rounded-2xl p-2.5 text-center">
+      <Icon className={`mx-auto h-4 w-4 ${tint}`} />
+      <p className="mt-1 text-lg font-bold leading-none">{value}</p>
+      <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+function FilterButton({
+  icon: Icon, label, count, grad, onClick,
+}: { icon: any; label: string; count: number; grad: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={count === 0}
+      className={`btn-ripple rounded-2xl ${grad} p-3 text-left text-white shadow-md disabled:opacity-40`}
+    >
+      <div className="flex items-center justify-between">
+        <Icon className="h-4 w-4" />
+        <span className="text-lg font-bold">{count}</span>
+      </div>
+      <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-white/90">{label}</p>
+    </button>
+  );
+}
