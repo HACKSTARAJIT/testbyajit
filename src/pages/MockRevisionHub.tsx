@@ -256,28 +256,37 @@ export default function MockRevisionHubPage() {
             {mocks.length === 0 ? (
               <EmptySection icon={FileText} text="No Full Mocks uploaded yet." />
             ) : mocks.map((m) => {
-              const idsSet = new Set(m.questionIds);
-              const matching = rows.filter((r) => r.question_id && idsSet.has(r.question_id));
-              const pending = matching.filter((r) => r.status !== "mastered").length;
-              const mastered = matching.filter((r) => r.status === "mastered").length;
+              // Uploaded mocks are external PDFs — no direct question link.
+              // Filter revision bank by AI-detected chapter/subject/topic when available.
+              const params = new URLSearchParams();
+              let scope = "";
+              if (m.detected_topic) { params.set("filter", "topic"); params.set("topic", m.detected_topic); scope = m.detected_topic; }
+              else if (m.detected_chapter) {
+                const chId = Object.keys(chapters).find((cid) => chapters[cid]?.name?.toLowerCase() === m.detected_chapter!.toLowerCase());
+                if (chId) { params.set("filter", "chapter"); params.set("chapterId", chId); scope = m.detected_chapter; }
+              } else if (m.detected_subject) {
+                const sId = Object.keys(subjects).find((sid) => subjects[sid]?.name?.toLowerCase() === m.detected_subject!.toLowerCase());
+                if (sId) { params.set("filter", "subject"); params.set("subjectId", sId); scope = m.detected_subject; }
+              }
+              params.set("limit", "60");
+              const canRevise = params.has("filter");
+              const date = new Date(m.created_at).toLocaleDateString();
               return (
                 <button
                   key={m.id}
                   onClick={() => {
-                    if (!pending) return;
-                    const ids = matching.filter((r) => r.status !== "mastered").map((r) => r.question_id).filter(Boolean).join(",");
-                    navigate(`/revise?filter=ids&ids=${ids}&limit=60`);
+                    if (canRevise) navigate(`/revise?${params.toString()}`);
+                    else navigate(`/ai-mock-analyzer?report=${m.id}`);
                   }}
-                  disabled={pending === 0}
-                  className="btn-ripple flex w-full items-center gap-3 rounded-2xl border bg-card p-4 text-left transition hover:bg-accent/40 disabled:opacity-60"
+                  className="btn-ripple flex w-full items-center gap-3 rounded-2xl border bg-card p-4 text-left transition hover:bg-accent/40"
                 >
                   <div className="rounded-xl bg-fuchsia-500/15 p-2 text-fuchsia-500"><FileText className="h-5 w-5" /></div>
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-semibold">{m.title}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">{date}{m.report_type ? ` · ${m.report_type}` : ""}</p>
                     <div className="mt-1 flex flex-wrap gap-1">
-                      <Badge variant="secondary" className="rounded-md px-1.5 py-0 text-[10px]">{pending} pending</Badge>
-                      {mastered > 0 && <Badge className="rounded-md bg-emerald-500/15 px-1.5 py-0 text-[10px] text-emerald-500">{mastered} mastered</Badge>}
-                      {matching.length === 0 && <Badge variant="outline" className="rounded-md px-1.5 py-0 text-[10px]">no bank overlap</Badge>}
+                      {scope && <Badge variant="secondary" className="rounded-md px-1.5 py-0 text-[10px]">Revise · {scope}</Badge>}
+                      {!canRevise && <Badge variant="outline" className="rounded-md px-1.5 py-0 text-[10px]">Open report</Badge>}
                     </div>
                   </div>
                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
