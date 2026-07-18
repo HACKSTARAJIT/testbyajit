@@ -192,12 +192,19 @@ export default function SmartRevision() {
         </div>
       )}
 
-      <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 rounded-2xl">
+      <Tabs defaultValue="hub" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 rounded-2xl">
+          <TabsTrigger value="hub" className="rounded-xl">🧠 Hub</TabsTrigger>
           <TabsTrigger value="pending" className="rounded-xl">🔴 Pending</TabsTrigger>
           <TabsTrigger value="mastered" className="rounded-xl">⭐ Mastered</TabsTrigger>
           <TabsTrigger value="progress" className="rounded-xl">📈 Progress</TabsTrigger>
         </TabsList>
+
+        {/* ---------------- MOCK REVISION HUB ---------------- */}
+        <TabsContent value="hub" className="mt-5">
+          <MockRevisionHub userId={user.id} />
+        </TabsContent>
+
 
         {/* ---------------- PENDING ---------------- */}
         <TabsContent value="pending" className="mt-5 space-y-6">
