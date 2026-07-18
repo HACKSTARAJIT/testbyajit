@@ -1,14 +1,19 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { EngineQuestion, EngineTest } from "@/components/TestEngine";
 
-// Priority derived from how many times a question was answered wrong
-export function priorityForCount(wrongCount: number): "low" | "medium" | "high" {
-  if (wrongCount >= 3) return "high";
+// Priority derived from how many times a question was answered wrong.
+// Adds a "critical" tier for 4+ wrongs to power the AI Revision Command Center.
+export type RevisionPriority = "critical" | "high" | "medium" | "low";
+
+export function priorityForCount(wrongCount: number): RevisionPriority {
+  if (wrongCount >= 4) return "critical";
+  if (wrongCount === 3) return "high";
   if (wrongCount === 2) return "medium";
   return "low";
 }
 
-const MASTERY_STREAK = 2; // consecutive correct revision attempts to master
+// 3 consecutive correct revisions ⇒ mastered.
+const MASTERY_STREAK = 3;
 
 type ExistingWQ = {
   id: string;
@@ -19,24 +24,29 @@ type ExistingWQ = {
   status: string;
 };
 
+export type AttemptExtras = {
+  marked?: Record<string, "review" | "doubt">;
+  guesses?: Record<string, { guess: true; selected: string; timeMs: number }>;
+};
+
 /**
  * Records the outcome of a completed test attempt into the smart wrong-question
  * bank, then (re)generates the linked auto "Wrong & Skipped" revision test.
  *
- * - Wrong or skipped questions are upserted (wrong_count++, priority recomputed).
- * - Correct answers to questions already in the bank count as a correct revision:
- *   after MASTERY_STREAK consecutive correct attempts they become "mastered".
- * - Mastered questions answered wrong again return to "pending".
+ * Adds every wrong, skipped, marked-for-review and guess-wrong question to the
+ * bank permanently, avoiding duplicates via (user_id, question_id).
  */
 export async function recordAttempt(
   userId: string,
   test: EngineTest,
   questions: EngineQuestion[],
   answers: Record<string, string>,
+  extras: AttemptExtras = {},
 ): Promise<void> {
   if (!userId) return;
+  const marked = extras.marked ?? {};
+  const guesses = extras.guesses ?? {};
 
-  // Load existing bank rows for these questions
   const qIds = questions.map((q) => q.id);
   const { data: existingRows } = await supabase
     .from("wrong_questions")
@@ -55,12 +65,16 @@ export async function recordAttempt(
     const chosen = answers[q.id];
     const attempted = chosen != null && chosen !== "";
     const correct = attempted && chosen === q.correct_option;
+    const wasGuess = !!guesses[q.id];
+    const wasMarked = !!marked[q.id];
     const prev = existing.get(q.id);
 
+    // Collect: wrong, skipped, marked-for-review, guess-wrong.
+    const shouldCollect = !correct || wasMarked || (wasGuess && !correct);
+
     if (!correct) {
-      // Wrong or skipped -> add / bump in the bank
+      const wrongCount = ((prev?.wrong_count ?? 0) || 0) + 1;
       if (prev) {
-        const wrongCount = (prev.wrong_count ?? 1) + 1;
         await supabase
           .from("wrong_questions")
           .update({
@@ -72,6 +86,9 @@ export async function recordAttempt(
             selected_option: attempted ? chosen : null,
             correct_option: q.correct_option,
             last_attempt_at: now,
+            is_guess: wasGuess || undefined,
+            is_marked: wasMarked || undefined,
+            is_skipped: !attempted,
           } as any)
           .eq("id", prev.id);
       } else {
@@ -93,10 +110,13 @@ export async function recordAttempt(
           wrong_count: 1,
           consecutive_correct: 0,
           last_attempt_at: now,
+          is_guess: wasGuess,
+          is_marked: wasMarked,
+          is_skipped: !attempted,
         } as any);
       }
     } else if (prev && prev.status !== "mastered") {
-      // Correct answer to a question already in the bank = successful revision
+      // Correct answer to a question already in the bank = successful revision.
       const streak = (prev.consecutive_correct ?? 0) + 1;
       const mastered = streak >= MASTERY_STREAK;
       await supabase
@@ -109,6 +129,30 @@ export async function recordAttempt(
           last_attempt_at: now,
         } as any)
         .eq("id", prev.id);
+    } else if (!prev && shouldCollect && wasMarked) {
+      // Marked-for-review but answered correctly (never seen before) — remember it.
+      await supabase.from("wrong_questions").insert({
+        user_id: userId,
+        test_id: test.id,
+        subject_id: test.subject_id ?? null,
+        chapter_id: test.chapter_id ?? null,
+        question_id: q.id,
+        question_text: q.question_text,
+        selected_option: chosen,
+        correct_option: q.correct_option,
+        explanation: q.explanation ?? null,
+        test_part: test.test_part ?? null,
+        priority: "low",
+        status: "pending",
+        source: "marked",
+        wrong_count: 0,
+        correct_revision_count: 1,
+        consecutive_correct: 1,
+        last_attempt_at: now,
+        is_guess: wasGuess,
+        is_marked: true,
+        is_skipped: false,
+      } as any);
     }
   }
 
@@ -171,7 +215,7 @@ export async function loadTodaysRevisionIds(userId: string): Promise<string[]> {
 
 /**
  * Records a revision attempt (from Today's Revision or an auto revision test).
- * Correct answers build the mastery streak; wrong answers bump wrong_count.
+ * Correct answers build the mastery streak (3 to master); wrong answers bump wrong_count.
  * Then regenerates every revision test whose questions were touched.
  */
 export async function recordRevisionAttempt(
@@ -201,7 +245,7 @@ export async function recordRevisionAttempt(
 
     if (correct && prev.status !== "mastered") {
       const streak = (prev.consecutive_correct ?? 0) + 1;
-      const mastered = streak >= 2;
+      const mastered = streak >= MASTERY_STREAK;
       await supabase.from("wrong_questions").update({
         correct_revision_count: (prev.correct_revision_count ?? 0) + 1,
         consecutive_correct: streak,
@@ -237,4 +281,3 @@ async function regenerateRevisionTestById(userId: string, testId: string): Promi
   if (!test) return;
   await regenerateRevisionTest(userId, test as any);
 }
-
