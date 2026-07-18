@@ -165,6 +165,44 @@ export default function MockRevisionHubPage() {
     [rows, tests],
   );
 
+  /** Per source-test AI insight: top wrong subject / chapter / topic + counts. */
+  const sourceTestCards = useMemo(() => {
+    const map = new Map<string, {
+      testId: string; title: string; test_part: string | null;
+      pending: number; wrong: number; skipped: number; guess: number;
+      critical: number; repeated: number; mastered: number;
+      subjects: Map<string, number>; chapters: Map<string, number>; topics: Map<string, number>;
+      lastAttempt: string | null;
+    }>();
+    for (const r of rows) {
+      if (!r.test_id) continue;
+      const t = tests[r.test_id];
+      if (!t) continue;
+      const g = map.get(r.test_id) ?? {
+        testId: r.test_id, title: t.title, test_part: t.test_part,
+        pending: 0, wrong: 0, skipped: 0, guess: 0, critical: 0, repeated: 0, mastered: 0,
+        subjects: new Map(), chapters: new Map(), topics: new Map(), lastAttempt: null,
+      };
+      if (r.status === "mastered") g.mastered++;
+      else {
+        g.pending++;
+        if ((r.wrong_count ?? 0) >= 1 && !r.is_skipped) g.wrong++;
+        if (r.is_skipped) g.skipped++;
+        if (r.is_guess) g.guess++;
+        if (r.priority === "critical") g.critical++;
+        if ((r.wrong_count ?? 0) >= 2) g.repeated++;
+        if (r.subject_id) g.subjects.set(r.subject_id, (g.subjects.get(r.subject_id) ?? 0) + 1);
+        if (r.chapter_id) g.chapters.set(r.chapter_id, (g.chapters.get(r.chapter_id) ?? 0) + 1);
+        if (r.topic) g.topics.set(r.topic, (g.topics.get(r.topic) ?? 0) + 1);
+      }
+      if (r.last_attempt_at && (!g.lastAttempt || r.last_attempt_at > g.lastAttempt)) g.lastAttempt = r.last_attempt_at;
+      map.set(r.test_id, g);
+    }
+    return [...map.values()]
+      .filter((g) => g.pending + g.mastered > 0)
+      .sort((a, b) => (b.pending - a.pending) || ((b.lastAttempt ?? "").localeCompare(a.lastAttempt ?? "")));
+  }, [rows, tests]);
+
   if (!user) return null;
   if (loading)
     return (
