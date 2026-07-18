@@ -60,7 +60,11 @@ export default function MockRevisionHubPage() {
   const [subjects, setSubjects] = useState<Record<string, { name: string; name_hi?: string | null }>>({});
   const [chapters, setChapters] = useState<Record<string, { name: string; subject_id: string }>>({});
   const [tests, setTests] = useState<Record<string, { title: string; test_part: string | null }>>({});
-  const [mocks, setMocks] = useState<Array<{ id: string; title: string; created_at: string; questionIds: string[] }>>([]);
+  const [mocks, setMocks] = useState<Array<{
+    id: string; title: string; created_at: string;
+    detected_subject: string | null; detected_chapter: string | null;
+    detected_topic: string | null; report_type: string | null;
+  }>>([]);
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
