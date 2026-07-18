@@ -146,6 +146,14 @@ const App = () => (
                 </AdminRoute>
               }
             />
+            <Route
+              path="/admin/tests"
+              element={<AdminRoute><AppLayout><Suspense fallback={<RouteFallback />}><AdminTestManager /></Suspense></AppLayout></AdminRoute>}
+            />
+            <Route
+              path="/admin/tests/:testId"
+              element={<AdminRoute><AppLayout><Suspense fallback={<RouteFallback />}><AdminTestManager /></Suspense></AppLayout></AdminRoute>}
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </SaveGateProvider>
