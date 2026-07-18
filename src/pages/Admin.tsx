@@ -306,8 +306,10 @@ function TestsTab({ subjects, chapters, tests, reload, del }: any) {
   };
 
   return (
-    <Card><CardHeader className="flex-row items-center justify-between">
+    <Card><CardHeader className="flex-row items-center justify-between gap-2">
       <CardTitle className="text-lg">Practice Tests</CardTitle>
+      <div className="flex gap-2">
+        <Link to="/admin/tests"><Button size="sm" variant="outline"><Pencil className="mr-1 h-4 w-4" />Manage Tests</Button></Link>
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}><DialogTrigger asChild><Button size="sm"><Plus className="mr-1 h-4 w-4" /> Add</Button></DialogTrigger>
         <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto"><DialogHeader><DialogTitle>Add Test Parts</DialogTitle></DialogHeader>
           <div className="space-y-3">
