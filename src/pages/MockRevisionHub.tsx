@@ -114,7 +114,7 @@ export default function MockRevisionHubPage() {
           : Promise.resolve({ data: [] as any }),
         supabase
           .from("ai_mock_reports")
-          .select("id, mock_title, created_at, matched_question_ids")
+          .select("id, title, exam_name, created_at, detected_subject, detected_chapter, detected_topic, report_type")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(30),
@@ -126,9 +126,12 @@ export default function MockRevisionHubPage() {
 
       const mockList = (reports ?? []).map((r: any, i: number) => ({
         id: r.id,
-        title: r.mock_title || `Mock ${(reports?.length ?? 0) - i}`,
+        title: r.title || r.exam_name || `Mock ${(reports?.length ?? 0) - i}`,
         created_at: r.created_at,
-        questionIds: Array.isArray(r.matched_question_ids) ? r.matched_question_ids : [],
+        detected_subject: r.detected_subject as string | null,
+        detected_chapter: r.detected_chapter as string | null,
+        detected_topic: r.detected_topic as string | null,
+        report_type: r.report_type as string | null,
       }));
 
       setRows(enriched);
