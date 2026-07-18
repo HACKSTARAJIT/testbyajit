@@ -29,23 +29,45 @@ export default function SmartRevision() {
   const [subjects, setSubjects] = useState<SubjectSummary[]>([]);
   const [stats, setStats] = useState<OverallStats | null>(null);
   const [mastered, setMastered] = useState<MasteredRow[]>([]);
+  const [cmdStats, setCmdStats] = useState<CommandStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [insights, setInsights] = useState<string[]>([]);
+  const [coach, setCoach] = useState<string>("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
       if (!user) { setLoading(false); return; }
-      const [s, st, m] = await Promise.all([
+      const [s, st, m, cs] = await Promise.all([
         loadSubjectSummaries(user.id),
         loadOverallStats(user.id),
         loadMastered(user.id),
+        loadCommandStats(user.id),
       ]);
       setSubjects(s);
       setStats(st);
       setMastered(m);
+      setCmdStats(cs);
       setLoading(false);
     })();
   }, [user]);
+
+  async function runAICoach() {
+    if (!user || aiLoading) return;
+    setAiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("smart-revision-insights", { body: {} });
+      if (error) throw error;
+      setInsights((data as any)?.insights ?? []);
+      setCoach((data as any)?.coachMessage ?? "");
+    } catch (e) {
+      console.error(e);
+      setInsights(["Could not generate insights right now. Try again in a moment."]);
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   const filteredMastered = useMemo(
     () => mastered.filter((m) => (m.question_text ?? "").toLowerCase().includes(search.toLowerCase())),
