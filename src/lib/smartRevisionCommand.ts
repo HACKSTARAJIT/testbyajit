@@ -4,10 +4,13 @@ export type CommandFilter = {
   onlyGuess?: boolean;
   onlyMarked?: boolean;
   onlyCritical?: boolean;
-  onlyRepeated?: boolean; // wrong 2+ times
-  onlyFinalMode?: boolean; // critical + high + never-mastered
+  onlyRepeated?: boolean;      // wrong 2+ times
+  onlySkipped?: boolean;       // is_skipped = true
+  onlyNeverCorrect?: boolean;  // correct_revision_count = 0
+  onlyFinalMode?: boolean;     // critical + high + never-mastered
   subjectId?: string | null;
   chapterId?: string | null;
+  testId?: string | null;      // scope to a single source test / mock
   priority?: "critical" | "high" | "medium" | "low";
   dueTodayOnly?: boolean;
 };
