@@ -17,6 +17,7 @@ import AIMockAnalyzer from "./AIMockAnalyzer";
 import PerformanceIntelligence from "./PerformanceIntelligence";
 import AICoach from "./AICoach";
 import Preparation360 from "@/components/prep360/Preparation360";
+import AIMemory from "./AIMemory";
 
 type Report = {
   id: string; title: string; status: string; created_at: string; report: any;
@@ -126,6 +127,7 @@ export default function AIPerformanceCenter() {
       <Tabs defaultValue="prep360" className="space-y-4">
         <TabsList className="flex flex-wrap h-auto justify-start bg-card/60 backdrop-blur">
           <TabsTrigger value="prep360"><Brain className="mr-1 h-3.5 w-3.5" />🧠 Preparation 360°</TabsTrigger>
+          <TabsTrigger value="memory"><Brain className="mr-1 h-3.5 w-3.5" />🧠 AI Memory</TabsTrigger>
           <TabsTrigger value="overview"><BarChart3 className="mr-1 h-3.5 w-3.5" />📊 Overview</TabsTrigger>
           <TabsTrigger value="mock"><FileText className="mr-1 h-3.5 w-3.5" />📝 Full Mock</TabsTrigger>
           <TabsTrigger value="subject"><BookOpen className="mr-1 h-3.5 w-3.5" />📚 Subject</TabsTrigger>
@@ -138,6 +140,10 @@ export default function AIPerformanceCenter() {
 
         {/* -------- PREPARATION 360° -------- */}
         <TabsContent value="prep360"><Preparation360 /></TabsContent>
+
+        {/* -------- AI MEMORY -------- */}
+        <TabsContent value="memory"><AIMemory /></TabsContent>
+
 
 
         {/* -------- OVERVIEW -------- */}
