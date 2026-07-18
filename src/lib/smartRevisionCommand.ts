@@ -6,10 +6,13 @@ export type CommandFilter = {
   onlyCritical?: boolean;
   onlyRepeated?: boolean;      // wrong 2+ times
   onlySkipped?: boolean;       // is_skipped = true
+  onlyWrong?: boolean;         // attempted & wrong (not skipped)
+  onlyWrongOrSkipped?: boolean;// wrong OR skipped (default pending set)
   onlyNeverCorrect?: boolean;  // correct_revision_count = 0
   onlyFinalMode?: boolean;     // critical + high + never-mastered
   subjectId?: string | null;
   chapterId?: string | null;
+  topic?: string | null;
   testId?: string | null;      // scope to a single source test / mock
   priority?: "critical" | "high" | "medium" | "low";
   dueTodayOnly?: boolean;
@@ -79,11 +82,13 @@ export async function loadFilteredRevisionIds(
 
   if (filter.subjectId) q = q.eq("subject_id", filter.subjectId);
   if (filter.chapterId) q = q.eq("chapter_id", filter.chapterId);
+  if (filter.topic) q = q.eq("topic", filter.topic);
   if (filter.testId) q = q.eq("test_id", filter.testId);
   if (filter.priority) q = q.eq("priority", filter.priority);
   if (filter.onlyGuess) q = q.eq("is_guess", true);
   if (filter.onlyMarked) q = q.eq("is_marked", true);
   if (filter.onlySkipped) q = q.eq("is_skipped", true);
+  if (filter.onlyWrong) q = q.eq("is_skipped", false).gte("wrong_count", 1);
   if (filter.onlyCritical) q = q.eq("priority", "critical");
   if (filter.onlyRepeated) q = q.gte("wrong_count", 2);
   if (filter.onlyNeverCorrect) q = q.eq("correct_revision_count", 0);

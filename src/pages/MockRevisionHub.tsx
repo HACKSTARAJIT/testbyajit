@@ -165,6 +165,44 @@ export default function MockRevisionHubPage() {
     [rows, tests],
   );
 
+  /** Per source-test AI insight: top wrong subject / chapter / topic + counts. */
+  const sourceTestCards = useMemo(() => {
+    const map = new Map<string, {
+      testId: string; title: string; test_part: string | null;
+      pending: number; wrong: number; skipped: number; guess: number;
+      critical: number; repeated: number; mastered: number;
+      subjects: Map<string, number>; chapters: Map<string, number>; topics: Map<string, number>;
+      lastAttempt: string | null;
+    }>();
+    for (const r of rows) {
+      if (!r.test_id) continue;
+      const t = tests[r.test_id];
+      if (!t) continue;
+      const g = map.get(r.test_id) ?? {
+        testId: r.test_id, title: t.title, test_part: t.test_part,
+        pending: 0, wrong: 0, skipped: 0, guess: 0, critical: 0, repeated: 0, mastered: 0,
+        subjects: new Map(), chapters: new Map(), topics: new Map(), lastAttempt: null,
+      };
+      if (r.status === "mastered") g.mastered++;
+      else {
+        g.pending++;
+        if ((r.wrong_count ?? 0) >= 1 && !r.is_skipped) g.wrong++;
+        if (r.is_skipped) g.skipped++;
+        if (r.is_guess) g.guess++;
+        if (r.priority === "critical") g.critical++;
+        if ((r.wrong_count ?? 0) >= 2) g.repeated++;
+        if (r.subject_id) g.subjects.set(r.subject_id, (g.subjects.get(r.subject_id) ?? 0) + 1);
+        if (r.chapter_id) g.chapters.set(r.chapter_id, (g.chapters.get(r.chapter_id) ?? 0) + 1);
+        if (r.topic) g.topics.set(r.topic, (g.topics.get(r.topic) ?? 0) + 1);
+      }
+      if (r.last_attempt_at && (!g.lastAttempt || r.last_attempt_at > g.lastAttempt)) g.lastAttempt = r.last_attempt_at;
+      map.set(r.test_id, g);
+    }
+    return [...map.values()]
+      .filter((g) => g.pending + g.mastered > 0)
+      .sort((a, b) => (b.pending - a.pending) || ((b.lastAttempt ?? "").localeCompare(a.lastAttempt ?? "")));
+  }, [rows, tests]);
+
   if (!user) return null;
   if (loading)
     return (
@@ -251,13 +289,98 @@ export default function MockRevisionHubPage() {
             ))}
           </TabsContent>
 
-          {/* Source Mock */}
-          <TabsContent value="mocks" className="mt-5 space-y-3">
-            {mocks.length === 0 ? (
-              <EmptySection icon={FileText} text="No Full Mocks uploaded yet." />
-            ) : mocks.map((m) => {
-              // Uploaded mocks are external PDFs — no direct question link.
-              // Filter revision bank by AI-detected chapter/subject/topic when available.
+          {/* Source Mock — every attempted Practice Test / Full Mock + uploaded PDF mocks */}
+          <TabsContent value="mocks" className="mt-5 space-y-4">
+            {sourceTestCards.length === 0 && mocks.length === 0 && (
+              <EmptySection icon={FileText} text="Attempt a Practice Test or upload a Full Mock — auto revision tests will appear here." />
+            )}
+
+            {sourceTestCards.map((g) => {
+              const topSubjectId = topKey(g.subjects);
+              const topChapterId = topKey(g.chapters);
+              const topTopic = topKey(g.topics);
+              const topSubjectName = topSubjectId ? subjects[topSubjectId]?.name : null;
+              const topChapterName = topChapterId ? chapters[topChapterId]?.name : null;
+              const subjectChips = [...g.subjects.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
+              const chapterChips = [...g.chapters.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
+              const topicChips = [...g.topics.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
+              const base = `/revise?scopeTestId=${g.testId}&limit=60`;
+              return (
+                <div key={g.testId} className="rounded-2xl border bg-card p-4 space-y-3">
+                  {/* Header */}
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-xl bg-fuchsia-500/15 p-2 text-fuchsia-500 shrink-0">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-bold">{g.title}</p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {g.test_part && <Badge variant="outline" className="rounded-md px-1.5 py-0 text-[10px]">{g.test_part}</Badge>}
+                        <Badge variant="secondary" className="rounded-md px-1.5 py-0 text-[10px]">{g.pending} pending</Badge>
+                        {g.mastered > 0 && <Badge className="rounded-md bg-emerald-500/15 px-1.5 py-0 text-[10px] text-emerald-500">{g.mastered} mastered</Badge>}
+                        {g.critical > 0 && <Badge className="rounded-md bg-red-500/15 px-1.5 py-0 text-[10px] text-red-500">{g.critical} critical</Badge>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* AI Insight */}
+                  {g.pending > 0 && (topSubjectName || topChapterName || topTopic) && (
+                    <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-fuchsia-500/10 p-2.5 text-[11px] leading-snug">
+                      <span className="font-semibold text-purple-600 dark:text-purple-400">🧠 AI Insight · </span>
+                      <span className="text-muted-foreground">
+                        Wrong <b>{g.wrong}</b> · Skipped <b>{g.skipped}</b> · Guess <b>{g.guess}</b>
+                        {topSubjectName && <> · Top Subject <b>{topSubjectName}</b></>}
+                        {topChapterName && <> · Top Chapter <b>{topChapterName}</b></>}
+                        {topTopic && <> · Top Topic <b>{topTopic}</b></>}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Quick action buttons */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <QuickAction label="❌ Wrong" count={g.wrong} tint="bg-red-500/10 text-red-600 border-red-500/30"
+                      onClick={() => navigate(`${base}&filter=wrong`)} />
+                    <QuickAction label="⏭ Skipped" count={g.skipped} tint="bg-amber-500/10 text-amber-600 border-amber-500/30"
+                      onClick={() => navigate(`${base}&filter=skipped`)} />
+                    <QuickAction label="🧠 Wrong + Skipped" count={g.pending} tint="bg-fuchsia-500/10 text-fuchsia-600 border-fuchsia-500/30"
+                      onClick={() => navigate(base)} />
+                    <QuickAction label="🎯 Guess Wrong" count={g.guess} tint="bg-orange-500/10 text-orange-600 border-orange-500/30"
+                      onClick={() => navigate(`${base}&filter=guess`)} />
+                  </div>
+
+                  {/* Subject / Chapter / Topic quick chips */}
+                  {subjectChips.length > 0 && (
+                    <ChipRow icon="📚" label="Subject" items={subjectChips.map(([id, n]) => ({
+                      label: subjects[id]?.name ?? "—", count: n,
+                      onClick: () => navigate(`${base}&subjectId=${id}`),
+                    }))} />
+                  )}
+                  {chapterChips.length > 0 && (
+                    <ChipRow icon="📖" label="Chapter" items={chapterChips.map(([id, n]) => ({
+                      label: chapters[id]?.name ?? "—", count: n,
+                      onClick: () => navigate(`${base}&chapterId=${id}`),
+                    }))} />
+                  )}
+                  {topicChips.length > 0 && (
+                    <ChipRow icon="🎯" label="Topic" items={topicChips.map(([t, n]) => ({
+                      label: t, count: n,
+                      onClick: () => navigate(`${base}&filter=topic&topic=${encodeURIComponent(t)}`),
+                    }))} />
+                  )}
+
+                  {/* Open analysis */}
+                  <button
+                    onClick={() => navigate(`/tests/${g.testId}`)}
+                    className="btn-ripple flex w-full items-center justify-center gap-2 rounded-xl border bg-background/50 py-2 text-xs font-semibold hover:bg-accent/40"
+                  >
+                    📊 Open Test / Analysis <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+
+            {/* Uploaded PDF mocks (AI Mock Analyzer) */}
+            {mocks.map((m) => {
               const params = new URLSearchParams();
               let scope = "";
               if (m.detected_topic) { params.set("filter", "topic"); params.set("topic", m.detected_topic); scope = m.detected_topic; }
@@ -280,10 +403,10 @@ export default function MockRevisionHubPage() {
                   }}
                   className="btn-ripple flex w-full items-center gap-3 rounded-2xl border bg-card p-4 text-left transition hover:bg-accent/40"
                 >
-                  <div className="rounded-xl bg-fuchsia-500/15 p-2 text-fuchsia-500"><FileText className="h-5 w-5" /></div>
+                  <div className="rounded-xl bg-indigo-500/15 p-2 text-indigo-500"><FileText className="h-5 w-5" /></div>
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-semibold">{m.title}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">{date}{m.report_type ? ` · ${m.report_type}` : ""}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">📄 Uploaded · {date}{m.report_type ? ` · ${m.report_type}` : ""}</p>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {scope && <Badge variant="secondary" className="rounded-md px-1.5 py-0 text-[10px]">Revise · {scope}</Badge>}
                       {!canRevise && <Badge variant="outline" className="rounded-md px-1.5 py-0 text-[10px]">Open report</Badge>}
@@ -450,6 +573,49 @@ function EmptySection({ icon: Icon, text }: { icon: any; text: string }) {
     <div className="glass-card rounded-2xl p-8 text-center text-sm text-muted-foreground">
       <Icon className="mx-auto h-8 w-8 opacity-60" />
       <p className="mt-2">{text}</p>
+    </div>
+  );
+}
+
+function topKey<T>(m: Map<T, number>): T | null {
+  let best: T | null = null; let n = 0;
+  m.forEach((v, k) => { if (v > n) { n = v; best = k; } });
+  return best;
+}
+
+function QuickAction({ label, count, tint, onClick }: {
+  label: string; count: number; tint: string; onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={count === 0}
+      className={`btn-ripple rounded-xl border ${tint} p-2.5 text-left transition disabled:opacity-40`}
+    >
+      <p className="text-xs font-semibold leading-tight">{label}</p>
+      <p className="mt-0.5 text-lg font-bold leading-none">{count}</p>
+    </button>
+  );
+}
+
+function ChipRow({ icon, label, items }: {
+  icon: string; label: string;
+  items: Array<{ label: string; count: number; onClick: () => void }>;
+}) {
+  return (
+    <div>
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{icon} {label} Wise</p>
+      <div className="flex flex-wrap gap-1.5">
+        {items.map((it, i) => (
+          <button
+            key={i}
+            onClick={it.onClick}
+            className="btn-ripple rounded-lg border bg-background/50 px-2 py-1 text-[11px] font-medium hover:bg-accent/40"
+          >
+            {it.label} <span className="ml-1 text-muted-foreground">· {it.count}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -70,29 +70,32 @@ export default function RevisionRunner() {
             onlyCritical: filter === "critical",
             onlyRepeated: filter === "repeated",
             onlySkipped: filter === "skipped",
+            onlyWrong: filter === "wrong",
             onlyNeverCorrect: filter === "never-correct",
             onlyFinalMode: modeParam === "final",
             testId: scopeTestId,
             subjectId: subjectId ?? undefined,
             chapterId: chapterId ?? undefined,
+            topic: topicParam ?? undefined,
             priority: filter === "high" ? "high" : undefined,
           };
           ids = await loadFilteredRevisionIds(user.id, f, limit);
           const labels: Record<string, string> = {
-            guess: "Guess Wrong Revision",
-            marked: "Marked for Review",
-            critical: "Critical Revision",
-            repeated: "Repeated Mistakes",
-            skipped: "Skipped Question Revision",
+            guess: "🎯 Guess Wrong Revision",
+            marked: "🔖 Marked for Review",
+            critical: "🔥 Critical Revision",
+            repeated: "🔁 Repeated Mistakes",
+            skipped: "⏭ Skipped Questions",
+            wrong: "❌ Wrong Questions",
             "never-correct": "Never Solved Correctly",
             high: "High Priority Revision",
-            subject: "Subject Revision",
-            chapter: "Chapter Revision",
+            subject: "📚 Subject Revision",
+            chapter: "📖 Chapter Revision",
           };
           setTitle(
             modeParam === "final"
               ? "🎯 Final Exam Revision"
-              : (labels[filter ?? ""] ?? (scopeTestId ? "Mock Revision" : "Smart Revision")),
+              : (labels[filter ?? ""] ?? (scopeTestId ? "🧠 Mock Revision" : "Smart Revision")),
           );
         } else {
           ids = await loadTodaysRevisionIds(user.id);
