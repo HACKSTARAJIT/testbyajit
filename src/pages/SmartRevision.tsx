@@ -17,7 +17,7 @@ import {
   type SubjectSummary, type OverallStats, type MasteredRow,
 } from "@/lib/smartRevision";
 import { loadCommandStats, type CommandStats } from "@/lib/smartRevisionCommand";
-import { MockRevisionHub } from "@/components/MockRevisionHub";
+
 
 const CARD_GRADIENTS = [
   "bg-gradient-royal", "bg-gradient-exam", "bg-gradient-warm",
