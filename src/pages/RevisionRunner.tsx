@@ -8,6 +8,7 @@ import { GraduationCap, Zap, ArrowLeft, ListChecks } from "lucide-react";
 import { TestEngine, type EngineQuestion, type EngineTest } from "@/components/TestEngine";
 import { loadQuestionsByIds, loadTodaysRevisionIds, recordRevisionAttempt } from "@/lib/revisionEngine";
 import { loadQuickRevisionIds } from "@/lib/smartRevision";
+import { loadFilteredRevisionIds, type CommandFilter } from "@/lib/smartRevisionCommand";
 
 type Mode = "practice" | "exam";
 
