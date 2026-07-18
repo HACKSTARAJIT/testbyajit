@@ -664,7 +664,9 @@ export type Database = {
           ai_analyzed_at: string | null
           ai_confidence: number | null
           ai_issues: Json
+          attachments: Json
           bloom_level: string | null
+          chapter_id: string | null
           complexity_score: number | null
           concept: string | null
           content_hash: string | null
@@ -680,16 +682,19 @@ export type Database = {
           id: string
           importance: string | null
           marks: number
+          negative_marks: number
           option_a: string
           option_b: string
           option_c: string
           option_d: string
           quality_score: number | null
+          question_image_url: string | null
           question_text: string
           sort_order: number
           subtopic: string | null
           test_id: string
           topic: string | null
+          updated_at: string
         }
         Insert: {
           admin_reviewed?: boolean
@@ -697,7 +702,9 @@ export type Database = {
           ai_analyzed_at?: string | null
           ai_confidence?: number | null
           ai_issues?: Json
+          attachments?: Json
           bloom_level?: string | null
+          chapter_id?: string | null
           complexity_score?: number | null
           concept?: string | null
           content_hash?: string | null
@@ -713,16 +720,19 @@ export type Database = {
           id?: string
           importance?: string | null
           marks?: number
+          negative_marks?: number
           option_a: string
           option_b: string
           option_c: string
           option_d: string
           quality_score?: number | null
+          question_image_url?: string | null
           question_text: string
           sort_order?: number
           subtopic?: string | null
           test_id: string
           topic?: string | null
+          updated_at?: string
         }
         Update: {
           admin_reviewed?: boolean
@@ -730,7 +740,9 @@ export type Database = {
           ai_analyzed_at?: string | null
           ai_confidence?: number | null
           ai_issues?: Json
+          attachments?: Json
           bloom_level?: string | null
+          chapter_id?: string | null
           complexity_score?: number | null
           concept?: string | null
           content_hash?: string | null
@@ -746,18 +758,28 @@ export type Database = {
           id?: string
           importance?: string | null
           marks?: number
+          negative_marks?: number
           option_a?: string
           option_b?: string
           option_c?: string
           option_d?: string
           quality_score?: number | null
+          question_image_url?: string | null
           question_text?: string
           sort_order?: number
           subtopic?: string | null
           test_id?: string
           topic?: string | null
+          updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "questions_test_id_fkey"
             columns: ["test_id"]
@@ -1161,6 +1183,57 @@ export type Database = {
           },
         ]
       }
+      test_edit_history: {
+        Row: {
+          action: string
+          changed_fields: string[]
+          created_at: string
+          diff: Json
+          edited_by: string | null
+          id: string
+          note: string | null
+          question_id: string | null
+          test_id: string
+        }
+        Insert: {
+          action: string
+          changed_fields?: string[]
+          created_at?: string
+          diff?: Json
+          edited_by?: string | null
+          id?: string
+          note?: string | null
+          question_id?: string | null
+          test_id: string
+        }
+        Update: {
+          action?: string
+          changed_fields?: string[]
+          created_at?: string
+          diff?: Json
+          edited_by?: string | null
+          id?: string
+          note?: string | null
+          question_id?: string | null
+          test_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_edit_history_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_edit_history_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       test_mistake_analyses: {
         Row: {
           action_plan: Json
@@ -1249,6 +1322,7 @@ export type Database = {
           title: string
           total_marks: number | null
           total_questions: number | null
+          updated_at: string
         }
         Insert: {
           ai_analysis_status?: string
@@ -1266,6 +1340,7 @@ export type Database = {
           title: string
           total_marks?: number | null
           total_questions?: number | null
+          updated_at?: string
         }
         Update: {
           ai_analysis_status?: string
@@ -1283,6 +1358,7 @@ export type Database = {
           title?: string
           total_marks?: number | null
           total_questions?: number | null
+          updated_at?: string
         }
         Relationships: [
           {

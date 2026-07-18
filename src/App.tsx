@@ -35,6 +35,7 @@ const About = lazy(() => import("./pages/About.tsx"));
 const Admin = lazy(() => import("./pages/Admin.tsx"));
 const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics.tsx"));
 const AdminIntelligence = lazy(() => import("./pages/AdminIntelligence.tsx"));
+const AdminTestManager = lazy(() => import("./pages/AdminTestManager.tsx"));
 const AIMockAnalyzer = lazy(() => import("./pages/AIMockAnalyzer.tsx"));
 const PerformanceIntelligence = lazy(() => import("./pages/PerformanceIntelligence.tsx"));
 const AICoach = lazy(() => import("./pages/AICoach.tsx"));
@@ -144,6 +145,14 @@ const App = () => (
                   </AppLayout>
                 </AdminRoute>
               }
+            />
+            <Route
+              path="/admin/tests"
+              element={<AdminRoute><AppLayout><Suspense fallback={<RouteFallback />}><AdminTestManager /></Suspense></AppLayout></AdminRoute>}
+            />
+            <Route
+              path="/admin/tests/:testId"
+              element={<AdminRoute><AppLayout><Suspense fallback={<RouteFallback />}><AdminTestManager /></Suspense></AppLayout></AdminRoute>}
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
