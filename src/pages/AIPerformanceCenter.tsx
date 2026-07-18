@@ -17,6 +17,7 @@ import AIMockAnalyzer from "./AIMockAnalyzer";
 import PerformanceIntelligence from "./PerformanceIntelligence";
 import AICoach from "./AICoach";
 import Preparation360 from "@/components/prep360/Preparation360";
+import AIMemory from "./AIMemory";
 
 type Report = {
   id: string; title: string; status: string; created_at: string; report: any;
