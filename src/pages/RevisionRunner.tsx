@@ -42,14 +42,18 @@ export default function RevisionRunner() {
       } else {
         const filter = searchParams.get("filter");
         const modeParam = searchParams.get("mode2");
+        const scopeTestId = searchParams.get("scopeTestId");
         const limit = Number(searchParams.get("limit")) || 50;
-        if (filter || modeParam === "final") {
+        if (filter || modeParam === "final" || scopeTestId) {
           const f: CommandFilter = {
             onlyGuess: filter === "guess",
             onlyMarked: filter === "marked",
             onlyCritical: filter === "critical",
             onlyRepeated: filter === "repeated",
+            onlySkipped: filter === "skipped",
+            onlyNeverCorrect: filter === "never-correct",
             onlyFinalMode: modeParam === "final",
+            testId: scopeTestId,
           };
           ids = await loadFilteredRevisionIds(user.id, f, limit);
           const labels: Record<string, string> = {
@@ -57,8 +61,14 @@ export default function RevisionRunner() {
             marked: "Marked for Review",
             critical: "Critical Revision",
             repeated: "Repeated Mistakes",
+            skipped: "Skipped Question Revision",
+            "never-correct": "Never Solved Correctly",
           };
-          setTitle(modeParam === "final" ? "🎯 Final Revision Mode" : (labels[filter ?? ""] ?? "Smart Revision"));
+          setTitle(
+            modeParam === "final"
+              ? "🎯 Final Exam Revision"
+              : (labels[filter ?? ""] ?? (scopeTestId ? "Mock Revision" : "Smart Revision")),
+          );
         } else {
           ids = await loadTodaysRevisionIds(user.id);
         }
