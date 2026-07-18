@@ -6,10 +6,13 @@ export type CommandFilter = {
   onlyCritical?: boolean;
   onlyRepeated?: boolean;      // wrong 2+ times
   onlySkipped?: boolean;       // is_skipped = true
+  onlyWrong?: boolean;         // attempted & wrong (not skipped)
+  onlyWrongOrSkipped?: boolean;// wrong OR skipped (default pending set)
   onlyNeverCorrect?: boolean;  // correct_revision_count = 0
   onlyFinalMode?: boolean;     // critical + high + never-mastered
   subjectId?: string | null;
   chapterId?: string | null;
+  topic?: string | null;
   testId?: string | null;      // scope to a single source test / mock
   priority?: "critical" | "high" | "medium" | "low";
   dueTodayOnly?: boolean;
