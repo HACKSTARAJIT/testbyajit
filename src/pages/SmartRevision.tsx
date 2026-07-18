@@ -1,19 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import {
   Brain, ChevronRight, Flame, Star, TrendingUp, Zap, Trophy, Target,
-  BookOpen, Search, Sparkles, Layers,
+  BookOpen, Search, Sparkles, Layers, AlertTriangle, Dice5, Flag,
+  Repeat, ShieldAlert, Wand2, Loader2,
 } from "lucide-react";
 import {
   loadSubjectSummaries, loadOverallStats, loadMastered,
   type SubjectSummary, type OverallStats, type MasteredRow,
 } from "@/lib/smartRevision";
+import { loadCommandStats, type CommandStats } from "@/lib/smartRevisionCommand";
 
 const CARD_GRADIENTS = [
   "bg-gradient-royal", "bg-gradient-exam", "bg-gradient-warm",
