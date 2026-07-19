@@ -451,16 +451,7 @@ export default function AIMockAnalyzer() {
         </DialogContent>
       </Dialog>
 
-      <VerifyAttemptDialog
-        report={verifyTarget}
-        open={!!verifyTarget}
-        onOpenChange={(open) => !open && setVerifyTarget(null)}
-        onVerified={async (id) => {
-          setVerifyTarget(null);
-          await load();
-          await analyze(id, true);
-        }}
-      />
+      {/* Manual verification removed — analysis is fully automatic */}
     </div>
   );
 }
