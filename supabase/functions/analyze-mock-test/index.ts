@@ -535,8 +535,9 @@ function getVerifiedAttemptSnapshot(report: any, userId: string): { ok: boolean;
   return { ok: true, snapshot };
 }
 
-function applyVerifiedSnapshotToReport(report: any, verified: VerifiedAttemptSnapshot) {
+function applyVerifiedSnapshotToReport(report: any, verified: VerifiedAttemptSnapshot | null) {
   const r = report && typeof report === "object" && !Array.isArray(report) ? report : {};
+  if (!verified) return r; // no snapshot → trust AI's extracted totals verbatim
   const attempted = verified.correct + verified.wrong;
   const totalQuestions = verified.correct + verified.wrong + verified.skipped;
   const timeMinutes = Math.round((verified.time_taken_seconds / 60) * 100) / 100;
@@ -562,6 +563,7 @@ function applyVerifiedSnapshotToReport(report: any, verified: VerifiedAttemptSna
     coach_feedback: mergeVerifiedNarrative(verifiedLine, r.coach_feedback),
   };
 }
+
 
 function mergeVerifiedNarrative(verifiedLine: string, value: unknown) {
   const text = typeof value === "string" ? value.trim() : "";
