@@ -493,6 +493,43 @@ function hasVerifiedAttemptData(r: Report) {
   return r.analysis_status === "verified" && !!r.verified_attempt_snapshot;
 }
 
+function str(v: any, fallback: string) {
+  if (v == null || v === "") return fallback;
+  const n = Number(v);
+  return Number.isFinite(n) ? String(n) : fallback;
+}
+
+/**
+ * Best-effort regex extraction of the printed result card from OCR text.
+ * Matches common SSC / Testbook / Adda247 / Practicemock layouts.
+ * Returns whatever it could find — the student can still edit.
+ */
+function extractPrintedResultCard(text: string | null | undefined) {
+  const out: any = {};
+  if (!text) return out;
+  const t = text.replace(/\s+/g, " ");
+  const num = (re: RegExp) => {
+    const m = t.match(re);
+    if (!m) return null;
+    const n = Number(m[1].replace(/,/g, ""));
+    return Number.isFinite(n) ? n : null;
+  };
+  out.score = num(/(?:total\s*)?(?:marks?\s*(?:obtained|scored)?|score|your\s*score)\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)/i);
+  out.totalMarks = num(/(?:out\s*of|max(?:imum)?\s*marks?|total\s*marks?)\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)/i)
+    ?? (() => { const m = t.match(/([0-9]+(?:\.[0-9]+)?)\s*\/\s*([0-9]+(?:\.[0-9]+)?)/); return m ? Number(m[2]) : null; })();
+  out.correct = num(/(?:correct|right)\s*(?:answers?|questions?)?\s*[:\-]?\s*([0-9]+)/i);
+  out.wrong = num(/(?:wrong|incorrect)\s*(?:answers?|questions?)?\s*[:\-]?\s*([0-9]+)/i);
+  out.skipped = num(/(?:skipped|unattempted|not\s*attempted|un[- ]?answered)\s*(?:questions?)?\s*[:\-]?\s*([0-9]+)/i);
+  out.accuracy = num(/accuracy\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)\s*%?/i);
+  out.negativeMarks = num(/(?:negative\s*mark(?:ing|s)?)\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)/i);
+  const tm = t.match(/(?:time\s*(?:taken|spent)?|duration)\s*[:\-]?\s*([0-9]+)\s*(?:hr|hour|h)s?\.?\s*([0-9]+)?\s*(?:min|m)?/i);
+  if (tm) out.timeMinutes = Number(tm[1]) * 60 + Number(tm[2] ?? 0);
+  else {
+    const mm = t.match(/(?:time\s*(?:taken|spent)?|duration)\s*[:\-]?\s*([0-9]+)\s*(?:min|minutes?|m)\b/i);
+    if (mm) out.timeMinutes = Number(mm[1]);
+  }
+  return out;
+
 function StatCard({ icon, label, value, sub, tint, small }: { icon: React.ReactNode; label: string; value: any; sub?: string; tint: string; small?: boolean }) {
   return (
     <div className={`relative overflow-hidden rounded-xl border bg-gradient-to-br ${tint} p-3 backdrop-blur transition hover:scale-[1.02]`}>
