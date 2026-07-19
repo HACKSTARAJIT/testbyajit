@@ -652,7 +652,8 @@ function VerifyAttemptDialog({ report, open, onOpenChange, onVerified }: {
     setSaving(true);
     try {
       const snapshot = {
-        attempt_id: report.attempt_id ?? report.id,
+        attempt_id: report.attempt_id ?? null,
+        source_report_id: report.id,
         student_id: user.id,
         test_id: report.source_test_id ?? null,
         score: values.score,
@@ -671,7 +672,6 @@ function VerifyAttemptDialog({ report, open, onOpenChange, onVerified }: {
         analysis_status: "verified",
         verified_attempt_snapshot: snapshot,
         verification_error: null,
-        attempt_id: snapshot.attempt_id,
         accuracy: values.accuracy,
         overall_score: values.score,
         status: "pending",
