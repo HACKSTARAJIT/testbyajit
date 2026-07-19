@@ -451,16 +451,7 @@ export default function AIMockAnalyzer() {
         </DialogContent>
       </Dialog>
 
-      <VerifyAttemptDialog
-        report={verifyTarget}
-        open={!!verifyTarget}
-        onOpenChange={(open) => !open && setVerifyTarget(null)}
-        onVerified={async (id) => {
-          setVerifyTarget(null);
-          await load();
-          await analyze(id, true);
-        }}
-      />
+      {/* Manual verification removed — analysis is fully automatic */}
     </div>
   );
 }
@@ -484,8 +475,9 @@ function isVerifiedReport(r: Report) {
   return r.status === "completed";
 }
 
-function hasVerifiedAttemptData(r: Report) {
-  return !!r.verified_attempt_snapshot;
+function hasVerifiedAttemptData(_r: Report) {
+  // Fully automatic mode — no manual verification step required.
+  return true;
 }
 
 
@@ -560,9 +552,6 @@ function ReportCard({ r, onOpen, onAnalyze, onVerify, onRename, onDuplicate, onD
         <div className="flex flex-wrap items-center gap-1">
           {r.exam_name && <Badge variant="outline" className="text-[10px]">{r.exam_name}</Badge>}
           <Badge variant="outline" className="text-[10px]">{pages} file{pages !== 1 ? "s" : ""}</Badge>
-          <Badge variant={verified ? "secondary" : "outline"} className="text-[10px]">
-            {verified ? "Verified data ✓" : "Verify data required"}
-          </Badge>
         </div>
         <div className="grid grid-cols-3 gap-1 text-center">
           <Mini label="Accuracy" value={r.accuracy ? `${r.accuracy}%` : "—"} />
