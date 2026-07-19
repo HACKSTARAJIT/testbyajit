@@ -314,6 +314,13 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       console.error("sync failed", reportId, syncErr);
     }
 
+    // ---- Auto-generate retest questions from wrong/skipped items (non-fatal) ----
+    try {
+      await generateRetestQuestions(admin, userId, reportId, parsed);
+    } catch (genErr) {
+      console.error("retest generation failed", reportId, genErr);
+    }
+
   } catch (e) {
     const msg = e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e);
     console.error("processReport failed", reportId, msg);
