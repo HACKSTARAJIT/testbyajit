@@ -306,11 +306,36 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
     const totals = parsed.totals ?? {};
     const validTypes = new Set(["full_mock", "subject", "chapter", "topic", "revision_test", "previous_year"]);
     const reportType = validTypes.has(parsed.report_type) ? parsed.report_type : "full_mock";
+
+    // ── SOURCE-OF-TRUTH GUARD ────────────────────────────────────────────
+    // The printed result card in the PDF is authoritative. We store totals
+    // EXACTLY as the AI extracted them (which per prompt must be verbatim
+    // from the printed card). We never re-compute score/accuracy here.
+    // If AI's per-question status counts disagree with printed totals, we
+    // log it for observability but keep the PRINTED numbers.
+    try {
+      const qs = Array.isArray(parsed.questions) ? parsed.questions : [];
+      const counted = {
+        correct: qs.filter((q: any) => q?.status === "correct").length,
+        wrong: qs.filter((q: any) => q?.status === "wrong").length,
+        skipped: qs.filter((q: any) => q?.status === "skipped").length,
+      };
+      if (
+        totals.correct != null && counted.correct !== totals.correct ||
+        totals.wrong   != null && counted.wrong   !== totals.wrong
+      ) {
+        console.warn("printed vs counted mismatch — keeping PRINTED totals", {
+          reportId, printed: { correct: totals.correct, wrong: totals.wrong, skipped: totals.skipped }, counted,
+        });
+      }
+    } catch (_) { /* ignore */ }
+
     await admin.from("ai_mock_reports").update({
       status: "completed",
       report: parsed,
       ocr_text: parsed.ocr_text ?? null,
       exam_name: parsed.exam_name ?? null,
+      // Verbatim from what AI copied off the printed result card. No re-derivation.
       accuracy: toNum(parsed.accuracy),
       readiness_score: toNum(parsed.readiness_score),
       overall_score: toNum(totals.score),
@@ -320,7 +345,7 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       detected_topic: parsed.detected_topic ?? null,
       error: null,
     }).eq("id", reportId);
-    console.log("report done", reportId, "type=", reportType);
+    console.log("report done", reportId, "type=", reportType, "score=", totals.score, "accuracy=", parsed.accuracy);
 
     // ---- Smart Revision sync + Planner/Coach/Goals persistence (non-fatal) ----
     try {
