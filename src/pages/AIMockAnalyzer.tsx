@@ -484,8 +484,9 @@ function isVerifiedReport(r: Report) {
   return r.status === "completed";
 }
 
-function hasVerifiedAttemptData(r: Report) {
-  return !!r.verified_attempt_snapshot;
+function hasVerifiedAttemptData(_r: Report) {
+  // Fully automatic mode — no manual verification step required.
+  return true;
 }
 
 
