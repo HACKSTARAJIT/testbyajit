@@ -64,6 +64,7 @@ export default function MockRevisionHubPage() {
     id: string; title: string; created_at: string;
     detected_subject: string | null; detected_chapter: string | null;
     detected_topic: string | null; report_type: string | null;
+    autoTotal: number; autoWrong: number; autoSkipped: number;
   }>>([]);
 
   useEffect(() => {
@@ -128,6 +129,22 @@ export default function MockRevisionHubPage() {
       const cMap: any = {}; (chs ?? []).forEach((c: any) => (cMap[c.id] = { name: c.name, subject_id: c.subject_id }));
       const tMap: any = {}; (tst ?? []).forEach((t: any) => (tMap[t.id] = { title: t.title, test_part: t.test_part }));
 
+      const reportIds = (reports ?? []).map((r: any) => r.id);
+      let autoMap: Record<string, { total: number; wrong: number; skipped: number }> = {};
+      if (reportIds.length) {
+        const { data: gen } = await supabase
+          .from("mock_generated_questions")
+          .select("report_id, original_status")
+          .in("report_id", reportIds);
+        (gen ?? []).forEach((g: any) => {
+          const m = autoMap[g.report_id] ?? { total: 0, wrong: 0, skipped: 0 };
+          m.total++;
+          if (g.original_status === "wrong") m.wrong++;
+          else if (g.original_status === "skipped") m.skipped++;
+          autoMap[g.report_id] = m;
+        });
+      }
+
       const mockList = (reports ?? []).map((r: any, i: number) => ({
         id: r.id,
         title: r.title || r.exam_name || `Mock ${(reports?.length ?? 0) - i}`,
@@ -136,6 +153,9 @@ export default function MockRevisionHubPage() {
         detected_chapter: r.detected_chapter as string | null,
         detected_topic: r.detected_topic as string | null,
         report_type: r.report_type as string | null,
+        autoTotal: autoMap[r.id]?.total ?? 0,
+        autoWrong: autoMap[r.id]?.wrong ?? 0,
+        autoSkipped: autoMap[r.id]?.skipped ?? 0,
       }));
 
       setRows(enriched);
