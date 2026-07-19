@@ -74,7 +74,7 @@ export default function AIMemory() {
       const { data } = await supabase
         .from("ai_mock_reports")
         .select("id,title,created_at,accuracy,readiness_score,overall_score,report,report_type,status")
-        .eq("user_id", user.id).eq("status", "completed")
+        .eq("user_id", user.id).eq("status", "completed").eq("analysis_status", "verified")
         .in("report_type", ["full_mock", "previous_year"])
         .order("created_at", { ascending: true }).limit(50);
       setMocks((data as any) ?? []);

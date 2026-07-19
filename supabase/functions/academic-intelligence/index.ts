@@ -56,6 +56,7 @@ Deno.serve(async (req) => {
       admin.from("ai_mock_reports")
         .select("id,title,created_at,accuracy,readiness_score,overall_score,report_type,detected_subject,detected_chapter,detected_topic,report")
         .eq("user_id", userId).eq("status", "completed")
+        .eq("analysis_status", "verified")
         .order("created_at", { ascending: true }).limit(80),
       admin.from("test_attempts")
         .select("id,test_id,accuracy,marks_obtained,total_questions,correct_count,incorrect_count,unattempted_count,time_taken,guesses,created_at,status")

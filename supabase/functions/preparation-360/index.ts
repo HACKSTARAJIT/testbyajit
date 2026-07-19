@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     const [prof, reports, attempts, wrongs, activity, goals, revItems, revTests, perf, plan] = await Promise.all([
       admin.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
       admin.from("ai_mock_reports").select("title, report_type, detected_subject, detected_chapter, detected_topic, accuracy, readiness_score, overall_score, report, created_at")
-        .eq("user_id", userId).eq("status", "completed").order("created_at", { ascending: true }).limit(50),
+        .eq("user_id", userId).eq("status", "completed").eq("analysis_status", "verified").order("created_at", { ascending: true }).limit(50),
       admin.from("test_attempts").select("accuracy, marks_obtained, total_questions, correct_count, incorrect_count, created_at")
         .eq("user_id", userId).order("created_at", { ascending: false }).limit(100),
       admin.from("wrong_questions").select("chapter_id, subject_id, topic, priority, status, wrong_count").eq("user_id", userId).limit(500),

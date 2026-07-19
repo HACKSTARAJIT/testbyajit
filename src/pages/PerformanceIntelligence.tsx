@@ -51,7 +51,7 @@ export default function PerformanceIntelligence() {
     if (!user) return;
     (async () => {
       const [{ data: r }, { data: g }, { data: ach }] = await Promise.all([
-        supabase.from("ai_mock_reports").select("*").eq("user_id", user.id).eq("status", "completed").order("created_at"),
+        supabase.from("ai_mock_reports").select("*").eq("user_id", user.id).eq("status", "completed").eq("analysis_status", "verified").order("created_at"),
         supabase.from("user_goals").select("*").eq("user_id", user.id).maybeSingle(),
         supabase.from("user_achievements").select("code").eq("user_id", user.id),
       ]);

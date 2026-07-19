@@ -47,7 +47,7 @@ export default function AIPerformanceCenter() {
     if (!user) return;
     const [r, a, w, t] = await Promise.all([
       supabase.from("ai_mock_reports").select("id,title,status,created_at,report,accuracy,readiness_score,overall_score,report_type,detected_subject,detected_chapter,detected_topic")
-        .eq("user_id", user.id).order("created_at", { ascending: false }),
+        .eq("user_id", user.id).eq("analysis_status", "verified").order("created_at", { ascending: false }),
       supabase.from("test_attempts").select("accuracy, marks_obtained, created_at")
         .eq("user_id", user.id).order("created_at", { ascending: false }).limit(50),
       supabase.from("wrong_questions").select("status, priority, chapter_id, subject_id, topic, wrong_count").eq("user_id", user.id),
