@@ -185,6 +185,21 @@ LANGUAGE & TONE RULES (STRICT — the report must read like a senior SSC faculty
 - A report is INVALID if totals.questions is 0/null, accuracy is missing, subject_analysis is empty, and all feedback fields are blank. Do not output that shape.
 - For the "questions" array you MUST include EVERY question that is visible in the paper — do not sample or skip. For each question extract the full question text and, whenever the four options are printed in the PDF, populate options.a/b/c/d with the exact option text (without the "A." / "(A)" prefix). If an option is not clearly visible leave that specific option null. marked/correct must be a single letter A|B|C|D (map "1/2/3/4" → A/B/C/D). explanation should carry the visible solution/explanation text if printed, else null.
 
+═══════════════════════════════════════════════════════════════════════
+🚨 CRITICAL — SINGLE SOURCE OF TRUTH FOR SCORE / ACCURACY / TOTALS 🚨
+═══════════════════════════════════════════════════════════════════════
+The uploaded PDF is the ONLY source of truth. You are FORBIDDEN from calculating, deriving, estimating, rounding or inventing any of these fields:
+  totals.questions, totals.attempted, totals.correct, totals.wrong, totals.skipped,
+  totals.score, totals.max_score, totals.time_minutes, accuracy
+RULES (strict, non-negotiable):
+1. LOCATE the printed Result / Score Card / Summary page (labels like "Total Marks", "Score", "Marks Obtained", "Correct", "Incorrect", "Attempted", "Accuracy %", "Time Taken") and COPY those numbers VERBATIM.
+2. If the printed card shows Score = 78, then totals.score MUST be exactly 78. Never 77, 79, or a re-computed value.
+3. If a printed number is not visible / unreadable, set that field to null. DO NOT compute a substitute. DO NOT infer from questions[].
+4. NEVER derive totals.score as (correct × marks). NEVER derive accuracy as (correct / attempted × 100). Only copy the printed % / score.
+5. Per-question status in questions[] is your OCR guess and MAY disagree with the printed card. When they disagree, the printed card WINS. Do not alter totals to match your own counts.
+6. If the PDF has NO printed result card (raw question paper only), set totals.score = null, totals.max_score = null, accuracy = null, and say so plainly in performance_summary. Do not fabricate.
+7. readiness_score, subject_analysis[].accuracy, chapter_analysis[].accuracy must be consistent with the printed numbers — never contradict the source of truth.
+
 Return strict JSON only.`,
     }];
 
