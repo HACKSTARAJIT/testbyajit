@@ -135,7 +135,12 @@ export type Database = {
       ai_mock_reports: {
         Row: {
           accuracy: number | null
+          analysis_generated_at: string | null
+          analysis_status: string
+          analysis_version: string | null
+          attempt_id: string | null
           created_at: string
+          data_verified_at: string | null
           detected_chapter: string | null
           detected_subject: string | null
           detected_topic: string | null
@@ -148,14 +153,22 @@ export type Database = {
           readiness_score: number | null
           report: Json | null
           report_type: string
+          source_test_id: string | null
           status: string
           title: string
           updated_at: string
           user_id: string
+          verification_error: string | null
+          verified_attempt_snapshot: Json
         }
         Insert: {
           accuracy?: number | null
+          analysis_generated_at?: string | null
+          analysis_status?: string
+          analysis_version?: string | null
+          attempt_id?: string | null
           created_at?: string
+          data_verified_at?: string | null
           detected_chapter?: string | null
           detected_subject?: string | null
           detected_topic?: string | null
@@ -168,14 +181,22 @@ export type Database = {
           readiness_score?: number | null
           report?: Json | null
           report_type?: string
+          source_test_id?: string | null
           status?: string
           title?: string
           updated_at?: string
           user_id: string
+          verification_error?: string | null
+          verified_attempt_snapshot?: Json
         }
         Update: {
           accuracy?: number | null
+          analysis_generated_at?: string | null
+          analysis_status?: string
+          analysis_version?: string | null
+          attempt_id?: string | null
           created_at?: string
+          data_verified_at?: string | null
           detected_chapter?: string | null
           detected_subject?: string | null
           detected_topic?: string | null
@@ -188,12 +209,84 @@ export type Database = {
           readiness_score?: number | null
           report?: Json | null
           report_type?: string
+          source_test_id?: string | null
           status?: string
           title?: string
           updated_at?: string
           user_id?: string
+          verification_error?: string | null
+          verified_attempt_snapshot?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_mock_reports_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "test_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_mock_reports_source_test_id_fkey"
+            columns: ["source_test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_report_audit_logs: {
+        Row: {
+          analysis_version: string
+          attempt_id: string | null
+          consistency_status: string
+          data_verification_status: string
+          error: string | null
+          generated_at: string
+          id: string
+          report_id: string
+          user_id: string
+          verified_snapshot: Json
+        }
+        Insert: {
+          analysis_version: string
+          attempt_id?: string | null
+          consistency_status?: string
+          data_verification_status: string
+          error?: string | null
+          generated_at?: string
+          id?: string
+          report_id: string
+          user_id: string
+          verified_snapshot?: Json
+        }
+        Update: {
+          analysis_version?: string
+          attempt_id?: string | null
+          consistency_status?: string
+          data_verification_status?: string
+          error?: string | null
+          generated_at?: string
+          id?: string
+          report_id?: string
+          user_id?: string
+          verified_snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_report_audit_logs_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "test_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_report_audit_logs_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "ai_mock_reports"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       app_release: {
         Row: {
@@ -1715,6 +1808,23 @@ export type Database = {
           test_id: string
           topic: string
         }[]
+      }
+      verify_ai_mock_report_data: {
+        Args: {
+          _accuracy: number
+          _attempt_id?: string
+          _correct: number
+          _negative_marks?: number
+          _report_id: string
+          _score: number
+          _skipped: number
+          _source_test_id?: string
+          _submitted_at: string
+          _time_taken_seconds: number
+          _total_marks: number
+          _wrong: number
+        }
+        Returns: Json
       }
     }
     Enums: {
