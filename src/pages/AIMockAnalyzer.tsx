@@ -672,16 +672,25 @@ function VerifyAttemptDialog({ report, open, onOpenChange, onVerified }: {
         verified_at: new Date().toISOString(),
         source: "student_verified_uploaded_mock",
       };
-      const { error } = await (supabase as any).from("ai_mock_reports").update({
-        analysis_status: "verified",
-        verified_attempt_snapshot: snapshot,
-        verification_error: null,
+      const { error } = await (supabase as any).rpc("verify_ai_mock_report_data", {
+        _report_id: report.id,
+        _score: values.score,
+        _total_marks: values.totalMarks,
+        _correct: Math.round(values.correct),
+        _wrong: Math.round(values.wrong),
+        _skipped: Math.round(values.skipped),
+        _accuracy: values.accuracy,
+        _time_taken_seconds: Math.round(values.timeMinutes * 60),
+        _submitted_at: report.created_at,
+        _negative_marks: values.negativeMarks,
+        _attempt_id: report.attempt_id ?? null,
+        _source_test_id: report.source_test_id ?? null,
+      });
+      if (error) throw error;
+      await (supabase as any).from("ai_mock_reports").update({
         accuracy: values.accuracy,
         overall_score: values.score,
-        status: "pending",
-        error: null,
       }).eq("id", report.id).eq("user_id", user.id);
-      if (error) throw error;
       toast.success("Verified attempt data locked");
       await onVerified(report.id);
     } catch (e: any) {
