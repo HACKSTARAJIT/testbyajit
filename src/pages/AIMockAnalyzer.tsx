@@ -169,7 +169,7 @@ export default function AIMockAnalyzer() {
       }).select().single();
       if (error) throw error;
       await runStage(4, 300);
-      toast.success("Uploaded — verify actual attempt data before AI Analysis");
+      toast.success("Uploaded — press Analyze Mock to start AI analysis");
       logActivity("upload", data.title);
       setFiles([]); setTitle(""); setExamName(""); setProgress(0); setStage(0);
       await load();
@@ -180,14 +180,9 @@ export default function AIMockAnalyzer() {
     }
   };
 
-  const analyze = async (id: string, force = false) => {
-    const target = reports.find(r => r.id === id);
-    if (!force && target && !hasVerifiedAttemptData(target)) {
-      setVerifyTarget(target);
-      toast.message("Verify actual attempt data before AI analysis.");
-      return;
-    }
+  const analyze = async (id: string, _force = false) => {
     setAnalyzingId(id);
+
     try {
       await supabase.from("ai_mock_reports").update({ status: "analyzing", error: null }).eq("id", id);
       await load();
@@ -486,12 +481,13 @@ function hasValidReport(report: any) {
 }
 
 function isVerifiedReport(r: Report) {
-  return r.status === "completed" && r.analysis_status === "verified";
+  return r.status === "completed";
 }
 
 function hasVerifiedAttemptData(r: Report) {
-  return r.analysis_status === "verified" && !!r.verified_attempt_snapshot;
+  return !!r.verified_attempt_snapshot;
 }
+
 
 function str(v: any, fallback: string) {
   if (v == null || v === "") return fallback;

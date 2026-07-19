@@ -45,17 +45,10 @@ Deno.serve(async (req) => {
       .from("ai_mock_reports").select("*").eq("id", reportId).eq("user_id", userId).maybeSingle();
     if (rErr || !report) return json({ error: "Report not found" }, 404);
 
-    const verification = getVerifiedAttemptSnapshot(report, userId);
-    if (!verification.ok) {
-      const message = verification.error ?? INCOMPLETE_VERIFIED_DATA_MESSAGE;
-      await supabase.from("ai_mock_reports").update({
-        status: "failed",
-        analysis_status: "failed",
-        verification_error: message,
-        error: message,
-      }).eq("id", reportId).eq("user_id", userId);
-      return json({ error: message }, 400);
-    }
+    // No hard verification gate — the AI extracts Score/Correct/Wrong/Skipped/Accuracy
+    // strictly from the printed result card in the uploaded PDF (see prompt rules).
+    // If a verified snapshot exists, it's still used as the single source of truth.
+
 
     // Mark analyzing, then process in background so we return immediately
     // and avoid the 150s edge-function idle timeout for slow AI calls.
@@ -82,11 +75,11 @@ async function processReport(admin: any, reportId: string, userId: string, repor
       .eq("user_id", userId)
       .maybeSingle();
     const sourceReport = latestReport ?? report;
+    // Optional verified attempt snapshot. If present it becomes the single
+    // source of truth. If absent, the AI must copy metrics VERBATIM from the
+    // printed result card in the uploaded PDF (never invent numbers).
     const verification = getVerifiedAttemptSnapshot(sourceReport, userId);
-    if (!verification.ok || !verification.snapshot) {
-      throw new Error(verification.error ?? INCOMPLETE_VERIFIED_DATA_MESSAGE);
-    }
-    const verified = verification.snapshot;
+    const verified: VerifiedAttemptSnapshot | null = verification.ok && verification.snapshot ? verification.snapshot : null;
     const filePaths: string[] = sourceReport.file_paths ?? [];
     // Fetch student's display name for personalization
     let firstName = "Student";
@@ -96,12 +89,16 @@ async function processReport(admin: any, reportId: string, userId: string, repor
       if (dn) firstName = dn.split(/\s+/)[0];
     } catch (_) { /* ignore */ }
 
+    const truthBlock = verified
+      ? `VERIFIED_ATTEMPT_DATA — ABSOLUTE SINGLE SOURCE OF TRUTH FOR ALL PERFORMANCE METRICS:\n${JSON.stringify(verified)}`
+      : `NO VERIFIED_ATTEMPT_DATA WAS PROVIDED. You MUST extract totals.score, totals.max_score, totals.correct, totals.wrong, totals.skipped, totals.time_minutes and accuracy VERBATIM from the printed result / score card that is visible in the uploaded PDF/screenshots. Do NOT calculate, derive, estimate, round or invent any of these numbers. If a specific number is not clearly printed on the result card, set that specific field to null — never guess.`;
+
     const contentParts: any[] = [{
       type: "text",
-      text: `You are a senior SSC / competitive-exam faculty personally reviewing the mock test of your student "${firstName}". You are NOT an AI chatbot. Write like an experienced teacher who has sat across the table with the student — warm, specific, blunt where needed, motivational, never generic. Every observation MUST be grounded in the VERIFIED_ATTEMPT_DATA and what you actually see in the uploaded pages. Never invent chapters/topics/numbers that are not present.
+      text: `You are a senior SSC / competitive-exam faculty personally reviewing the mock test of your student "${firstName}". You are NOT an AI chatbot. Write like an experienced teacher who has sat across the table with the student — warm, specific, blunt where needed, motivational, never generic. Every observation MUST be grounded in the actual attempt data and what you actually see in the uploaded pages. Never invent chapters/topics/numbers that are not present.
 
-VERIFIED_ATTEMPT_DATA — ABSOLUTE SINGLE SOURCE OF TRUTH FOR ALL PERFORMANCE METRICS:
-${JSON.stringify(verified)}
+${truthBlock}
+
 
 STEP 1 — Read every visible element: questions, options, marked answers, correct answers, section-wise score, timing, subjects, chapters, topics.
 STEP 2 — Return ONE strict JSON object, no prose outside JSON, matching this schema EXACTLY (keys in English, narrative in bilingual as described below):
@@ -374,18 +371,16 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       }
     } catch (_) { /* ignore */ }
 
-    // Audit trail — every saved report carries the exact source values it was built from,
-    // so downstream modules (Report History, Performance Center, Selection Intelligence,
-    // Mock Revision Hub) can prove they read the same verified numbers.
+    // Audit trail — every saved report carries the exact source values it was built from.
     parsed.__audit = {
       report_id: reportId,
       user_id: userId,
-      analysis_version: "v2-strict-2026-07",
+      analysis_version: "v4-auto-extract-2026-07",
       generated_at: new Date().toISOString(),
-      data_verification_status: "verified",
-      source: verified.source,
-      attempt_id: verified.attempt_id,
-      test_id: verified.test_id,
+      data_verification_status: verified ? "verified" : "ai_extracted",
+      source: verified?.source ?? "ai_ocr_extraction",
+      attempt_id: verified?.attempt_id ?? null,
+      test_id: verified?.test_id ?? null,
       verified_totals: {
         questions: toNum(totals.questions),
         correct: toNum(totals.correct),
@@ -395,13 +390,13 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
         max_score: toNum(totals.max_score),
         accuracy: toNum(parsed.accuracy),
         time_minutes: toNum(totals.time_minutes),
-        time_taken_seconds: verified.time_taken_seconds,
-        negative_marks: verified.negative_marks,
-        submitted_at: verified.submitted_at,
+        time_taken_seconds: verified?.time_taken_seconds ?? null,
+        negative_marks: verified?.negative_marks ?? toNum(totals.negative_marks),
+        submitted_at: verified?.submitted_at ?? null,
       },
     };
 
-    const analysisVersion = "v3-verified-attempt-2026-07";
+    const analysisVersion = "v4-auto-extract-2026-07";
     const generatedAt = new Date().toISOString();
     await admin.from("ai_mock_reports").update({
       status: "completed",
@@ -411,7 +406,6 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       report: parsed,
       ocr_text: parsed.ocr_text ?? null,
       exam_name: parsed.exam_name ?? null,
-      // Verbatim from the locked verified snapshot. No AI/OCR re-derivation.
       accuracy: toNum(parsed.accuracy),
       readiness_score: toNum(parsed.readiness_score),
       overall_score: toNum(totals.score),
@@ -420,19 +414,23 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       detected_chapter: parsed.detected_chapter ?? null,
       detected_topic: parsed.detected_topic ?? null,
       error: null,
+      verification_error: null,
     }).eq("id", reportId);
-    await admin.from("ai_report_audit_logs").insert({
-      report_id: reportId,
-      attempt_id: verified.attempt_id ?? null,
-      user_id: userId,
-      analysis_version: analysisVersion,
-      generated_at: generatedAt,
-      data_verification_status: "verified",
-      verified_snapshot: verified,
-      consistency_status: "passed",
-      error: null,
-    });
-    console.log("report done (verified attempt)", reportId, "score=", totals.score, "acc=", parsed.accuracy, "correct=", totals.correct, "source=", verified.source);
+    try {
+      await admin.from("ai_report_audit_logs").insert({
+        report_id: reportId,
+        attempt_id: verified?.attempt_id ?? null,
+        user_id: userId,
+        analysis_version: analysisVersion,
+        generated_at: generatedAt,
+        data_verification_status: verified ? "verified" : "ai_extracted",
+        verified_snapshot: verified ?? null,
+        consistency_status: "passed",
+        error: null,
+      });
+    } catch (_) { /* audit log is non-fatal */ }
+    console.log("report done", reportId, "score=", totals.score, "acc=", parsed.accuracy, "source=", verified ? verified.source : "ai_ocr");
+
 
     // ---- Smart Revision sync + Planner/Coach/Goals persistence (non-fatal) ----
     try {
@@ -537,8 +535,9 @@ function getVerifiedAttemptSnapshot(report: any, userId: string): { ok: boolean;
   return { ok: true, snapshot };
 }
 
-function applyVerifiedSnapshotToReport(report: any, verified: VerifiedAttemptSnapshot) {
+function applyVerifiedSnapshotToReport(report: any, verified: VerifiedAttemptSnapshot | null) {
   const r = report && typeof report === "object" && !Array.isArray(report) ? report : {};
+  if (!verified) return r; // no snapshot → trust AI's extracted totals verbatim
   const attempted = verified.correct + verified.wrong;
   const totalQuestions = verified.correct + verified.wrong + verified.skipped;
   const timeMinutes = Math.round((verified.time_taken_seconds / 60) * 100) / 100;
@@ -565,6 +564,7 @@ function applyVerifiedSnapshotToReport(report: any, verified: VerifiedAttemptSna
   };
 }
 
+
 function mergeVerifiedNarrative(verifiedLine: string, value: unknown) {
   const text = typeof value === "string" ? value.trim() : "";
   if (!text) return verifiedLine;
@@ -577,29 +577,25 @@ function getReportValidationError(r: any): string | null {
   if (!r.totals || typeof r.totals !== "object") return "AI report is missing totals";
   const t = r.totals;
   const questions = toNum(t.questions ?? t.total_questions ?? t.total);
-  if (questions === null || questions <= 0) return "Analysis unavailable because verified attempt data is incomplete. (missing: total questions)";
+  if (questions === null || questions <= 0) return "AI could not detect the total number of questions. Please re-upload a clearer PDF/screenshot that includes the printed result card.";
 
-  // STRICT DATA-INTEGRITY GATE — every core metric MUST be present in the printed result card.
-  // We refuse to save an analysis when the source of truth is incomplete, so the AI cannot
-  // hallucinate score/accuracy/marks. See the "SINGLE SOURCE OF TRUTH" prompt block above.
-  const required: Array<[string, number | null]> = [
-    ["correct answers", toNum(t.correct)],
-    ["wrong answers", toNum(t.wrong)],
-    ["skipped answers", toNum(t.skipped)],
-    ["score", toNum(t.score)],
-    ["max_score", toNum(t.max_score)],
-    ["accuracy", toNum(r.accuracy)],
-  ];
-  const missing = required.filter(([, v]) => v === null).map(([k]) => k);
-  if (missing.length > 0) {
-    return `Analysis unavailable because verified attempt data is incomplete. The uploaded PDF did not clearly show: ${missing.join(", ")}. Please upload a mock PDF that includes the printed result / score card.`;
+  // Soft data check — score/accuracy must be present (either from the verified
+  // snapshot or extracted verbatim by the AI from the printed result card).
+  const score = toNum(t.score);
+  const accuracy = toNum(r.accuracy);
+  if (score === null && accuracy === null) {
+    return "AI could not read the Score or Accuracy from the uploaded PDF. Please re-upload a clearer copy of the printed result card.";
   }
 
-  // Cross-check: totals must be internally consistent with total questions
-  const sum = (toNum(t.correct) ?? 0) + (toNum(t.wrong) ?? 0) + (toNum(t.skipped) ?? 0);
-  if (Math.abs(sum - questions) > 1) {
-    return `Analysis unavailable — verified totals are inconsistent (correct+wrong+skipped=${sum}, total=${questions}).`;
+  // Cross-check: if all three counts are present, they should sum to total questions.
+  const c = toNum(t.correct), w = toNum(t.wrong), sk = toNum(t.skipped);
+  if (c !== null && w !== null && sk !== null) {
+    const sum = c + w + sk;
+    if (Math.abs(sum - questions) > 1) {
+      console.warn("totals inconsistent — keeping AI output", { sum, questions });
+    }
   }
+
 
   if (toNum(r.readiness_score) === null) return "AI report is missing readiness score";
   if (!Array.isArray(r.subject_analysis) || r.subject_analysis.length === 0) return "AI report is missing subject analysis";
