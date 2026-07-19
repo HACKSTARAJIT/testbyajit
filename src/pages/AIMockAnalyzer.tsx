@@ -251,6 +251,10 @@ export default function AIMockAnalyzer() {
       file_paths: r.file_paths, ocr_text: r.ocr_text, report: r.report,
       accuracy: r.accuracy, readiness_score: r.readiness_score,
       overall_score: r.overall_score, status: r.status,
+      analysis_status: r.analysis_status ?? "pending",
+      verified_attempt_snapshot: r.verified_attempt_snapshot ?? null,
+      verification_error: r.verification_error ?? null,
+      source_test_id: r.source_test_id ?? null,
     });
     toast.success("Duplicated");
     load();
