@@ -63,7 +63,7 @@ export function useHomeData(userId?: string) {
         supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
         supabase.from("test_attempts").select("id,accuracy,marks_obtained,total_questions,correct_count,time_taken_seconds,created_at,test_id,status")
           .eq("user_id", userId).eq("status", "completed").order("created_at", { ascending: false }).limit(100),
-        supabase.from("ai_mock_reports").select("id,accuracy,readiness_score,status,report_type,created_at").eq("user_id", userId).eq("status", "completed").eq("analysis_status", "verified").order("created_at", { ascending: false }).limit(30),
+        supabase.from("ai_mock_reports").select("id,accuracy,readiness_score,status,report_type,created_at").eq("user_id", userId).eq("status", "completed").order("created_at", { ascending: false }).limit(30),
         supabase.from("wrong_questions").select("id,status,priority,subject_id,created_at,last_attempt_at,mastered_at").eq("user_id", userId),
         supabase.from("study_activity").select("id,item_type,item_id,subject_id,title,opened_at").eq("user_id", userId).order("opened_at", { ascending: false }).limit(50),
         supabase.from("pdf_progress").select("pdf_id,status,updated_at").eq("user_id", userId),

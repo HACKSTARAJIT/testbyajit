@@ -102,7 +102,7 @@ export default function AICoach() {
         supabase.from("chapters").select("id, name, subject_id"),
         supabase.from("subjects").select("id, name"),
         supabase.from("ai_mock_reports").select("*")
-          .eq("user_id", user.id).eq("status", "completed").eq("analysis_status", "verified").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+          .eq("user_id", user.id).eq("status", "completed").order("created_at", { ascending: false }).limit(1).maybeSingle(),
         supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
       ]);
       const snap = snapRes.data?.[0] ?? null;

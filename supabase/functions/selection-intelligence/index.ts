@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       admin.from("subjects").select("id, name"),
       admin.from("chapters").select("id, name, subject_id"),
       admin.from("ai_mock_reports").select("title, report_type, detected_subject, detected_chapter, accuracy, readiness_score, overall_score, report, created_at")
-        .eq("user_id", userId).eq("status", "completed").eq("analysis_status", "verified").order("created_at", { ascending: false }).limit(30),
+        .eq("user_id", userId).eq("status", "completed").order("created_at", { ascending: false }).limit(30),
       admin.from("test_attempts").select("id, test_id, accuracy, marks_obtained, total_questions, correct_count, incorrect_count, unattempted_count, created_at")
         .eq("user_id", userId).eq("status", "completed").order("created_at", { ascending: false }).limit(100),
       admin.from("wrong_questions").select("id, chapter_id, subject_id, topic, priority, status, wrong_count, correct_revision_count, consecutive_correct, last_attempt_at, mastered_at")

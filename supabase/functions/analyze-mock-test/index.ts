@@ -2,24 +2,6 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const INCOMPLETE_VERIFIED_DATA_MESSAGE = "Analysis unavailable because verified attempt data is incomplete.";
-
-type VerifiedAttemptSnapshot = {
-  attempt_id: string | null;
-  student_id: string;
-  test_id: string | null;
-  score: number;
-  total_marks: number;
-  correct: number;
-  wrong: number;
-  skipped: number;
-  accuracy: number;
-  time_taken_seconds: number;
-  submitted_at: string;
-  negative_marks: number;
-  verified_at?: string;
-  source: string;
-};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -45,11 +27,6 @@ Deno.serve(async (req) => {
       .from("ai_mock_reports").select("*").eq("id", reportId).eq("user_id", userId).maybeSingle();
     if (rErr || !report) return json({ error: "Report not found" }, 404);
 
-    // No hard verification gate — the AI extracts Score/Correct/Wrong/Skipped/Accuracy
-    // strictly from the printed result card in the uploaded PDF (see prompt rules).
-    // If a verified snapshot exists, it's still used as the single source of truth.
-
-
     // Mark analyzing, then process in background so we return immediately
     // and avoid the 150s edge-function idle timeout for slow AI calls.
     await supabase.from("ai_mock_reports").update({ status: "analyzing", error: null }).eq("id", reportId);
@@ -68,19 +45,7 @@ Deno.serve(async (req) => {
 
 async function processReport(admin: any, reportId: string, userId: string, report: any) {
   try {
-    const { data: latestReport } = await admin
-      .from("ai_mock_reports")
-      .select("*")
-      .eq("id", reportId)
-      .eq("user_id", userId)
-      .maybeSingle();
-    const sourceReport = latestReport ?? report;
-    // Optional verified attempt snapshot. If present it becomes the single
-    // source of truth. If absent, the AI must copy metrics VERBATIM from the
-    // printed result card in the uploaded PDF (never invent numbers).
-    const verification = getVerifiedAttemptSnapshot(sourceReport, userId);
-    const verified: VerifiedAttemptSnapshot | null = verification.ok && verification.snapshot ? verification.snapshot : null;
-    const filePaths: string[] = sourceReport.file_paths ?? [];
+    const filePaths: string[] = report.file_paths ?? [];
     // Fetch student's display name for personalization
     let firstName = "Student";
     try {
@@ -89,16 +54,9 @@ async function processReport(admin: any, reportId: string, userId: string, repor
       if (dn) firstName = dn.split(/\s+/)[0];
     } catch (_) { /* ignore */ }
 
-    const truthBlock = verified
-      ? `VERIFIED_ATTEMPT_DATA — ABSOLUTE SINGLE SOURCE OF TRUTH FOR ALL PERFORMANCE METRICS:\n${JSON.stringify(verified)}`
-      : `NO VERIFIED_ATTEMPT_DATA WAS PROVIDED. You MUST extract totals.score, totals.max_score, totals.correct, totals.wrong, totals.skipped, totals.time_minutes and accuracy VERBATIM from the printed result / score card that is visible in the uploaded PDF/screenshots. Do NOT calculate, derive, estimate, round or invent any of these numbers. If a specific number is not clearly printed on the result card, set that specific field to null — never guess.`;
-
     const contentParts: any[] = [{
       type: "text",
-      text: `You are a senior SSC / competitive-exam faculty personally reviewing the mock test of your student "${firstName}". You are NOT an AI chatbot. Write like an experienced teacher who has sat across the table with the student — warm, specific, blunt where needed, motivational, never generic. Every observation MUST be grounded in the actual attempt data and what you actually see in the uploaded pages. Never invent chapters/topics/numbers that are not present.
-
-${truthBlock}
-
+      text: `You are a senior SSC / competitive-exam faculty personally reviewing the mock test of your student "${firstName}". You are NOT an AI chatbot. Write like an experienced teacher who has sat across the table with the student — warm, specific, blunt where needed, motivational, never generic. Every observation MUST be grounded in what you actually see in the uploaded pages. Never invent chapters/topics/numbers that are not visible.
 
 STEP 1 — Read every visible element: questions, options, marked answers, correct answers, section-wise score, timing, subjects, chapters, topics.
 STEP 2 — Return ONE strict JSON object, no prose outside JSON, matching this schema EXACTLY (keys in English, narrative in bilingual as described below):
@@ -227,20 +185,6 @@ LANGUAGE & TONE RULES (STRICT — the report must read like a senior SSC faculty
 - A report is INVALID if totals.questions is 0/null, accuracy is missing, subject_analysis is empty, and all feedback fields are blank. Do not output that shape.
 - For the "questions" array you MUST include EVERY question that is visible in the paper — do not sample or skip. For each question extract the full question text and, whenever the four options are printed in the PDF, populate options.a/b/c/d with the exact option text (without the "A." / "(A)" prefix). If an option is not clearly visible leave that specific option null. marked/correct must be a single letter A|B|C|D (map "1/2/3/4" → A/B/C/D). explanation should carry the visible solution/explanation text if printed, else null.
 
-═══════════════════════════════════════════════════════════════════════
-🚨 CRITICAL — SINGLE SOURCE OF TRUTH FOR SCORE / ACCURACY / TOTALS 🚨
-═══════════════════════════════════════════════════════════════════════
-VERIFIED_ATTEMPT_DATA above is the ONLY source of truth. The uploaded PDF / OCR text is NOT allowed to change any performance metric. You are FORBIDDEN from calculating, deriving, estimating, rounding or inventing any of these fields:
-  totals.questions, totals.attempted, totals.correct, totals.wrong, totals.skipped,
-  totals.score, totals.max_score, totals.time_minutes, accuracy
-RULES (strict, non-negotiable):
-1. Copy all totals from VERIFIED_ATTEMPT_DATA only. Never copy totals from OCR if OCR disagrees.
-2. If VERIFIED_ATTEMPT_DATA score = 78, then totals.score MUST be exactly 78. Never 77, 79, or a re-computed value.
-3. NEVER derive totals.score as (correct × marks). NEVER derive accuracy as (correct / attempted × 100). The backend has already verified the numbers.
-4. Per-question status in questions[] is OCR/extraction data and MAY disagree with VERIFIED_ATTEMPT_DATA. When they disagree, VERIFIED_ATTEMPT_DATA WINS.
-5. NO-HALLUCINATION LANGUAGE: never write phrases like "approximately", "around", "probably", "estimated", "roughly", "about X marks", "लगभग", "करीब", or "अनुमान" in ANY narrative field.
-6. readiness_score, subject_analysis[].accuracy, chapter_analysis[].accuracy must never contradict VERIFIED_ATTEMPT_DATA.
-
 Return strict JSON only.`,
     }];
 
@@ -321,8 +265,7 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       }
 
       try {
-        const rawCandidate = typeof raw === "string" ? extractJSON(raw) : raw;
-        const candidate = applyVerifiedSnapshotToReport(rawCandidate, verified);
+        const candidate = typeof raw === "string" ? extractJSON(raw) : raw;
         const validationError = getReportValidationError(candidate);
         if (!validationError) {
           parsed = candidate;
@@ -340,7 +283,6 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       throw new Error(`AI analysis failed after retries. ${lastErr}. Raw head: ${lastRaw.slice(0, 400)}`);
     }
 
-    parsed = applyVerifiedSnapshotToReport(parsed, verified);
     const finalValidationError = getReportValidationError(parsed);
     if (finalValidationError) {
       throw new Error(`AI analysis produced an invalid report and was not saved. ${finalValidationError}. Raw head: ${lastRaw.slice(0, 400)}`);
@@ -349,60 +291,8 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
     const totals = parsed.totals ?? {};
     const validTypes = new Set(["full_mock", "subject", "chapter", "topic", "revision_test", "previous_year"]);
     const reportType = validTypes.has(parsed.report_type) ? parsed.report_type : "full_mock";
-
-    // ── SOURCE-OF-TRUTH GUARD ────────────────────────────────────────────
-    // The verified attempt snapshot is authoritative. OCR/question extraction
-    // is allowed only for qualitative analysis and retest creation. It can
-    // never overwrite score, accuracy, correct, wrong, skipped, time or marks.
-    try {
-      const qs = Array.isArray(parsed.questions) ? parsed.questions : [];
-      const counted = {
-        correct: qs.filter((q: any) => q?.status === "correct").length,
-        wrong: qs.filter((q: any) => q?.status === "wrong").length,
-        skipped: qs.filter((q: any) => q?.status === "skipped").length,
-      };
-      if (
-        totals.correct != null && counted.correct !== totals.correct ||
-        totals.wrong   != null && counted.wrong   !== totals.wrong
-      ) {
-        console.warn("OCR counted mismatch — keeping VERIFIED attempt totals", {
-          reportId, verified: { correct: totals.correct, wrong: totals.wrong, skipped: totals.skipped }, counted,
-        });
-      }
-    } catch (_) { /* ignore */ }
-
-    // Audit trail — every saved report carries the exact source values it was built from.
-    parsed.__audit = {
-      report_id: reportId,
-      user_id: userId,
-      analysis_version: "v4-auto-extract-2026-07",
-      generated_at: new Date().toISOString(),
-      data_verification_status: verified ? "verified" : "ai_extracted",
-      source: verified?.source ?? "ai_ocr_extraction",
-      attempt_id: verified?.attempt_id ?? null,
-      test_id: verified?.test_id ?? null,
-      verified_totals: {
-        questions: toNum(totals.questions),
-        correct: toNum(totals.correct),
-        wrong: toNum(totals.wrong),
-        skipped: toNum(totals.skipped),
-        score: toNum(totals.score),
-        max_score: toNum(totals.max_score),
-        accuracy: toNum(parsed.accuracy),
-        time_minutes: toNum(totals.time_minutes),
-        time_taken_seconds: verified?.time_taken_seconds ?? null,
-        negative_marks: verified?.negative_marks ?? toNum(totals.negative_marks),
-        submitted_at: verified?.submitted_at ?? null,
-      },
-    };
-
-    const analysisVersion = "v4-auto-extract-2026-07";
-    const generatedAt = new Date().toISOString();
     await admin.from("ai_mock_reports").update({
       status: "completed",
-      analysis_status: "verified",
-      analysis_version: analysisVersion,
-      analysis_generated_at: generatedAt,
       report: parsed,
       ocr_text: parsed.ocr_text ?? null,
       exam_name: parsed.exam_name ?? null,
@@ -414,23 +304,8 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       detected_chapter: parsed.detected_chapter ?? null,
       detected_topic: parsed.detected_topic ?? null,
       error: null,
-      verification_error: null,
     }).eq("id", reportId);
-    try {
-      await admin.from("ai_report_audit_logs").insert({
-        report_id: reportId,
-        attempt_id: verified?.attempt_id ?? null,
-        user_id: userId,
-        analysis_version: analysisVersion,
-        generated_at: generatedAt,
-        data_verification_status: verified ? "verified" : "ai_extracted",
-        verified_snapshot: verified ?? null,
-        consistency_status: "passed",
-        error: null,
-      });
-    } catch (_) { /* audit log is non-fatal */ }
-    console.log("report done", reportId, "score=", totals.score, "acc=", parsed.accuracy, "source=", verified ? verified.source : "ai_ocr");
-
+    console.log("report done", reportId, "type=", reportType);
 
     // ---- Smart Revision sync + Planner/Coach/Goals persistence (non-fatal) ----
     try {
@@ -449,7 +324,7 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
   } catch (e) {
     const msg = e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e);
     console.error("processReport failed", reportId, msg);
-    await admin.from("ai_mock_reports").update({ status: "failed", analysis_status: "failed", verification_error: msg.slice(0, 1000), error: msg.slice(0, 1000) }).eq("id", reportId);
+    await admin.from("ai_mock_reports").update({ status: "failed", error: msg.slice(0, 1000) }).eq("id", reportId);
   }
 }
 
@@ -485,120 +360,18 @@ function toNum(v: any): number | null {
   return m ? Number(m[0]) : null;
 }
 
-function getVerifiedAttemptSnapshot(report: any, userId: string): { ok: boolean; snapshot?: VerifiedAttemptSnapshot; error?: string } {
-  if (report?.analysis_status !== "verified") {
-    return { ok: false, error: INCOMPLETE_VERIFIED_DATA_MESSAGE };
-  }
-  const s = report?.verified_attempt_snapshot;
-  if (!s || typeof s !== "object" || Array.isArray(s)) {
-    return { ok: false, error: INCOMPLETE_VERIFIED_DATA_MESSAGE };
-  }
-
-  const snapshot: VerifiedAttemptSnapshot = {
-    attempt_id: typeof s.attempt_id === "string" ? s.attempt_id : null,
-    student_id: typeof s.student_id === "string" ? s.student_id : userId,
-    test_id: typeof s.test_id === "string" ? s.test_id : null,
-    score: Number(s.score),
-    total_marks: Number(s.total_marks),
-    correct: Number(s.correct),
-    wrong: Number(s.wrong),
-    skipped: Number(s.skipped),
-    accuracy: Number(s.accuracy),
-    time_taken_seconds: Number(s.time_taken_seconds),
-    submitted_at: String(s.submitted_at ?? ""),
-    negative_marks: Number(s.negative_marks),
-    verified_at: typeof s.verified_at === "string" ? s.verified_at : undefined,
-    source: typeof s.source === "string" ? s.source : "verified_attempt",
-  };
-
-  const required: Array<[keyof VerifiedAttemptSnapshot, unknown]> = [
-    ["student_id", snapshot.student_id],
-    ["score", snapshot.score],
-    ["total_marks", snapshot.total_marks],
-    ["correct", snapshot.correct],
-    ["wrong", snapshot.wrong],
-    ["skipped", snapshot.skipped],
-    ["accuracy", snapshot.accuracy],
-    ["time_taken_seconds", snapshot.time_taken_seconds],
-    ["submitted_at", snapshot.submitted_at],
-    ["negative_marks", snapshot.negative_marks],
-  ];
-  const missing = required.filter(([, v]) =>
-    v === null || v === undefined || v === "" || (typeof v === "number" && !Number.isFinite(v)),
-  );
-  if (missing.length > 0 || snapshot.student_id !== userId) {
-    return { ok: false, error: INCOMPLETE_VERIFIED_DATA_MESSAGE };
-  }
-  if (snapshot.total_marks <= 0 || snapshot.score < 0 || snapshot.correct < 0 || snapshot.wrong < 0 || snapshot.skipped < 0 || snapshot.accuracy < 0 || snapshot.accuracy > 100 || snapshot.time_taken_seconds < 0) {
-    return { ok: false, error: INCOMPLETE_VERIFIED_DATA_MESSAGE };
-  }
-  return { ok: true, snapshot };
-}
-
-function applyVerifiedSnapshotToReport(report: any, verified: VerifiedAttemptSnapshot | null) {
-  const r = report && typeof report === "object" && !Array.isArray(report) ? report : {};
-  if (!verified) return r; // no snapshot → trust AI's extracted totals verbatim
-  const attempted = verified.correct + verified.wrong;
-  const totalQuestions = verified.correct + verified.wrong + verified.skipped;
-  const timeMinutes = Math.round((verified.time_taken_seconds / 60) * 100) / 100;
-  const verifiedLine = `Verified attempt data: Score ${verified.score}/${verified.total_marks}, Accuracy ${verified.accuracy}%, Correct ${verified.correct}, Wrong ${verified.wrong}, Skipped ${verified.skipped}.`;
-  return {
-    ...r,
-    totals: {
-      ...(r.totals && typeof r.totals === "object" ? r.totals : {}),
-      questions: totalQuestions,
-      attempted,
-      correct: verified.correct,
-      wrong: verified.wrong,
-      skipped: verified.skipped,
-      score: verified.score,
-      max_score: verified.total_marks,
-      time_minutes: timeMinutes,
-      negative_marks: verified.negative_marks,
-      submitted_at: verified.submitted_at,
-    },
-    accuracy: verified.accuracy,
-    overall_performance: mergeVerifiedNarrative(verifiedLine, r.overall_performance),
-    performance_summary: mergeVerifiedNarrative(verifiedLine, r.performance_summary),
-    coach_feedback: mergeVerifiedNarrative(verifiedLine, r.coach_feedback),
-  };
-}
-
-
-function mergeVerifiedNarrative(verifiedLine: string, value: unknown) {
-  const text = typeof value === "string" ? value.trim() : "";
-  if (!text) return verifiedLine;
-  return text.startsWith("Verified attempt data:") ? text : `${verifiedLine}\n${text}`;
-}
-
 function getReportValidationError(r: any): string | null {
   if (!r || typeof r !== "object" || Array.isArray(r)) return "AI returned no JSON report object";
   if (Object.keys(r).length === 0) return "AI returned an empty JSON object";
   if (!r.totals || typeof r.totals !== "object") return "AI report is missing totals";
   const t = r.totals;
   const questions = toNum(t.questions ?? t.total_questions ?? t.total);
-  if (questions === null || questions <= 0) return "AI could not detect the total number of questions. Please re-upload a clearer PDF/screenshot that includes the printed result card.";
-
-  // Soft data check — score/accuracy must be present (either from the verified
-  // snapshot or extracted verbatim by the AI from the printed result card).
-  const score = toNum(t.score);
-  const accuracy = toNum(r.accuracy);
-  if (score === null && accuracy === null) {
-    return "AI could not read the Score or Accuracy from the uploaded PDF. Please re-upload a clearer copy of the printed result card.";
-  }
-
-  // Cross-check: if all three counts are present, they should sum to total questions.
-  const c = toNum(t.correct), w = toNum(t.wrong), sk = toNum(t.skipped);
-  if (c !== null && w !== null && sk !== null) {
-    const sum = c + w + sk;
-    if (Math.abs(sum - questions) > 1) {
-      console.warn("totals inconsistent — keeping AI output", { sum, questions });
-    }
-  }
-
-
+  if (questions === null || questions <= 0) return "AI report has no detected question count";
+  if (toNum(r.accuracy) === null) return "AI report is missing accuracy";
   if (toNum(r.readiness_score) === null) return "AI report is missing readiness score";
-  if (!Array.isArray(r.subject_analysis) || r.subject_analysis.length === 0) return "AI report is missing subject analysis";
+  if (!Array.isArray(r.subject_analysis)) return "AI report is missing subject analysis";
+  if (r.subject_analysis.length === 0) return "AI report has empty subject analysis";
+  // At least one narrative field must be non-empty
   const narratives = [r.coach_feedback, r.overall_performance, r.performance_summary];
   if (!narratives.some((x) => typeof x === "string" && x.trim().length > 20 && x.trim() !== "-")) return "AI report has no usable coach feedback";
   const usefulArrays = [

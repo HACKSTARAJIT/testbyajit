@@ -135,12 +135,7 @@ export type Database = {
       ai_mock_reports: {
         Row: {
           accuracy: number | null
-          analysis_generated_at: string | null
-          analysis_status: string
-          analysis_version: string | null
-          attempt_id: string | null
           created_at: string
-          data_verified_at: string | null
           detected_chapter: string | null
           detected_subject: string | null
           detected_topic: string | null
@@ -153,22 +148,14 @@ export type Database = {
           readiness_score: number | null
           report: Json | null
           report_type: string
-          source_test_id: string | null
           status: string
           title: string
           updated_at: string
           user_id: string
-          verification_error: string | null
-          verified_attempt_snapshot: Json | null
         }
         Insert: {
           accuracy?: number | null
-          analysis_generated_at?: string | null
-          analysis_status?: string
-          analysis_version?: string | null
-          attempt_id?: string | null
           created_at?: string
-          data_verified_at?: string | null
           detected_chapter?: string | null
           detected_subject?: string | null
           detected_topic?: string | null
@@ -181,22 +168,14 @@ export type Database = {
           readiness_score?: number | null
           report?: Json | null
           report_type?: string
-          source_test_id?: string | null
           status?: string
           title?: string
           updated_at?: string
           user_id: string
-          verification_error?: string | null
-          verified_attempt_snapshot?: Json | null
         }
         Update: {
           accuracy?: number | null
-          analysis_generated_at?: string | null
-          analysis_status?: string
-          analysis_version?: string | null
-          attempt_id?: string | null
           created_at?: string
-          data_verified_at?: string | null
           detected_chapter?: string | null
           detected_subject?: string | null
           detected_topic?: string | null
@@ -209,84 +188,12 @@ export type Database = {
           readiness_score?: number | null
           report?: Json | null
           report_type?: string
-          source_test_id?: string | null
           status?: string
           title?: string
           updated_at?: string
           user_id?: string
-          verification_error?: string | null
-          verified_attempt_snapshot?: Json | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "ai_mock_reports_attempt_id_fkey"
-            columns: ["attempt_id"]
-            isOneToOne: false
-            referencedRelation: "test_attempts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_mock_reports_source_test_id_fkey"
-            columns: ["source_test_id"]
-            isOneToOne: false
-            referencedRelation: "tests"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ai_report_audit_logs: {
-        Row: {
-          analysis_version: string
-          attempt_id: string | null
-          consistency_status: string
-          data_verification_status: string
-          error: string | null
-          generated_at: string
-          id: string
-          report_id: string
-          user_id: string
-          verified_snapshot: Json
-        }
-        Insert: {
-          analysis_version: string
-          attempt_id?: string | null
-          consistency_status?: string
-          data_verification_status: string
-          error?: string | null
-          generated_at?: string
-          id?: string
-          report_id: string
-          user_id: string
-          verified_snapshot?: Json
-        }
-        Update: {
-          analysis_version?: string
-          attempt_id?: string | null
-          consistency_status?: string
-          data_verification_status?: string
-          error?: string | null
-          generated_at?: string
-          id?: string
-          report_id?: string
-          user_id?: string
-          verified_snapshot?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_report_audit_logs_attempt_id_fkey"
-            columns: ["attempt_id"]
-            isOneToOne: false
-            referencedRelation: "test_attempts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_report_audit_logs_report_id_fkey"
-            columns: ["report_id"]
-            isOneToOne: false
-            referencedRelation: "ai_mock_reports"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       app_release: {
         Row: {
@@ -1276,205 +1183,6 @@ export type Database = {
         }
         Relationships: []
       }
-      syllabus_chapters: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          sort_order: number
-          subject_id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          sort_order?: number
-          subject_id: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          sort_order?: number
-          subject_id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "syllabus_chapters_subject_id_fkey"
-            columns: ["subject_id"]
-            isOneToOne: false
-            referencedRelation: "syllabus_subjects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      syllabus_subjects: {
-        Row: {
-          color: string | null
-          created_at: string
-          icon: string | null
-          id: string
-          linked_subject_id: string | null
-          name: string
-          sort_order: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          color?: string | null
-          created_at?: string
-          icon?: string | null
-          id?: string
-          linked_subject_id?: string | null
-          name: string
-          sort_order?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          color?: string | null
-          created_at?: string
-          icon?: string | null
-          id?: string
-          linked_subject_id?: string | null
-          name?: string
-          sort_order?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      syllabus_timeline: {
-        Row: {
-          chapter_id: string | null
-          created_at: string
-          event_type: string
-          id: string
-          note: string | null
-          subject_id: string | null
-          topic_id: string | null
-          user_id: string
-        }
-        Insert: {
-          chapter_id?: string | null
-          created_at?: string
-          event_type: string
-          id?: string
-          note?: string | null
-          subject_id?: string | null
-          topic_id?: string | null
-          user_id: string
-        }
-        Update: {
-          chapter_id?: string | null
-          created_at?: string
-          event_type?: string
-          id?: string
-          note?: string | null
-          subject_id?: string | null
-          topic_id?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "syllabus_timeline_topic_id_fkey"
-            columns: ["topic_id"]
-            isOneToOne: false
-            referencedRelation: "syllabus_topics"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      syllabus_topics: {
-        Row: {
-          chapter_id: string
-          completed_at: string | null
-          created_at: string
-          estimated_classes: number | null
-          estimated_hours: number | null
-          estimated_pages: number | null
-          estimated_revisions: number | null
-          id: string
-          last_activity_at: string | null
-          name: string
-          notes: string | null
-          priority: string
-          resources: Json
-          revision_count: number
-          sort_order: number
-          status: string
-          subject_id: string
-          target_date: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          chapter_id: string
-          completed_at?: string | null
-          created_at?: string
-          estimated_classes?: number | null
-          estimated_hours?: number | null
-          estimated_pages?: number | null
-          estimated_revisions?: number | null
-          id?: string
-          last_activity_at?: string | null
-          name: string
-          notes?: string | null
-          priority?: string
-          resources?: Json
-          revision_count?: number
-          sort_order?: number
-          status?: string
-          subject_id: string
-          target_date?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          chapter_id?: string
-          completed_at?: string | null
-          created_at?: string
-          estimated_classes?: number | null
-          estimated_hours?: number | null
-          estimated_pages?: number | null
-          estimated_revisions?: number | null
-          id?: string
-          last_activity_at?: string | null
-          name?: string
-          notes?: string | null
-          priority?: string
-          resources?: Json
-          revision_count?: number
-          sort_order?: number
-          status?: string
-          subject_id?: string
-          target_date?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "syllabus_topics_chapter_id_fkey"
-            columns: ["chapter_id"]
-            isOneToOne: false
-            referencedRelation: "syllabus_chapters"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "syllabus_topics_subject_id_fkey"
-            columns: ["subject_id"]
-            isOneToOne: false
-            referencedRelation: "syllabus_subjects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       test_attempts: {
         Row: {
           accuracy: number
@@ -2007,23 +1715,6 @@ export type Database = {
           test_id: string
           topic: string
         }[]
-      }
-      verify_ai_mock_report_data: {
-        Args: {
-          _accuracy: number
-          _attempt_id?: string
-          _correct: number
-          _negative_marks?: number
-          _report_id: string
-          _score: number
-          _skipped: number
-          _source_test_id?: string
-          _submitted_at: string
-          _time_taken_seconds: number
-          _total_marks: number
-          _wrong: number
-        }
-        Returns: Json
       }
     }
     Enums: {
