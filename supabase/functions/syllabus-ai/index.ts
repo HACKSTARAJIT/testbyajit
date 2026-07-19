@@ -1,25 +1,41 @@
 // deno-lint-ignore-file no-explicit-any
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { createLovableAiGatewayProvider } from "../_shared/ai-gateway.ts";
-import { generateText, Output } from "npm:ai";
-import { z } from "npm:zod";
+
+const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const { user_id } = await req.json();
-    if (!user_id) return json({ error: "user_id required" }, 400);
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
 
-    const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claims, error: authErr } = await userClient.auth.getClaims(token);
+    if (authErr || !claims?.claims) return json({ error: "Unauthorized" }, 401);
+    const userId = claims.claims.sub as string;
+
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
     const [subs, chaps, tops, attempts, reports, wrongs, targets] = await Promise.all([
-      supa.from("syllabus_subjects").select("id,name").eq("user_id", user_id),
-      supa.from("syllabus_chapters").select("id,subject_id,name").eq("user_id", user_id),
-      supa.from("syllabus_topics").select("*").eq("user_id", user_id),
-      supa.from("test_attempts").select("accuracy,created_at,status").eq("user_id", user_id).eq("status", "completed").order("created_at", { ascending: false }).limit(30),
-      supa.from("ai_mock_reports").select("accuracy,readiness_score,report_type,created_at,status,analysis_status").eq("user_id", user_id).eq("status", "completed").eq("analysis_status", "verified").order("created_at", { ascending: false }).limit(15),
-      supa.from("wrong_questions").select("status,subject_id").eq("user_id", user_id),
-      supa.from("daily_targets").select("*").eq("user_id", user_id).order("created_at", { ascending: false }).limit(14),
+      admin.from("syllabus_subjects").select("id,name").eq("user_id", userId),
+      admin.from("syllabus_chapters").select("id,subject_id,name").eq("user_id", userId),
+      admin.from("syllabus_topics").select("*").eq("user_id", userId),
+      admin.from("test_attempts").select("accuracy,created_at,status").eq("user_id", userId).eq("status", "completed").order("created_at", { ascending: false }).limit(30),
+      admin.from("ai_mock_reports").select("accuracy,readiness_score,report_type,created_at,status,analysis_status").eq("user_id", userId).eq("status", "completed").eq("analysis_status", "verified").order("created_at", { ascending: false }).limit(15),
+      admin.from("wrong_questions").select("status,subject_id").eq("user_id", userId),
+      admin.from("daily_targets").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(14),
     ]);
 
     const topics = (tops.data as any[]) ?? [];
@@ -28,12 +44,11 @@ Deno.serve(async (req) => {
     const total = topics.length;
     const completed = topics.filter((t) => t.status === "completed").length;
     const syllabusPct = total ? Math.round((completed / total) * 100) : 0;
-
-    // Consistency estimate: completed topics per day over last 14 days
-    const twoWeeksAgo = Date.now() - 14 * 86400_000;
-    const completedRecent = topics.filter((t) => t.completed_at && new Date(t.completed_at).getTime() > twoWeeksAgo).length;
-    const perDay = completedRecent / 14;
     const remaining = total - completed;
+
+    const twoWeeksAgo = Date.now() - 14 * 86400_000;
+    const completedRecent = topics.filter((t: any) => t.completed_at && new Date(t.completed_at).getTime() > twoWeeksAgo).length;
+    const perDay = completedRecent / 14;
     const daysRemaining = perDay > 0 ? Math.ceil(remaining / perDay) : null;
     const weeksRemaining = daysRemaining !== null ? Math.ceil(daysRemaining / 7) : null;
     const expected = daysRemaining !== null ? new Date(Date.now() + daysRemaining * 86400_000).toISOString().slice(0, 10) : null;
@@ -46,15 +61,14 @@ Deno.serve(async (req) => {
 
     const attemptsData = (attempts.data as any[]) ?? [];
     const reportsData = (reports.data as any[]) ?? [];
-    const avgAcc = (arr: number[]) => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
-    const mockAcc = avgAcc(reportsData.map((r) => r.accuracy ?? 0).filter((x) => x > 0));
-    const attemptAcc = avgAcc(attemptsData.map((r) => r.accuracy ?? 0).filter((x) => x > 0));
-    const readiness = avgAcc(reportsData.map((r) => r.readiness_score ?? 0).filter((x) => x > 0));
+    const avg = (arr: number[]) => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+    const mockAcc = avg(reportsData.map((r) => r.accuracy ?? 0).filter((x) => x > 0));
+    const attemptAcc = avg(attemptsData.map((r) => r.accuracy ?? 0).filter((x) => x > 0));
+    const readiness = avg(reportsData.map((r) => r.readiness_score ?? 0).filter((x) => x > 0));
 
-    const chapterNames = (subId: string) => chapters.filter((c) => c.subject_id === subId).map((c) => c.name);
-    const pendingSample = topics.filter((t) => t.status !== "completed").slice(0, 20).map((t) => {
-      const sub = subjects.find((s) => s.id === t.subject_id)?.name ?? "Subject";
-      const ch = chapters.find((c) => c.id === t.chapter_id)?.name ?? "Chapter";
+    const pendingSample = topics.filter((t: any) => t.status !== "completed").slice(0, 20).map((t: any) => {
+      const sub = subjects.find((s: any) => s.id === t.subject_id)?.name ?? "Subject";
+      const ch = chapters.find((c: any) => c.id === t.chapter_id)?.name ?? "Chapter";
       return `${sub} > ${ch} > ${t.name} (${t.status}, ${t.priority})`;
     });
 
@@ -65,37 +79,42 @@ Deno.serve(async (req) => {
       mock_accuracy: mockAcc,
       practice_accuracy: attemptAcc,
       readiness_score: readiness,
-      wrongs_pending: ((wrongs.data as any[]) ?? []).filter((w) => w.status === "pending").length,
+      wrongs_pending: ((wrongs.data as any[]) ?? []).filter((w: any) => w.status === "pending").length,
       targets_last_14d: ((targets.data as any[]) ?? []).length,
-      chapters_by_subject: subjects.map((s) => ({ subject: s.name, chapters: chapterNames(s.id) })),
     };
 
-    const key = Deno.env.get("LOVABLE_API_KEY");
-    if (!key) return json({ error: "Missing LOVABLE_API_KEY" }, 500);
-    const gateway = createLovableAiGatewayProvider(key);
+    const aiKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!aiKey) return json({ error: "LOVABLE_API_KEY missing" }, 500);
 
-    const { output } = await generateText({
-      model: gateway("google/gemini-3-flash-preview"),
-      output: Output.object({
-        schema: z.object({
-          summary: z.string(),
-          insights: z.array(z.string()).max(6),
-          gaps: z.array(z.string()).max(6),
-          next_plan: z.array(z.string()).max(6),
-          readiness: z.object({
-            syllabus: z.number().int().min(0).max(100),
-            subject: z.number().int().min(0).max(100),
-            exam: z.number().int().min(0).max(100),
-            selection: z.number().int().min(0).max(100),
-          }),
-        }),
+    const system = "You are AJIT AI, an exam-selection coach. Reply strictly in JSON only. Use short direct sentences mixing Hindi + English. Never give generic advice. Every point must reference actual subjects, chapters or topics from the provided data. If a subject is weak in mocks AND its syllabus is incomplete, tell the student to finish that syllabus first.";
+    const userPrompt = `USER DATA:\n${JSON.stringify(context)}\n\nRespond with JSON exactly matching this shape:\n{\n  "summary": string,\n  "insights": string[],   // 3-6, specific\n  "gaps": string[],       // 3-6, specific syllabus gaps\n  "next_plan": string[],  // 3-6 concrete actions naming actual pending topics\n  "readiness": { "syllabus": number, "subject": number, "exam": number, "selection": number } // 0-100 ints\n}`;
+
+    const aiRes = await fetch(LOVABLE_AI_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${aiKey}` },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [{ role: "system", content: system }, { role: "user", content: userPrompt }],
+        response_format: { type: "json_object" },
       }),
-      system: "You are AJIT AI, an exam-selection coach. Speak in short, direct sentences mixing Hindi + English. NEVER give generic advice. Every point must reference specific subjects, chapters or topics from the user's actual data. Use the pending topics, weak mock subjects and syllabus gaps provided. If a subject is weak in mocks AND its syllabus is incomplete, tell the student to finish that syllabus first before more mocks.",
-      prompt: `USER DATA:\n${JSON.stringify(context, null, 2)}\n\nGenerate: summary (1-2 lines), 3-6 specific insights, 3-6 concrete syllabus gaps, and today's next study plan (3-6 concrete actions naming actual pending topics). Compute readiness scores (0-100).`,
     });
 
+    if (!aiRes.ok) {
+      const t = await aiRes.text();
+      if (aiRes.status === 429) return json({ error: "Rate limit exceeded, try again shortly" }, 429);
+      if (aiRes.status === 402) return json({ error: "AI credits exhausted" }, 402);
+      return json({ error: `AI gateway error: ${t}` }, 500);
+    }
+    const aiJson = await aiRes.json();
+    let parsed: any = {};
+    try { parsed = JSON.parse(aiJson.choices?.[0]?.message?.content ?? "{}"); } catch { parsed = {}; }
+
     return json({
-      ...output,
+      summary: parsed.summary ?? "",
+      insights: Array.isArray(parsed.insights) ? parsed.insights : [],
+      gaps: Array.isArray(parsed.gaps) ? parsed.gaps : [],
+      next_plan: Array.isArray(parsed.next_plan) ? parsed.next_plan : [],
+      readiness: parsed.readiness ?? { syllabus: syllabusPct, subject: 0, exam: 0, selection: 0 },
       estimated: { days_remaining: daysRemaining, weeks_remaining: weeksRemaining, expected_date: expected },
     });
   } catch (e) {
@@ -103,9 +122,3 @@ Deno.serve(async (req) => {
     return json({ error: String((e as any)?.message ?? e) }, 500);
   }
 });
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
