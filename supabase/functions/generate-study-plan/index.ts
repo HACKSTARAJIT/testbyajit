@@ -38,6 +38,7 @@ Deno.serve(async (req) => {
       admin.from("subjects").select("id, name"),
       admin.from("ai_mock_reports").select("report, created_at, report_type")
         .eq("user_id", userId).eq("status", "completed")
+        .eq("analysis_status", "verified")
         .order("created_at", { ascending: false }).limit(1).maybeSingle(),
       admin.from("test_attempts").select("accuracy, created_at")
         .eq("user_id", userId).order("created_at", { ascending: false }).limit(10),

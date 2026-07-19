@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
@@ -21,6 +22,11 @@ type Report = {
   id: string; title: string; exam_name: string | null; status: string;
   created_at: string; file_paths: string[]; report: any; ocr_text: string | null;
   accuracy: number | null; readiness_score: number | null; overall_score: number | null; error: string | null;
+  analysis_status?: "pending" | "verified" | "failed" | string | null;
+  verified_attempt_snapshot?: any;
+  verification_error?: string | null;
+  attempt_id?: string | null;
+  source_test_id?: string | null;
 };
 
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,image/*,application/pdf";
@@ -52,6 +58,7 @@ export default function AIMockAnalyzer() {
   const [stage, setStage] = useState(0);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Report | null>(null);
+  const [verifyTarget, setVerifyTarget] = useState<Report | null>(null);
   const [activity, setActivity] = useState<Activity[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -70,7 +77,7 @@ export default function AIMockAnalyzer() {
 
   // Dashboard stats
   const stats = useMemo(() => {
-    const completed = reports.filter(r => r.status === "completed");
+    const completed = reports.filter(r => isVerifiedReport(r) && hasValidReport(r.report));
     const avg = (arr: number[]) => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
     const accs = completed.map(r => r.accuracy ?? 0).filter(x => x > 0);
     const scores = completed.map(r => r.overall_score ?? 0).filter(x => x > 0);
@@ -158,10 +165,11 @@ export default function AIMockAnalyzer() {
         exam_name: examName.trim() || null,
         file_paths: paths,
         status: "pending",
+        analysis_status: "pending",
       }).select().single();
       if (error) throw error;
       await runStage(4, 300);
-      toast.success("Uploaded — ready for AI Analysis");
+      toast.success("Uploaded — verify actual attempt data before AI Analysis");
       logActivity("upload", data.title);
       setFiles([]); setTitle(""); setExamName(""); setProgress(0); setStage(0);
       await load();
@@ -172,7 +180,13 @@ export default function AIMockAnalyzer() {
     }
   };
 
-  const analyze = async (id: string) => {
+  const analyze = async (id: string, force = false) => {
+    const target = reports.find(r => r.id === id);
+    if (!force && target && !hasVerifiedAttemptData(target)) {
+      setVerifyTarget(target);
+      toast.message("Verify actual attempt data before AI analysis.");
+      return;
+    }
     setAnalyzingId(id);
     try {
       await supabase.from("ai_mock_reports").update({ status: "analyzing", error: null }).eq("id", id);
@@ -237,6 +251,10 @@ export default function AIMockAnalyzer() {
       file_paths: r.file_paths, ocr_text: r.ocr_text, report: r.report,
       accuracy: r.accuracy, readiness_score: r.readiness_score,
       overall_score: r.overall_score, status: r.status,
+      analysis_status: r.analysis_status ?? "pending",
+      verified_attempt_snapshot: r.verified_attempt_snapshot ?? null,
+      verification_error: r.verification_error ?? null,
+      source_test_id: r.source_test_id ?? null,
     });
     toast.success("Duplicated");
     load();
@@ -404,6 +422,7 @@ export default function AIMockAnalyzer() {
                 r={r}
                 onOpen={() => setSelected(r)}
                 onAnalyze={() => analyze(r.id)}
+                onVerify={() => setVerifyTarget(r)}
                 onRename={() => rename(r)}
                 onDuplicate={() => duplicate(r)}
                 onDelete={() => del(r.id)}
@@ -436,6 +455,17 @@ export default function AIMockAnalyzer() {
           {selected && <ReportView r={selected} onAnalyze={() => analyze(selected.id)} analyzing={analyzingId === selected.id} />}
         </DialogContent>
       </Dialog>
+
+      <VerifyAttemptDialog
+        report={verifyTarget}
+        open={!!verifyTarget}
+        onOpenChange={(open) => !open && setVerifyTarget(null)}
+        onVerified={async (id) => {
+          setVerifyTarget(null);
+          await load();
+          await analyze(id, true);
+        }}
+      />
     </div>
   );
 }
@@ -455,6 +485,14 @@ function hasValidReport(report: any) {
   return questions > 0 && report.accuracy != null && Array.isArray(report.subject_analysis) && report.subject_analysis.length > 0;
 }
 
+function isVerifiedReport(r: Report) {
+  return r.status === "completed" && r.analysis_status === "verified";
+}
+
+function hasVerifiedAttemptData(r: Report) {
+  return r.analysis_status === "verified" && !!r.verified_attempt_snapshot;
+}
+
 function StatCard({ icon, label, value, sub, tint, small }: { icon: React.ReactNode; label: string; value: any; sub?: string; tint: string; small?: boolean }) {
   return (
     <div className={`relative overflow-hidden rounded-xl border bg-gradient-to-br ${tint} p-3 backdrop-blur transition hover:scale-[1.02]`}>
@@ -468,11 +506,12 @@ function StatCard({ icon, label, value, sub, tint, small }: { icon: React.ReactN
   );
 }
 
-function ReportCard({ r, onOpen, onAnalyze, onRename, onDuplicate, onDelete, analyzing }: {
-  r: Report; onOpen: () => void; onAnalyze: () => void; onRename: () => void; onDuplicate: () => void; onDelete: () => void; analyzing: boolean;
+function ReportCard({ r, onOpen, onAnalyze, onVerify, onRename, onDuplicate, onDelete, analyzing }: {
+  r: Report; onOpen: () => void; onAnalyze: () => void; onVerify: () => void; onRename: () => void; onDuplicate: () => void; onDelete: () => void; analyzing: boolean;
 }) {
   const pages = r.file_paths?.length ?? 0;
-  const validReport = r.status === "completed" && hasValidReport(r.report);
+  const verified = hasVerifiedAttemptData(r);
+  const validReport = isVerifiedReport(r) && hasValidReport(r.report);
   return (
     <Card className="group relative overflow-hidden bg-card/60 backdrop-blur transition hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5">
       <CardContent className="space-y-3 p-4">
@@ -486,21 +525,28 @@ function ReportCard({ r, onOpen, onAnalyze, onRename, onDuplicate, onDelete, ana
         <div className="flex flex-wrap items-center gap-1">
           {r.exam_name && <Badge variant="outline" className="text-[10px]">{r.exam_name}</Badge>}
           <Badge variant="outline" className="text-[10px]">{pages} file{pages !== 1 ? "s" : ""}</Badge>
+          <Badge variant={verified ? "secondary" : "outline"} className="text-[10px]">
+            {verified ? "Verified data ✓" : "Verify data required"}
+          </Badge>
         </div>
         <div className="grid grid-cols-3 gap-1 text-center">
           <Mini label="Accuracy" value={r.accuracy ? `${r.accuracy}%` : "—"} />
           <Mini label="Score" value={r.overall_score ?? "—"} />
           <Mini label="Readiness" value={r.readiness_score ? `${r.readiness_score}%` : "—"} />
         </div>
-        {((r.error && r.status === "failed") || (r.status === "completed" && !validReport)) && (
+        {(!verified || (r.error && r.status === "failed") || (r.status === "completed" && !validReport)) && (
           <div className="flex items-start gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>{r.error || "Analysis unavailable because verified attempt data is incomplete."}</span>
+            <span>{r.verification_error || r.error || "Analysis unavailable because verified attempt data is incomplete."}</span>
           </div>
         )}
         <div className="flex flex-wrap gap-1">
           {validReport ? (
             <Button size="sm" variant="secondary" onClick={onOpen} className="flex-1">Open</Button>
+          ) : !verified ? (
+            <Button size="sm" onClick={onVerify} className="flex-1">
+              <CheckCircle2 className="mr-1 h-3.5 w-3.5" />Verify Data
+            </Button>
           ) : r.status === "analyzing" ? (
             <Button size="sm" disabled className="flex-1"><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Analyzing</Button>
           ) : (
@@ -542,6 +588,142 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge className={`text-[10px] ${map[status] ?? ""}`} variant="outline">{status}</Badge>;
 }
 
+function VerifyAttemptDialog({ report, open, onOpenChange, onVerified }: {
+  report: Report | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onVerified: (id: string) => void | Promise<void>;
+}) {
+  const { user } = useAuth();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    score: "",
+    totalMarks: "120",
+    correct: "",
+    wrong: "",
+    skipped: "0",
+    accuracy: "",
+    timeMinutes: "0",
+    negativeMarks: "0",
+  });
+
+  useEffect(() => {
+    if (!report || !open) return;
+    const s = report.verified_attempt_snapshot ?? {};
+    setForm({
+      score: s.score != null ? String(s.score) : report.overall_score != null ? String(report.overall_score) : "",
+      totalMarks: s.total_marks != null ? String(s.total_marks) : s.max_score != null ? String(s.max_score) : "120",
+      correct: s.correct != null ? String(s.correct) : "",
+      wrong: s.wrong != null ? String(s.wrong) : "",
+      skipped: s.skipped != null ? String(s.skipped) : "0",
+      accuracy: s.accuracy != null ? String(s.accuracy) : report.accuracy != null ? String(report.accuracy) : "",
+      timeMinutes: s.time_taken_seconds != null ? String(Math.round(Number(s.time_taken_seconds) / 60)) : "0",
+      negativeMarks: s.negative_marks != null ? String(s.negative_marks) : "0",
+    });
+  }, [report, open]);
+
+  const set = (key: keyof typeof form, value: string) => setForm(prev => ({ ...prev, [key]: value }));
+  const n = (key: keyof typeof form) => Number(form[key]);
+
+  async function verify() {
+    if (!report || !user) return;
+    const values = {
+      score: n("score"),
+      totalMarks: n("totalMarks"),
+      correct: n("correct"),
+      wrong: n("wrong"),
+      skipped: n("skipped"),
+      accuracy: n("accuracy"),
+      timeMinutes: n("timeMinutes"),
+      negativeMarks: n("negativeMarks"),
+    };
+    const required = [values.score, values.totalMarks, values.correct, values.wrong, values.skipped, values.accuracy, values.timeMinutes, values.negativeMarks];
+    if (required.some(v => !Number.isFinite(v))) {
+      toast.error("Verified attempt data is incomplete.");
+      return;
+    }
+    if (values.totalMarks <= 0 || values.score < 0 || values.correct < 0 || values.wrong < 0 || values.skipped < 0 || values.accuracy < 0 || values.accuracy > 100 || values.timeMinutes < 0 || values.negativeMarks < 0) {
+      toast.error("Verified attempt data is incomplete.");
+      return;
+    }
+    const attempted = values.correct + values.wrong;
+    const expectedAccuracy = attempted > 0 ? Number(((values.correct / attempted) * 100).toFixed(2)) : 0;
+    if (Math.abs(expectedAccuracy - values.accuracy) > 0.51) {
+      toast.error(`Accuracy mismatch. For ${values.correct} correct and ${values.wrong} wrong, accuracy should be ${expectedAccuracy}%.`);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await (supabase as any).rpc("verify_ai_mock_report_data", {
+        _report_id: report.id,
+        _score: values.score,
+        _total_marks: values.totalMarks,
+        _correct: Math.round(values.correct),
+        _wrong: Math.round(values.wrong),
+        _skipped: Math.round(values.skipped),
+        _accuracy: values.accuracy,
+        _time_taken_seconds: Math.round(values.timeMinutes * 60),
+        _submitted_at: report.created_at,
+        _negative_marks: values.negativeMarks,
+        _attempt_id: report.attempt_id ?? null,
+        _source_test_id: report.source_test_id ?? null,
+      });
+      if (error) throw error;
+      await (supabase as any).from("ai_mock_reports").update({
+        accuracy: values.accuracy,
+        overall_score: values.score,
+      }).eq("id", report.id).eq("user_id", user.id);
+      toast.success("Verified attempt data locked");
+      await onVerified(report.id);
+    } catch (e: any) {
+      toast.error(friendly(e.message) || "Verification failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Verify Actual Attempt Data</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+            AI analysis will use only these locked values for Score, Accuracy, Correct, Wrong and Skipped.
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Score" value={form.score} onChange={v => set("score", v)} />
+            <Field label="Total Marks" value={form.totalMarks} onChange={v => set("totalMarks", v)} />
+            <Field label="Correct" value={form.correct} onChange={v => set("correct", v)} />
+            <Field label="Wrong" value={form.wrong} onChange={v => set("wrong", v)} />
+            <Field label="Skipped" value={form.skipped} onChange={v => set("skipped", v)} />
+            <Field label="Accuracy %" value={form.accuracy} onChange={v => set("accuracy", v)} />
+            <Field label="Time Minutes" value={form.timeMinutes} onChange={v => set("timeMinutes", v)} />
+            <Field label="Negative Marks" value={form.negativeMarks} onChange={v => set("negativeMarks", v)} />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+            <Button onClick={verify} disabled={saving}>
+              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Locking...</> : <><CheckCircle2 className="mr-2 h-4 w-4" />Verify & Analyze</>}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Field({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">{label}</Label>
+      <Input type="number" inputMode="decimal" value={value} onChange={e => onChange(e.target.value)} />
+    </div>
+  );
+}
+
 function EmptyState({ hasAny }: { hasAny: boolean }) {
   return (
     <Card className="border-dashed bg-card/40 backdrop-blur">
@@ -566,15 +748,15 @@ function EmptyState({ hasAny }: { hasAny: boolean }) {
 /* ---------- Existing detailed report view (unchanged rendering) ---------- */
 function ReportView({ r, onAnalyze, analyzing }: { r: Report; onAnalyze: () => void; analyzing: boolean }) {
   const d = r.report ?? {};
-  if (r.status !== "completed" || !hasValidReport(r.report)) {
+  if (!isVerifiedReport(r) || !hasValidReport(r.report)) {
     return (
       <div className="space-y-3">
         <DialogHeader><DialogTitle>{r.title}</DialogTitle></DialogHeader>
         <p className="text-sm text-muted-foreground">
-          {r.status === "completed" ? "AI analysis returned empty values and was blocked from display. Please reanalyze." : "This report has not been analyzed yet."}
+          {r.analysis_status !== "verified" ? "Analysis unavailable because verified attempt data is incomplete." : r.status === "completed" ? "AI analysis returned empty values and was blocked from display. Please reanalyze." : "This report has not been analyzed yet."}
         </p>
-        {r.error && <p className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">{r.error}</p>}
-        <Button onClick={onAnalyze} disabled={analyzing}>
+        {(r.verification_error || r.error) && <p className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">{r.verification_error || r.error}</p>}
+        <Button onClick={onAnalyze} disabled={analyzing || !hasVerifiedAttemptData(r)}>
           {analyzing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</> : <><Sparkles className="mr-2 h-4 w-4" />Analyze Mock</>}
         </Button>
       </div>
@@ -600,6 +782,7 @@ function ReportView({ r, onAnalyze, analyzing }: { r: Report; onAnalyze: () => v
           <span>{r.file_paths?.length ?? 0} files</span>
           <span>·</span>
           <Badge variant="outline" className="text-[10px]">OCR ✓</Badge>
+          <Badge variant="outline" className="text-[10px]">Verified Data ✓</Badge>
           <Badge variant="outline" className="text-[10px]">AI ✓</Badge>
         </div>
       </DialogHeader>

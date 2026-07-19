@@ -46,7 +46,7 @@ export async function loadHubStats(userId: string): Promise<HubStats> {
     supabase
       .from("ai_mock_reports")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", userId),
+      .eq("user_id", userId).eq("status", "completed").eq("analysis_status", "verified"),
   ]);
 
   const list = (rows as any[]) ?? [];

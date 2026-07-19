@@ -121,6 +121,8 @@ export default function MockRevisionHubPage() {
           .from("ai_mock_reports")
           .select("id, title, exam_name, created_at, detected_subject, detected_chapter, detected_topic, report_type")
           .eq("user_id", user.id)
+          .eq("status", "completed")
+          .eq("analysis_status", "verified")
           .order("created_at", { ascending: false })
           .limit(30),
       ]);
