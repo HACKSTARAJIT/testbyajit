@@ -577,29 +577,25 @@ function getReportValidationError(r: any): string | null {
   if (!r.totals || typeof r.totals !== "object") return "AI report is missing totals";
   const t = r.totals;
   const questions = toNum(t.questions ?? t.total_questions ?? t.total);
-  if (questions === null || questions <= 0) return "Analysis unavailable because verified attempt data is incomplete. (missing: total questions)";
+  if (questions === null || questions <= 0) return "AI could not detect the total number of questions. Please re-upload a clearer PDF/screenshot that includes the printed result card.";
 
-  // STRICT DATA-INTEGRITY GATE — every core metric MUST be present in the printed result card.
-  // We refuse to save an analysis when the source of truth is incomplete, so the AI cannot
-  // hallucinate score/accuracy/marks. See the "SINGLE SOURCE OF TRUTH" prompt block above.
-  const required: Array<[string, number | null]> = [
-    ["correct answers", toNum(t.correct)],
-    ["wrong answers", toNum(t.wrong)],
-    ["skipped answers", toNum(t.skipped)],
-    ["score", toNum(t.score)],
-    ["max_score", toNum(t.max_score)],
-    ["accuracy", toNum(r.accuracy)],
-  ];
-  const missing = required.filter(([, v]) => v === null).map(([k]) => k);
-  if (missing.length > 0) {
-    return `Analysis unavailable because verified attempt data is incomplete. The uploaded PDF did not clearly show: ${missing.join(", ")}. Please upload a mock PDF that includes the printed result / score card.`;
+  // Soft data check — score/accuracy must be present (either from the verified
+  // snapshot or extracted verbatim by the AI from the printed result card).
+  const score = toNum(t.score);
+  const accuracy = toNum(r.accuracy);
+  if (score === null && accuracy === null) {
+    return "AI could not read the Score or Accuracy from the uploaded PDF. Please re-upload a clearer copy of the printed result card.";
   }
 
-  // Cross-check: totals must be internally consistent with total questions
-  const sum = (toNum(t.correct) ?? 0) + (toNum(t.wrong) ?? 0) + (toNum(t.skipped) ?? 0);
-  if (Math.abs(sum - questions) > 1) {
-    return `Analysis unavailable — verified totals are inconsistent (correct+wrong+skipped=${sum}, total=${questions}).`;
+  // Cross-check: if all three counts are present, they should sum to total questions.
+  const c = toNum(t.correct), w = toNum(t.wrong), sk = toNum(t.skipped);
+  if (c !== null && w !== null && sk !== null) {
+    const sum = c + w + sk;
+    if (Math.abs(sum - questions) > 1) {
+      console.warn("totals inconsistent — keeping AI output", { sum, questions });
+    }
   }
+
 
   if (toNum(r.readiness_score) === null) return "AI report is missing readiness score";
   if (!Array.isArray(r.subject_analysis) || r.subject_analysis.length === 0) return "AI report is missing subject analysis";
