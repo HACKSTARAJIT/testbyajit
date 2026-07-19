@@ -197,8 +197,9 @@ RULES (strict, non-negotiable):
 3. If a printed number is not visible / unreadable, set that field to null. DO NOT compute a substitute. DO NOT infer from questions[].
 4. NEVER derive totals.score as (correct × marks). NEVER derive accuracy as (correct / attempted × 100). Only copy the printed % / score.
 5. Per-question status in questions[] is your OCR guess and MAY disagree with the printed card. When they disagree, the printed card WINS. Do not alter totals to match your own counts.
-6. If the PDF has NO printed result card (raw question paper only), set totals.score = null, totals.max_score = null, accuracy = null, and say so plainly in performance_summary. Do not fabricate.
-7. readiness_score, subject_analysis[].accuracy, chapter_analysis[].accuracy must be consistent with the printed numbers — never contradict the source of truth.
+6. If the PDF has NO printed result card (raw question paper only) OR any of correct / wrong / skipped / score / max_score / accuracy is not clearly printed, set that field to null. The system will then REFUSE to save the report and show the student "Analysis unavailable because verified attempt data is incomplete." — this is the correct, safe behaviour. Do NOT fabricate a number to make the report save.
+7. NO-HALLUCINATION LANGUAGE: never write phrases like "approximately", "around", "probably", "estimated", "roughly", "about X marks" in ANY narrative field. Only cite numbers that are verbatim from the printed result card. If a number isn't printed, describe the gap qualitatively without inventing a value.
+8. readiness_score, subject_analysis[].accuracy, chapter_analysis[].accuracy must be consistent with the printed numbers — never contradict the source of truth.
 
 Return strict JSON only.`,
     }];
