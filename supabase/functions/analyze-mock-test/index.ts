@@ -684,3 +684,66 @@ function json(body: unknown, status = 200) {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
+
+// -------- Auto-generate playable retest from wrong/skipped mock questions --------
+async function generateRetestQuestions(admin: any, userId: string, reportId: string, parsed: any) {
+  const questions: any[] = Array.isArray(parsed?.questions) ? parsed.questions : [];
+  if (questions.length === 0) return;
+
+  const normLetter = (v: any): string | null => {
+    if (v === null || v === undefined) return null;
+    const s = String(v).trim().toUpperCase();
+    if (["A", "B", "C", "D"].includes(s)) return s;
+    if (["1", "2", "3", "4"].includes(s)) return ["A", "B", "C", "D"][Number(s) - 1];
+    const m = s.match(/[A-D]/);
+    return m ? m[0] : null;
+  };
+
+  // Idempotent: clear previous auto rows for this report
+  await admin.from("mock_generated_questions").delete().eq("report_id", reportId);
+
+  const rows: any[] = [];
+  let order = 0;
+  for (const q of questions) {
+    const status = q?.status;
+    if (status !== "wrong" && status !== "skipped") continue;
+    const text: string = (q?.text ?? "").trim();
+    if (!text || text.length < 6) continue;
+
+    const opts = q?.options ?? {};
+    const a = typeof opts.a === "string" ? opts.a.trim() : null;
+    const b = typeof opts.b === "string" ? opts.b.trim() : null;
+    const c = typeof opts.c === "string" ? opts.c.trim() : null;
+    const d = typeof opts.d === "string" ? opts.d.trim() : null;
+    const correct = normLetter(q?.correct);
+    const marked = normLetter(q?.marked);
+    const has_options = !!(a && b && c && d && correct);
+
+    rows.push({
+      user_id: userId,
+      report_id: reportId,
+      q_no: typeof q?.q_no === "number" ? q.q_no : null,
+      question_text: text,
+      option_a: a, option_b: b, option_c: c, option_d: d,
+      correct_option: correct,
+      marked_option: marked,
+      original_status: status,
+      subject: q?.subject ?? null,
+      chapter: q?.chapter ?? null,
+      topic: q?.topic ?? null,
+      explanation: typeof q?.explanation === "string" ? q.explanation : null,
+      has_options,
+      sort_order: order++,
+    });
+  }
+
+  if (rows.length === 0) return;
+
+  // Insert in chunks to avoid payload limits
+  for (let i = 0; i < rows.length; i += 100) {
+    const chunk = rows.slice(i, i + 100);
+    const { error } = await admin.from("mock_generated_questions").insert(chunk);
+    if (error) { console.error("mock_generated_questions insert error", error); break; }
+  }
+  console.log("retest rows inserted", reportId, rows.length);
+}
