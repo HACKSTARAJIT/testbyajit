@@ -542,6 +542,7 @@ function applyVerifiedSnapshotToReport(report: any, verified: VerifiedAttemptSna
   const attempted = verified.correct + verified.wrong;
   const totalQuestions = verified.correct + verified.wrong + verified.skipped;
   const timeMinutes = Math.round((verified.time_taken_seconds / 60) * 100) / 100;
+  const verifiedLine = `Verified attempt data: Score ${verified.score}/${verified.total_marks}, Accuracy ${verified.accuracy}%, Correct ${verified.correct}, Wrong ${verified.wrong}, Skipped ${verified.skipped}.`;
   return {
     ...r,
     totals: {
@@ -558,7 +559,16 @@ function applyVerifiedSnapshotToReport(report: any, verified: VerifiedAttemptSna
       submitted_at: verified.submitted_at,
     },
     accuracy: verified.accuracy,
+    overall_performance: mergeVerifiedNarrative(verifiedLine, r.overall_performance),
+    performance_summary: mergeVerifiedNarrative(verifiedLine, r.performance_summary),
+    coach_feedback: mergeVerifiedNarrative(verifiedLine, r.coach_feedback),
   };
+}
+
+function mergeVerifiedNarrative(verifiedLine: string, value: unknown) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) return verifiedLine;
+  return text.startsWith("Verified attempt data:") ? text : `${verifiedLine}\n${text}`;
 }
 
 function getReportValidationError(r: any): string | null {
