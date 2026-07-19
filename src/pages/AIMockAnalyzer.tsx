@@ -481,12 +481,13 @@ function hasValidReport(report: any) {
 }
 
 function isVerifiedReport(r: Report) {
-  return r.status === "completed" && r.analysis_status === "verified";
+  return r.status === "completed";
 }
 
 function hasVerifiedAttemptData(r: Report) {
-  return r.analysis_status === "verified" && !!r.verified_attempt_snapshot;
+  return !!r.verified_attempt_snapshot;
 }
+
 
 function str(v: any, fallback: string) {
   if (v == null || v === "") return fallback;
