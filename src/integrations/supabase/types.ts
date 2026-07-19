@@ -1276,6 +1276,205 @@ export type Database = {
         }
         Relationships: []
       }
+      syllabus_chapters: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          subject_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          subject_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          subject_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syllabus_chapters_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "syllabus_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syllabus_subjects: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          linked_subject_id: string | null
+          name: string
+          sort_order: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          linked_subject_id?: string | null
+          name: string
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          linked_subject_id?: string | null
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      syllabus_timeline: {
+        Row: {
+          chapter_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          note: string | null
+          subject_id: string | null
+          topic_id: string | null
+          user_id: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          note?: string | null
+          subject_id?: string | null
+          topic_id?: string | null
+          user_id: string
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          note?: string | null
+          subject_id?: string | null
+          topic_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syllabus_timeline_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "syllabus_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syllabus_topics: {
+        Row: {
+          chapter_id: string
+          completed_at: string | null
+          created_at: string
+          estimated_classes: number | null
+          estimated_hours: number | null
+          estimated_pages: number | null
+          estimated_revisions: number | null
+          id: string
+          last_activity_at: string | null
+          name: string
+          notes: string | null
+          priority: string
+          resources: Json
+          revision_count: number
+          sort_order: number
+          status: string
+          subject_id: string
+          target_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chapter_id: string
+          completed_at?: string | null
+          created_at?: string
+          estimated_classes?: number | null
+          estimated_hours?: number | null
+          estimated_pages?: number | null
+          estimated_revisions?: number | null
+          id?: string
+          last_activity_at?: string | null
+          name: string
+          notes?: string | null
+          priority?: string
+          resources?: Json
+          revision_count?: number
+          sort_order?: number
+          status?: string
+          subject_id: string
+          target_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chapter_id?: string
+          completed_at?: string | null
+          created_at?: string
+          estimated_classes?: number | null
+          estimated_hours?: number | null
+          estimated_pages?: number | null
+          estimated_revisions?: number | null
+          id?: string
+          last_activity_at?: string | null
+          name?: string
+          notes?: string | null
+          priority?: string
+          resources?: Json
+          revision_count?: number
+          sort_order?: number
+          status?: string
+          subject_id?: string
+          target_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syllabus_topics_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "syllabus_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syllabus_topics_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "syllabus_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       test_attempts: {
         Row: {
           accuracy: number
