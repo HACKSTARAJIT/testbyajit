@@ -75,11 +75,11 @@ async function processReport(admin: any, reportId: string, userId: string, repor
       .eq("user_id", userId)
       .maybeSingle();
     const sourceReport = latestReport ?? report;
+    // Optional verified attempt snapshot. If present it becomes the single
+    // source of truth. If absent, the AI must copy metrics VERBATIM from the
+    // printed result card in the uploaded PDF (never invent numbers).
     const verification = getVerifiedAttemptSnapshot(sourceReport, userId);
-    if (!verification.ok || !verification.snapshot) {
-      throw new Error(verification.error ?? INCOMPLETE_VERIFIED_DATA_MESSAGE);
-    }
-    const verified = verification.snapshot;
+    const verified: VerifiedAttemptSnapshot | null = verification.ok && verification.snapshot ? verification.snapshot : null;
     const filePaths: string[] = sourceReport.file_paths ?? [];
     // Fetch student's display name for personalization
     let firstName = "Student";
@@ -89,12 +89,16 @@ async function processReport(admin: any, reportId: string, userId: string, repor
       if (dn) firstName = dn.split(/\s+/)[0];
     } catch (_) { /* ignore */ }
 
+    const truthBlock = verified
+      ? `VERIFIED_ATTEMPT_DATA — ABSOLUTE SINGLE SOURCE OF TRUTH FOR ALL PERFORMANCE METRICS:\n${JSON.stringify(verified)}`
+      : `NO VERIFIED_ATTEMPT_DATA WAS PROVIDED. You MUST extract totals.score, totals.max_score, totals.correct, totals.wrong, totals.skipped, totals.time_minutes and accuracy VERBATIM from the printed result / score card that is visible in the uploaded PDF/screenshots. Do NOT calculate, derive, estimate, round or invent any of these numbers. If a specific number is not clearly printed on the result card, set that specific field to null — never guess.`;
+
     const contentParts: any[] = [{
       type: "text",
-      text: `You are a senior SSC / competitive-exam faculty personally reviewing the mock test of your student "${firstName}". You are NOT an AI chatbot. Write like an experienced teacher who has sat across the table with the student — warm, specific, blunt where needed, motivational, never generic. Every observation MUST be grounded in the VERIFIED_ATTEMPT_DATA and what you actually see in the uploaded pages. Never invent chapters/topics/numbers that are not present.
+      text: `You are a senior SSC / competitive-exam faculty personally reviewing the mock test of your student "${firstName}". You are NOT an AI chatbot. Write like an experienced teacher who has sat across the table with the student — warm, specific, blunt where needed, motivational, never generic. Every observation MUST be grounded in the actual attempt data and what you actually see in the uploaded pages. Never invent chapters/topics/numbers that are not present.
 
-VERIFIED_ATTEMPT_DATA — ABSOLUTE SINGLE SOURCE OF TRUTH FOR ALL PERFORMANCE METRICS:
-${JSON.stringify(verified)}
+${truthBlock}
+
 
 STEP 1 — Read every visible element: questions, options, marked answers, correct answers, section-wise score, timing, subjects, chapters, topics.
 STEP 2 — Return ONE strict JSON object, no prose outside JSON, matching this schema EXACTLY (keys in English, narrative in bilingual as described below):
