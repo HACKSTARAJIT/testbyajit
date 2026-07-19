@@ -371,18 +371,16 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       }
     } catch (_) { /* ignore */ }
 
-    // Audit trail — every saved report carries the exact source values it was built from,
-    // so downstream modules (Report History, Performance Center, Selection Intelligence,
-    // Mock Revision Hub) can prove they read the same verified numbers.
+    // Audit trail — every saved report carries the exact source values it was built from.
     parsed.__audit = {
       report_id: reportId,
       user_id: userId,
-      analysis_version: "v2-strict-2026-07",
+      analysis_version: "v4-auto-extract-2026-07",
       generated_at: new Date().toISOString(),
-      data_verification_status: "verified",
-      source: verified.source,
-      attempt_id: verified.attempt_id,
-      test_id: verified.test_id,
+      data_verification_status: verified ? "verified" : "ai_extracted",
+      source: verified?.source ?? "ai_ocr_extraction",
+      attempt_id: verified?.attempt_id ?? null,
+      test_id: verified?.test_id ?? null,
       verified_totals: {
         questions: toNum(totals.questions),
         correct: toNum(totals.correct),
@@ -392,13 +390,13 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
         max_score: toNum(totals.max_score),
         accuracy: toNum(parsed.accuracy),
         time_minutes: toNum(totals.time_minutes),
-        time_taken_seconds: verified.time_taken_seconds,
-        negative_marks: verified.negative_marks,
-        submitted_at: verified.submitted_at,
+        time_taken_seconds: verified?.time_taken_seconds ?? null,
+        negative_marks: verified?.negative_marks ?? toNum(totals.negative_marks),
+        submitted_at: verified?.submitted_at ?? null,
       },
     };
 
-    const analysisVersion = "v3-verified-attempt-2026-07";
+    const analysisVersion = "v4-auto-extract-2026-07";
     const generatedAt = new Date().toISOString();
     await admin.from("ai_mock_reports").update({
       status: "completed",
@@ -408,7 +406,6 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       report: parsed,
       ocr_text: parsed.ocr_text ?? null,
       exam_name: parsed.exam_name ?? null,
-      // Verbatim from the locked verified snapshot. No AI/OCR re-derivation.
       accuracy: toNum(parsed.accuracy),
       readiness_score: toNum(parsed.readiness_score),
       overall_score: toNum(totals.score),
@@ -417,19 +414,23 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       detected_chapter: parsed.detected_chapter ?? null,
       detected_topic: parsed.detected_topic ?? null,
       error: null,
+      verification_error: null,
     }).eq("id", reportId);
-    await admin.from("ai_report_audit_logs").insert({
-      report_id: reportId,
-      attempt_id: verified.attempt_id ?? null,
-      user_id: userId,
-      analysis_version: analysisVersion,
-      generated_at: generatedAt,
-      data_verification_status: "verified",
-      verified_snapshot: verified,
-      consistency_status: "passed",
-      error: null,
-    });
-    console.log("report done (verified attempt)", reportId, "score=", totals.score, "acc=", parsed.accuracy, "correct=", totals.correct, "source=", verified.source);
+    try {
+      await admin.from("ai_report_audit_logs").insert({
+        report_id: reportId,
+        attempt_id: verified?.attempt_id ?? null,
+        user_id: userId,
+        analysis_version: analysisVersion,
+        generated_at: generatedAt,
+        data_verification_status: verified ? "verified" : "ai_extracted",
+        verified_snapshot: verified ?? null,
+        consistency_status: "passed",
+        error: null,
+      });
+    } catch (_) { /* audit log is non-fatal */ }
+    console.log("report done", reportId, "score=", totals.score, "acc=", parsed.accuracy, "source=", verified ? verified.source : "ai_ocr");
+
 
     // ---- Smart Revision sync + Planner/Coach/Goals persistence (non-fatal) ----
     try {
