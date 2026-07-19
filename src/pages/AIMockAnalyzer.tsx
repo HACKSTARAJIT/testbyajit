@@ -182,7 +182,7 @@ export default function AIMockAnalyzer() {
 
   const analyze = async (id: string, force = false) => {
     const target = reports.find(r => r.id === id);
-    if (!force && target && target.analysis_status !== "verified") {
+    if (!force && target && !hasVerifiedAttemptData(target)) {
       setVerifyTarget(target);
       toast.message("Verify actual attempt data before AI analysis.");
       return;
@@ -760,7 +760,7 @@ function ReportView({ r, onAnalyze, analyzing }: { r: Report; onAnalyze: () => v
           {r.analysis_status !== "verified" ? "Analysis unavailable because verified attempt data is incomplete." : r.status === "completed" ? "AI analysis returned empty values and was blocked from display. Please reanalyze." : "This report has not been analyzed yet."}
         </p>
         {(r.verification_error || r.error) && <p className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">{r.verification_error || r.error}</p>}
-        <Button onClick={onAnalyze} disabled={analyzing || r.analysis_status !== "verified"}>
+        <Button onClick={onAnalyze} disabled={analyzing || !hasVerifiedAttemptData(r)}>
           {analyzing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</> : <><Sparkles className="mr-2 h-4 w-4" />Analyze Mock</>}
         </Button>
       </div>
