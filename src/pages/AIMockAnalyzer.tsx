@@ -21,6 +21,11 @@ type Report = {
   id: string; title: string; exam_name: string | null; status: string;
   created_at: string; file_paths: string[]; report: any; ocr_text: string | null;
   accuracy: number | null; readiness_score: number | null; overall_score: number | null; error: string | null;
+  analysis_status?: "pending" | "verified" | "failed" | string | null;
+  verified_attempt_snapshot?: any;
+  verification_error?: string | null;
+  attempt_id?: string | null;
+  source_test_id?: string | null;
 };
 
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,image/*,application/pdf";
@@ -52,6 +57,7 @@ export default function AIMockAnalyzer() {
   const [stage, setStage] = useState(0);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Report | null>(null);
+  const [verifyTarget, setVerifyTarget] = useState<Report | null>(null);
   const [activity, setActivity] = useState<Activity[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -70,7 +76,7 @@ export default function AIMockAnalyzer() {
 
   // Dashboard stats
   const stats = useMemo(() => {
-    const completed = reports.filter(r => r.status === "completed");
+    const completed = reports.filter(r => isVerifiedReport(r) && hasValidReport(r.report));
     const avg = (arr: number[]) => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
     const accs = completed.map(r => r.accuracy ?? 0).filter(x => x > 0);
     const scores = completed.map(r => r.overall_score ?? 0).filter(x => x > 0);
@@ -172,7 +178,13 @@ export default function AIMockAnalyzer() {
     }
   };
 
-  const analyze = async (id: string) => {
+  const analyze = async (id: string, force = false) => {
+    const target = reports.find(r => r.id === id);
+    if (!force && target && target.analysis_status !== "verified") {
+      setVerifyTarget(target);
+      toast.message("Verify actual attempt data before AI analysis.");
+      return;
+    }
     setAnalyzingId(id);
     try {
       await supabase.from("ai_mock_reports").update({ status: "analyzing", error: null }).eq("id", id);
@@ -404,6 +416,7 @@ export default function AIMockAnalyzer() {
                 r={r}
                 onOpen={() => setSelected(r)}
                 onAnalyze={() => analyze(r.id)}
+                onVerify={() => setVerifyTarget(r)}
                 onRename={() => rename(r)}
                 onDuplicate={() => duplicate(r)}
                 onDelete={() => del(r.id)}
@@ -436,6 +449,17 @@ export default function AIMockAnalyzer() {
           {selected && <ReportView r={selected} onAnalyze={() => analyze(selected.id)} analyzing={analyzingId === selected.id} />}
         </DialogContent>
       </Dialog>
+
+      <VerifyAttemptDialog
+        report={verifyTarget}
+        open={!!verifyTarget}
+        onOpenChange={(open) => !open && setVerifyTarget(null)}
+        onVerified={async (id) => {
+          setVerifyTarget(null);
+          await load();
+          await analyze(id, true);
+        }}
+      />
     </div>
   );
 }
@@ -455,6 +479,10 @@ function hasValidReport(report: any) {
   return questions > 0 && report.accuracy != null && Array.isArray(report.subject_analysis) && report.subject_analysis.length > 0;
 }
 
+function isVerifiedReport(r: Report) {
+  return r.status === "completed" && r.analysis_status === "verified";
+}
+
 function StatCard({ icon, label, value, sub, tint, small }: { icon: React.ReactNode; label: string; value: any; sub?: string; tint: string; small?: boolean }) {
   return (
     <div className={`relative overflow-hidden rounded-xl border bg-gradient-to-br ${tint} p-3 backdrop-blur transition hover:scale-[1.02]`}>
@@ -468,11 +496,12 @@ function StatCard({ icon, label, value, sub, tint, small }: { icon: React.ReactN
   );
 }
 
-function ReportCard({ r, onOpen, onAnalyze, onRename, onDuplicate, onDelete, analyzing }: {
-  r: Report; onOpen: () => void; onAnalyze: () => void; onRename: () => void; onDuplicate: () => void; onDelete: () => void; analyzing: boolean;
+function ReportCard({ r, onOpen, onAnalyze, onVerify, onRename, onDuplicate, onDelete, analyzing }: {
+  r: Report; onOpen: () => void; onAnalyze: () => void; onVerify: () => void; onRename: () => void; onDuplicate: () => void; onDelete: () => void; analyzing: boolean;
 }) {
   const pages = r.file_paths?.length ?? 0;
-  const validReport = r.status === "completed" && hasValidReport(r.report);
+  const verified = r.analysis_status === "verified";
+  const validReport = isVerifiedReport(r) && hasValidReport(r.report);
   return (
     <Card className="group relative overflow-hidden bg-card/60 backdrop-blur transition hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5">
       <CardContent className="space-y-3 p-4">
@@ -486,21 +515,28 @@ function ReportCard({ r, onOpen, onAnalyze, onRename, onDuplicate, onDelete, ana
         <div className="flex flex-wrap items-center gap-1">
           {r.exam_name && <Badge variant="outline" className="text-[10px]">{r.exam_name}</Badge>}
           <Badge variant="outline" className="text-[10px]">{pages} file{pages !== 1 ? "s" : ""}</Badge>
+          <Badge variant={verified ? "secondary" : "outline"} className="text-[10px]">
+            {verified ? "Verified data ✓" : "Verify data required"}
+          </Badge>
         </div>
         <div className="grid grid-cols-3 gap-1 text-center">
           <Mini label="Accuracy" value={r.accuracy ? `${r.accuracy}%` : "—"} />
           <Mini label="Score" value={r.overall_score ?? "—"} />
           <Mini label="Readiness" value={r.readiness_score ? `${r.readiness_score}%` : "—"} />
         </div>
-        {((r.error && r.status === "failed") || (r.status === "completed" && !validReport)) && (
+        {(!verified || (r.error && r.status === "failed") || (r.status === "completed" && !validReport)) && (
           <div className="flex items-start gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>{r.error || "Analysis unavailable because verified attempt data is incomplete."}</span>
+            <span>{r.verification_error || r.error || "Analysis unavailable because verified attempt data is incomplete."}</span>
           </div>
         )}
         <div className="flex flex-wrap gap-1">
           {validReport ? (
             <Button size="sm" variant="secondary" onClick={onOpen} className="flex-1">Open</Button>
+          ) : !verified ? (
+            <Button size="sm" onClick={onVerify} className="flex-1">
+              <CheckCircle2 className="mr-1 h-3.5 w-3.5" />Verify Data
+            </Button>
           ) : r.status === "analyzing" ? (
             <Button size="sm" disabled className="flex-1"><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Analyzing</Button>
           ) : (
@@ -566,15 +602,15 @@ function EmptyState({ hasAny }: { hasAny: boolean }) {
 /* ---------- Existing detailed report view (unchanged rendering) ---------- */
 function ReportView({ r, onAnalyze, analyzing }: { r: Report; onAnalyze: () => void; analyzing: boolean }) {
   const d = r.report ?? {};
-  if (r.status !== "completed" || !hasValidReport(r.report)) {
+  if (!isVerifiedReport(r) || !hasValidReport(r.report)) {
     return (
       <div className="space-y-3">
         <DialogHeader><DialogTitle>{r.title}</DialogTitle></DialogHeader>
         <p className="text-sm text-muted-foreground">
-          {r.status === "completed" ? "AI analysis returned empty values and was blocked from display. Please reanalyze." : "This report has not been analyzed yet."}
+          {r.analysis_status !== "verified" ? "Analysis unavailable because verified attempt data is incomplete." : r.status === "completed" ? "AI analysis returned empty values and was blocked from display. Please reanalyze." : "This report has not been analyzed yet."}
         </p>
-        {r.error && <p className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">{r.error}</p>}
-        <Button onClick={onAnalyze} disabled={analyzing}>
+        {(r.verification_error || r.error) && <p className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">{r.verification_error || r.error}</p>}
+        <Button onClick={onAnalyze} disabled={analyzing || r.analysis_status !== "verified"}>
           {analyzing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</> : <><Sparkles className="mr-2 h-4 w-4" />Analyze Mock</>}
         </Button>
       </div>
@@ -600,6 +636,7 @@ function ReportView({ r, onAnalyze, analyzing }: { r: Report; onAnalyze: () => v
           <span>{r.file_paths?.length ?? 0} files</span>
           <span>·</span>
           <Badge variant="outline" className="text-[10px]">OCR ✓</Badge>
+          <Badge variant="outline" className="text-[10px]">Verified Data ✓</Badge>
           <Badge variant="outline" className="text-[10px]">AI ✓</Badge>
         </div>
       </DialogHeader>
