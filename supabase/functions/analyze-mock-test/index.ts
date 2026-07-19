@@ -2,6 +2,24 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const INCOMPLETE_VERIFIED_DATA_MESSAGE = "Analysis unavailable because verified attempt data is incomplete.";
+
+type VerifiedAttemptSnapshot = {
+  attempt_id: string | null;
+  student_id: string;
+  test_id: string | null;
+  score: number;
+  total_marks: number;
+  correct: number;
+  wrong: number;
+  skipped: number;
+  accuracy: number;
+  time_taken_seconds: number;
+  submitted_at: string;
+  negative_marks: number;
+  verified_at?: string;
+  source: string;
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -467,6 +485,80 @@ function toNum(v: any): number | null {
   if (typeof v === "number") return isFinite(v) ? v : null;
   const m = String(v).match(/-?\d+(\.\d+)?/);
   return m ? Number(m[0]) : null;
+}
+
+function getVerifiedAttemptSnapshot(report: any, userId: string): { ok: boolean; snapshot?: VerifiedAttemptSnapshot; error?: string } {
+  if (report?.analysis_status !== "verified") {
+    return { ok: false, error: INCOMPLETE_VERIFIED_DATA_MESSAGE };
+  }
+  const s = report?.verified_attempt_snapshot;
+  if (!s || typeof s !== "object" || Array.isArray(s)) {
+    return { ok: false, error: INCOMPLETE_VERIFIED_DATA_MESSAGE };
+  }
+
+  const snapshot: VerifiedAttemptSnapshot = {
+    attempt_id: typeof s.attempt_id === "string" ? s.attempt_id : null,
+    student_id: typeof s.student_id === "string" ? s.student_id : userId,
+    test_id: typeof s.test_id === "string" ? s.test_id : null,
+    score: Number(s.score),
+    total_marks: Number(s.total_marks),
+    correct: Number(s.correct),
+    wrong: Number(s.wrong),
+    skipped: Number(s.skipped),
+    accuracy: Number(s.accuracy),
+    time_taken_seconds: Number(s.time_taken_seconds),
+    submitted_at: String(s.submitted_at ?? ""),
+    negative_marks: Number(s.negative_marks),
+    verified_at: typeof s.verified_at === "string" ? s.verified_at : undefined,
+    source: typeof s.source === "string" ? s.source : "verified_attempt",
+  };
+
+  const required: Array<[keyof VerifiedAttemptSnapshot, unknown]> = [
+    ["student_id", snapshot.student_id],
+    ["score", snapshot.score],
+    ["total_marks", snapshot.total_marks],
+    ["correct", snapshot.correct],
+    ["wrong", snapshot.wrong],
+    ["skipped", snapshot.skipped],
+    ["accuracy", snapshot.accuracy],
+    ["time_taken_seconds", snapshot.time_taken_seconds],
+    ["submitted_at", snapshot.submitted_at],
+    ["negative_marks", snapshot.negative_marks],
+  ];
+  const missing = required.filter(([, v]) =>
+    v === null || v === undefined || v === "" || (typeof v === "number" && !Number.isFinite(v)),
+  );
+  if (missing.length > 0 || snapshot.student_id !== userId) {
+    return { ok: false, error: INCOMPLETE_VERIFIED_DATA_MESSAGE };
+  }
+  if (snapshot.total_marks <= 0 || snapshot.score < 0 || snapshot.correct < 0 || snapshot.wrong < 0 || snapshot.skipped < 0 || snapshot.accuracy < 0 || snapshot.accuracy > 100 || snapshot.time_taken_seconds < 0) {
+    return { ok: false, error: INCOMPLETE_VERIFIED_DATA_MESSAGE };
+  }
+  return { ok: true, snapshot };
+}
+
+function applyVerifiedSnapshotToReport(report: any, verified: VerifiedAttemptSnapshot) {
+  const r = report && typeof report === "object" && !Array.isArray(report) ? report : {};
+  const attempted = verified.correct + verified.wrong;
+  const totalQuestions = verified.correct + verified.wrong + verified.skipped;
+  const timeMinutes = Math.round((verified.time_taken_seconds / 60) * 100) / 100;
+  return {
+    ...r,
+    totals: {
+      ...(r.totals && typeof r.totals === "object" ? r.totals : {}),
+      questions: totalQuestions,
+      attempted,
+      correct: verified.correct,
+      wrong: verified.wrong,
+      skipped: verified.skipped,
+      score: verified.score,
+      max_score: verified.total_marks,
+      time_minutes: timeMinutes,
+      negative_marks: verified.negative_marks,
+      submitted_at: verified.submitted_at,
+    },
+    accuracy: verified.accuracy,
+  };
 }
 
 function getReportValidationError(r: any): string | null {
