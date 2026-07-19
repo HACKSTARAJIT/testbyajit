@@ -45,17 +45,10 @@ Deno.serve(async (req) => {
       .from("ai_mock_reports").select("*").eq("id", reportId).eq("user_id", userId).maybeSingle();
     if (rErr || !report) return json({ error: "Report not found" }, 404);
 
-    const verification = getVerifiedAttemptSnapshot(report, userId);
-    if (!verification.ok) {
-      const message = verification.error ?? INCOMPLETE_VERIFIED_DATA_MESSAGE;
-      await supabase.from("ai_mock_reports").update({
-        status: "failed",
-        analysis_status: "failed",
-        verification_error: message,
-        error: message,
-      }).eq("id", reportId).eq("user_id", userId);
-      return json({ error: message }, 400);
-    }
+    // No hard verification gate — the AI extracts Score/Correct/Wrong/Skipped/Accuracy
+    // strictly from the printed result card in the uploaded PDF (see prompt rules).
+    // If a verified snapshot exists, it's still used as the single source of truth.
+
 
     // Mark analyzing, then process in background so we return immediately
     // and avoid the 150s edge-function idle timeout for slow AI calls.
