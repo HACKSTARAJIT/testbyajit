@@ -411,7 +411,7 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       report: parsed,
       ocr_text: parsed.ocr_text ?? null,
       exam_name: parsed.exam_name ?? null,
-      // Verbatim from what AI copied off the printed result card. No re-derivation.
+      // Verbatim from the locked verified snapshot. No AI/OCR re-derivation.
       accuracy: toNum(parsed.accuracy),
       readiness_score: toNum(parsed.readiness_score),
       overall_score: toNum(totals.score),
