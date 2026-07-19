@@ -529,6 +529,8 @@ function extractPrintedResultCard(text: string | null | undefined) {
     if (mm) out.timeMinutes = Number(mm[1]);
   }
   return out;
+}
+
 
 function StatCard({ icon, label, value, sub, tint, small }: { icon: React.ReactNode; label: string; value: any; sub?: string; tint: string; small?: boolean }) {
   return (
