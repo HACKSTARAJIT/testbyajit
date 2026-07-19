@@ -655,23 +655,6 @@ function VerifyAttemptDialog({ report, open, onOpenChange, onVerified }: {
 
     setSaving(true);
     try {
-      const snapshot = {
-        attempt_id: report.attempt_id ?? null,
-        source_report_id: report.id,
-        student_id: user.id,
-        test_id: report.source_test_id ?? null,
-        score: values.score,
-        total_marks: values.totalMarks,
-        correct: Math.round(values.correct),
-        wrong: Math.round(values.wrong),
-        skipped: Math.round(values.skipped),
-        accuracy: values.accuracy,
-        time_taken_seconds: Math.round(values.timeMinutes * 60),
-        negative_marks: values.negativeMarks,
-        submitted_at: report.created_at,
-        verified_at: new Date().toISOString(),
-        source: "student_verified_uploaded_mock",
-      };
       const { error } = await (supabase as any).rpc("verify_ai_mock_report_data", {
         _report_id: report.id,
         _score: values.score,
