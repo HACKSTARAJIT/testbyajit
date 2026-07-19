@@ -561,9 +561,6 @@ function ReportCard({ r, onOpen, onAnalyze, onVerify, onRename, onDuplicate, onD
         <div className="flex flex-wrap items-center gap-1">
           {r.exam_name && <Badge variant="outline" className="text-[10px]">{r.exam_name}</Badge>}
           <Badge variant="outline" className="text-[10px]">{pages} file{pages !== 1 ? "s" : ""}</Badge>
-          <Badge variant={verified ? "secondary" : "outline"} className="text-[10px]">
-            {verified ? "Verified data ✓" : "Verify data required"}
-          </Badge>
         </div>
         <div className="grid grid-cols-3 gap-1 text-center">
           <Mini label="Accuracy" value={r.accuracy ? `${r.accuracy}%` : "—"} />
