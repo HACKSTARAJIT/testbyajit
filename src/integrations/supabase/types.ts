@@ -436,6 +436,80 @@ export type Database = {
         }
         Relationships: []
       }
+      mock_generated_questions: {
+        Row: {
+          chapter: string | null
+          correct_option: string | null
+          created_at: string
+          explanation: string | null
+          has_options: boolean
+          id: string
+          marked_option: string | null
+          option_a: string | null
+          option_b: string | null
+          option_c: string | null
+          option_d: string | null
+          original_status: string | null
+          q_no: number | null
+          question_text: string
+          report_id: string
+          sort_order: number
+          subject: string | null
+          topic: string | null
+          user_id: string
+        }
+        Insert: {
+          chapter?: string | null
+          correct_option?: string | null
+          created_at?: string
+          explanation?: string | null
+          has_options?: boolean
+          id?: string
+          marked_option?: string | null
+          option_a?: string | null
+          option_b?: string | null
+          option_c?: string | null
+          option_d?: string | null
+          original_status?: string | null
+          q_no?: number | null
+          question_text: string
+          report_id: string
+          sort_order?: number
+          subject?: string | null
+          topic?: string | null
+          user_id: string
+        }
+        Update: {
+          chapter?: string | null
+          correct_option?: string | null
+          created_at?: string
+          explanation?: string | null
+          has_options?: boolean
+          id?: string
+          marked_option?: string | null
+          option_a?: string | null
+          option_b?: string | null
+          option_c?: string | null
+          option_d?: string | null
+          original_status?: string | null
+          q_no?: number | null
+          question_text?: string
+          report_id?: string
+          sort_order?: number
+          subject?: string | null
+          topic?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mock_generated_questions_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "ai_mock_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           chapter_id: string

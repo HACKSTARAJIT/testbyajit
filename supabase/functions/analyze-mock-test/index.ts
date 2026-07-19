@@ -156,7 +156,7 @@ STEP 2 — Return ONE strict JSON object, no prose outside JSON, matching this s
    "tasks": string[]
  }],
 
- "questions": [{ "q_no": number|null, "text": string, "marked": string|null, "correct": string|null, "status": "correct"|"wrong"|"skipped"|"unknown", "subject": string|null, "chapter": string|null, "topic": string|null, "mistake_category": string|null }],
+ "questions": [{ "q_no": number|null, "text": string, "options": { "a": string|null, "b": string|null, "c": string|null, "d": string|null }, "marked": "A"|"B"|"C"|"D"|null, "correct": "A"|"B"|"C"|"D"|null, "status": "correct"|"wrong"|"skipped"|"unknown", "subject": string|null, "chapter": string|null, "topic": string|null, "mistake_category": string|null, "explanation": string|null }],
 
  "ocr_text": string
 }
@@ -183,6 +183,7 @@ LANGUAGE & TONE RULES (STRICT — the report must read like a senior SSC faculty
 - Every string must be specific to THIS paper. Avoid repetitive sentences, avoid generic advice, avoid hallucinations. If a field cannot be determined, use null / [] / 0.
 - Never return an empty object, placeholder-only object, or all-zero report. If the file is readable, extract the visible totals and analysis. If the file is not readable, still return a valid JSON object with ocr_text explaining what was visible/unreadable and leave unknown fields null / [] / 0.
 - A report is INVALID if totals.questions is 0/null, accuracy is missing, subject_analysis is empty, and all feedback fields are blank. Do not output that shape.
+- For the "questions" array you MUST include EVERY question that is visible in the paper — do not sample or skip. For each question extract the full question text and, whenever the four options are printed in the PDF, populate options.a/b/c/d with the exact option text (without the "A." / "(A)" prefix). If an option is not clearly visible leave that specific option null. marked/correct must be a single letter A|B|C|D (map "1/2/3/4" → A/B/C/D). explanation should carry the visible solution/explanation text if printed, else null.
 
 Return strict JSON only.`,
     }];
@@ -311,6 +312,13 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       await syncWithAjit360(admin, userId, reportId, parsed);
     } catch (syncErr) {
       console.error("sync failed", reportId, syncErr);
+    }
+
+    // ---- Auto-generate retest questions from wrong/skipped items (non-fatal) ----
+    try {
+      await generateRetestQuestions(admin, userId, reportId, parsed);
+    } catch (genErr) {
+      console.error("retest generation failed", reportId, genErr);
     }
 
   } catch (e) {
@@ -675,4 +683,67 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// -------- Auto-generate playable retest from wrong/skipped mock questions --------
+async function generateRetestQuestions(admin: any, userId: string, reportId: string, parsed: any) {
+  const questions: any[] = Array.isArray(parsed?.questions) ? parsed.questions : [];
+  if (questions.length === 0) return;
+
+  const normLetter = (v: any): string | null => {
+    if (v === null || v === undefined) return null;
+    const s = String(v).trim().toUpperCase();
+    if (["A", "B", "C", "D"].includes(s)) return s;
+    if (["1", "2", "3", "4"].includes(s)) return ["A", "B", "C", "D"][Number(s) - 1];
+    const m = s.match(/[A-D]/);
+    return m ? m[0] : null;
+  };
+
+  // Idempotent: clear previous auto rows for this report
+  await admin.from("mock_generated_questions").delete().eq("report_id", reportId);
+
+  const rows: any[] = [];
+  let order = 0;
+  for (const q of questions) {
+    const status = q?.status;
+    if (status !== "wrong" && status !== "skipped") continue;
+    const text: string = (q?.text ?? "").trim();
+    if (!text || text.length < 6) continue;
+
+    const opts = q?.options ?? {};
+    const a = typeof opts.a === "string" ? opts.a.trim() : null;
+    const b = typeof opts.b === "string" ? opts.b.trim() : null;
+    const c = typeof opts.c === "string" ? opts.c.trim() : null;
+    const d = typeof opts.d === "string" ? opts.d.trim() : null;
+    const correct = normLetter(q?.correct);
+    const marked = normLetter(q?.marked);
+    const has_options = !!(a && b && c && d && correct);
+
+    rows.push({
+      user_id: userId,
+      report_id: reportId,
+      q_no: typeof q?.q_no === "number" ? q.q_no : null,
+      question_text: text,
+      option_a: a, option_b: b, option_c: c, option_d: d,
+      correct_option: correct,
+      marked_option: marked,
+      original_status: status,
+      subject: q?.subject ?? null,
+      chapter: q?.chapter ?? null,
+      topic: q?.topic ?? null,
+      explanation: typeof q?.explanation === "string" ? q.explanation : null,
+      has_options,
+      sort_order: order++,
+    });
+  }
+
+  if (rows.length === 0) return;
+
+  // Insert in chunks to avoid payload limits
+  for (let i = 0; i < rows.length; i += 100) {
+    const chunk = rows.slice(i, i + 100);
+    const { error } = await admin.from("mock_generated_questions").insert(chunk);
+    if (error) { console.error("mock_generated_questions insert error", error); break; }
+  }
+  console.log("retest rows inserted", reportId, rows.length);
 }

@@ -64,6 +64,7 @@ export default function MockRevisionHubPage() {
     id: string; title: string; created_at: string;
     detected_subject: string | null; detected_chapter: string | null;
     detected_topic: string | null; report_type: string | null;
+    autoTotal: number; autoWrong: number; autoSkipped: number;
   }>>([]);
 
   useEffect(() => {
@@ -128,6 +129,22 @@ export default function MockRevisionHubPage() {
       const cMap: any = {}; (chs ?? []).forEach((c: any) => (cMap[c.id] = { name: c.name, subject_id: c.subject_id }));
       const tMap: any = {}; (tst ?? []).forEach((t: any) => (tMap[t.id] = { title: t.title, test_part: t.test_part }));
 
+      const reportIds = (reports ?? []).map((r: any) => r.id);
+      let autoMap: Record<string, { total: number; wrong: number; skipped: number }> = {};
+      if (reportIds.length) {
+        const { data: gen } = await supabase
+          .from("mock_generated_questions")
+          .select("report_id, original_status")
+          .in("report_id", reportIds);
+        (gen ?? []).forEach((g: any) => {
+          const m = autoMap[g.report_id] ?? { total: 0, wrong: 0, skipped: 0 };
+          m.total++;
+          if (g.original_status === "wrong") m.wrong++;
+          else if (g.original_status === "skipped") m.skipped++;
+          autoMap[g.report_id] = m;
+        });
+      }
+
       const mockList = (reports ?? []).map((r: any, i: number) => ({
         id: r.id,
         title: r.title || r.exam_name || `Mock ${(reports?.length ?? 0) - i}`,
@@ -136,6 +153,9 @@ export default function MockRevisionHubPage() {
         detected_chapter: r.detected_chapter as string | null,
         detected_topic: r.detected_topic as string | null,
         report_type: r.report_type as string | null,
+        autoTotal: autoMap[r.id]?.total ?? 0,
+        autoWrong: autoMap[r.id]?.wrong ?? 0,
+        autoSkipped: autoMap[r.id]?.skipped ?? 0,
       }));
 
       setRows(enriched);
@@ -395,25 +415,60 @@ export default function MockRevisionHubPage() {
               const canRevise = params.has("filter");
               const date = new Date(m.created_at).toLocaleDateString();
               return (
-                <button
-                  key={m.id}
-                  onClick={() => {
-                    if (canRevise) navigate(`/revise?${params.toString()}`);
-                    else navigate(`/ai-mock-analyzer?report=${m.id}`);
-                  }}
-                  className="btn-ripple flex w-full items-center gap-3 rounded-2xl border bg-card p-4 text-left transition hover:bg-accent/40"
-                >
-                  <div className="rounded-xl bg-indigo-500/15 p-2 text-indigo-500"><FileText className="h-5 w-5" /></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-semibold">{m.title}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">📄 Uploaded · {date}{m.report_type ? ` · ${m.report_type}` : ""}</p>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {scope && <Badge variant="secondary" className="rounded-md px-1.5 py-0 text-[10px]">Revise · {scope}</Badge>}
-                      {!canRevise && <Badge variant="outline" className="rounded-md px-1.5 py-0 text-[10px]">Open report</Badge>}
+                <div key={m.id} className="rounded-2xl border bg-card p-4 space-y-3">
+                  <button
+                    onClick={() => {
+                      if (canRevise) navigate(`/revise?${params.toString()}`);
+                      else navigate(`/ai-mock-analyzer?report=${m.id}`);
+                    }}
+                    className="btn-ripple flex w-full items-start gap-3 text-left"
+                  >
+                    <div className="rounded-xl bg-indigo-500/15 p-2 text-indigo-500 shrink-0"><FileText className="h-5 w-5" /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-semibold">{m.title}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">📄 Uploaded · {date}{m.report_type ? ` · ${m.report_type}` : ""}</p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {scope && <Badge variant="secondary" className="rounded-md px-1.5 py-0 text-[10px]">Revise · {scope}</Badge>}
+                        {!canRevise && <Badge variant="outline" className="rounded-md px-1.5 py-0 text-[10px]">Open report</Badge>}
+                        {m.autoTotal > 0 && (
+                          <Badge className="rounded-md bg-fuchsia-500/15 px-1.5 py-0 text-[10px] text-fuchsia-600">
+                            🔁 {m.autoTotal} auto-questions
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </button>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </button>
+
+                  {m.autoTotal > 0 ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        onClick={() => navigate(`/mock-auto-test/${m.id}`)}
+                        className="btn-ripple rounded-xl bg-gradient-to-br from-fuchsia-600 to-purple-600 px-2 py-2 text-[11px] font-semibold text-white shadow-md"
+                      >
+                        ▶ Auto Test<br /><span className="text-[10px] opacity-90">All {m.autoTotal}</span>
+                      </button>
+                      <button
+                        disabled={m.autoWrong === 0}
+                        onClick={() => navigate(`/mock-auto-test/${m.id}?filter=wrong`)}
+                        className="btn-ripple rounded-xl border border-red-500/40 bg-red-500/10 px-2 py-2 text-[11px] font-semibold text-red-600 disabled:opacity-40"
+                      >
+                        ❌ Wrong<br /><span className="text-[10px]">{m.autoWrong}</span>
+                      </button>
+                      <button
+                        disabled={m.autoSkipped === 0}
+                        onClick={() => navigate(`/mock-auto-test/${m.id}?filter=skipped`)}
+                        className="btn-ripple rounded-xl border border-amber-500/40 bg-amber-500/10 px-2 py-2 text-[11px] font-semibold text-amber-600 disabled:opacity-40"
+                      >
+                        ⏭ Skipped<br /><span className="text-[10px]">{m.autoSkipped}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="rounded-xl bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
+                      🔁 Auto test tab available hoga jab AI ne is PDF ke sawal + options extract kar liye. Naya mock upload karne par automatic bnega.
+                    </p>
+                  )}
+                </div>
               );
             })}
           </TabsContent>
