@@ -406,12 +406,32 @@ function getReportValidationError(r: any): string | null {
   if (!r.totals || typeof r.totals !== "object") return "AI report is missing totals";
   const t = r.totals;
   const questions = toNum(t.questions ?? t.total_questions ?? t.total);
-  if (questions === null || questions <= 0) return "AI report has no detected question count";
-  if (toNum(r.accuracy) === null) return "AI report is missing accuracy";
+  if (questions === null || questions <= 0) return "Analysis unavailable because verified attempt data is incomplete. (missing: total questions)";
+
+  // STRICT DATA-INTEGRITY GATE — every core metric MUST be present in the printed result card.
+  // We refuse to save an analysis when the source of truth is incomplete, so the AI cannot
+  // hallucinate score/accuracy/marks. See the "SINGLE SOURCE OF TRUTH" prompt block above.
+  const required: Array<[string, number | null]> = [
+    ["correct answers", toNum(t.correct)],
+    ["wrong answers", toNum(t.wrong)],
+    ["skipped answers", toNum(t.skipped)],
+    ["score", toNum(t.score)],
+    ["max_score", toNum(t.max_score)],
+    ["accuracy", toNum(r.accuracy)],
+  ];
+  const missing = required.filter(([, v]) => v === null).map(([k]) => k);
+  if (missing.length > 0) {
+    return `Analysis unavailable because verified attempt data is incomplete. The uploaded PDF did not clearly show: ${missing.join(", ")}. Please upload a mock PDF that includes the printed result / score card.`;
+  }
+
+  // Cross-check: totals must be internally consistent with total questions
+  const sum = (toNum(t.correct) ?? 0) + (toNum(t.wrong) ?? 0) + (toNum(t.skipped) ?? 0);
+  if (Math.abs(sum - questions) > 1) {
+    return `Analysis unavailable — verified totals are inconsistent (correct+wrong+skipped=${sum}, total=${questions}).`;
+  }
+
   if (toNum(r.readiness_score) === null) return "AI report is missing readiness score";
-  if (!Array.isArray(r.subject_analysis)) return "AI report is missing subject analysis";
-  if (r.subject_analysis.length === 0) return "AI report has empty subject analysis";
-  // At least one narrative field must be non-empty
+  if (!Array.isArray(r.subject_analysis) || r.subject_analysis.length === 0) return "AI report is missing subject analysis";
   const narratives = [r.coach_feedback, r.overall_performance, r.performance_summary];
   if (!narratives.some((x) => typeof x === "string" && x.trim().length > 20 && x.trim() !== "-")) return "AI report has no usable coach feedback";
   const usefulArrays = [
