@@ -159,7 +159,7 @@ export type Database = {
           updated_at: string
           user_id: string
           verification_error: string | null
-          verified_attempt_snapshot: Json
+          verified_attempt_snapshot: Json | null
         }
         Insert: {
           accuracy?: number | null
@@ -187,7 +187,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           verification_error?: string | null
-          verified_attempt_snapshot?: Json
+          verified_attempt_snapshot?: Json | null
         }
         Update: {
           accuracy?: number | null
@@ -215,7 +215,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           verification_error?: string | null
-          verified_attempt_snapshot?: Json
+          verified_attempt_snapshot?: Json | null
         }
         Relationships: [
           {
