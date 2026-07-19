@@ -169,7 +169,7 @@ export default function AIMockAnalyzer() {
       }).select().single();
       if (error) throw error;
       await runStage(4, 300);
-      toast.success("Uploaded — verify actual attempt data before AI Analysis");
+      toast.success("Uploaded — press Analyze Mock to start AI analysis");
       logActivity("upload", data.title);
       setFiles([]); setTitle(""); setExamName(""); setProgress(0); setStage(0);
       await load();
