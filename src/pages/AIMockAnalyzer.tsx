@@ -493,6 +493,45 @@ function hasVerifiedAttemptData(r: Report) {
   return r.analysis_status === "verified" && !!r.verified_attempt_snapshot;
 }
 
+function str(v: any, fallback: string) {
+  if (v == null || v === "") return fallback;
+  const n = Number(v);
+  return Number.isFinite(n) ? String(n) : fallback;
+}
+
+/**
+ * Best-effort regex extraction of the printed result card from OCR text.
+ * Matches common SSC / Testbook / Adda247 / Practicemock layouts.
+ * Returns whatever it could find — the student can still edit.
+ */
+function extractPrintedResultCard(text: string | null | undefined) {
+  const out: any = {};
+  if (!text) return out;
+  const t = text.replace(/\s+/g, " ");
+  const num = (re: RegExp) => {
+    const m = t.match(re);
+    if (!m) return null;
+    const n = Number(m[1].replace(/,/g, ""));
+    return Number.isFinite(n) ? n : null;
+  };
+  out.score = num(/(?:total\s*)?(?:marks?\s*(?:obtained|scored)?|score|your\s*score)\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)/i);
+  out.totalMarks = num(/(?:out\s*of|max(?:imum)?\s*marks?|total\s*marks?)\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)/i)
+    ?? (() => { const m = t.match(/([0-9]+(?:\.[0-9]+)?)\s*\/\s*([0-9]+(?:\.[0-9]+)?)/); return m ? Number(m[2]) : null; })();
+  out.correct = num(/(?:correct|right)\s*(?:answers?|questions?)?\s*[:\-]?\s*([0-9]+)/i);
+  out.wrong = num(/(?:wrong|incorrect)\s*(?:answers?|questions?)?\s*[:\-]?\s*([0-9]+)/i);
+  out.skipped = num(/(?:skipped|unattempted|not\s*attempted|un[- ]?answered)\s*(?:questions?)?\s*[:\-]?\s*([0-9]+)/i);
+  out.accuracy = num(/accuracy\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)\s*%?/i);
+  out.negativeMarks = num(/(?:negative\s*mark(?:ing|s)?)\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)/i);
+  const tm = t.match(/(?:time\s*(?:taken|spent)?|duration)\s*[:\-]?\s*([0-9]+)\s*(?:hr|hour|h)s?\.?\s*([0-9]+)?\s*(?:min|m)?/i);
+  if (tm) out.timeMinutes = Number(tm[1]) * 60 + Number(tm[2] ?? 0);
+  else {
+    const mm = t.match(/(?:time\s*(?:taken|spent)?|duration)\s*[:\-]?\s*([0-9]+)\s*(?:min|minutes?|m)\b/i);
+    if (mm) out.timeMinutes = Number(mm[1]);
+  }
+  return out;
+}
+
+
 function StatCard({ icon, label, value, sub, tint, small }: { icon: React.ReactNode; label: string; value: any; sub?: string; tint: string; small?: boolean }) {
   return (
     <div className={`relative overflow-hidden rounded-xl border bg-gradient-to-br ${tint} p-3 backdrop-blur transition hover:scale-[1.02]`}>
@@ -610,15 +649,18 @@ function VerifyAttemptDialog({ report, open, onOpenChange, onVerified }: {
   useEffect(() => {
     if (!report || !open) return;
     const s = report.verified_attempt_snapshot ?? {};
+    const ocr = extractPrintedResultCard(report.ocr_text);
+    const t = (report as any).report?.totals ?? {};
+    const pick = (a: any, b: any, c: any, d: any) => a ?? b ?? c ?? d;
     setForm({
-      score: s.score != null ? String(s.score) : report.overall_score != null ? String(report.overall_score) : "",
-      totalMarks: s.total_marks != null ? String(s.total_marks) : s.max_score != null ? String(s.max_score) : "120",
-      correct: s.correct != null ? String(s.correct) : "",
-      wrong: s.wrong != null ? String(s.wrong) : "",
-      skipped: s.skipped != null ? String(s.skipped) : "0",
-      accuracy: s.accuracy != null ? String(s.accuracy) : report.accuracy != null ? String(report.accuracy) : "",
-      timeMinutes: s.time_taken_seconds != null ? String(Math.round(Number(s.time_taken_seconds) / 60)) : "0",
-      negativeMarks: s.negative_marks != null ? String(s.negative_marks) : "0",
+      score: str(pick(s.score, ocr.score, t.score, report.overall_score), ""),
+      totalMarks: str(pick(s.total_marks, s.max_score, ocr.totalMarks, t.max_score ?? t.total_marks), "120"),
+      correct: str(pick(s.correct, ocr.correct, t.correct, null), ""),
+      wrong: str(pick(s.wrong, ocr.wrong, t.wrong, null), ""),
+      skipped: str(pick(s.skipped, ocr.skipped, t.skipped, 0), "0"),
+      accuracy: str(pick(s.accuracy, ocr.accuracy, t.accuracy, report.accuracy), ""),
+      timeMinutes: str(s.time_taken_seconds != null ? Math.round(Number(s.time_taken_seconds) / 60) : pick(ocr.timeMinutes, t.time_minutes, null, 0), "0"),
+      negativeMarks: str(pick(s.negative_marks, ocr.negativeMarks, t.negative_marks, 0), "0"),
     });
   }, [report, open]);
 
