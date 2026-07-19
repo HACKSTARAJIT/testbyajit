@@ -197,8 +197,9 @@ RULES (strict, non-negotiable):
 3. If a printed number is not visible / unreadable, set that field to null. DO NOT compute a substitute. DO NOT infer from questions[].
 4. NEVER derive totals.score as (correct × marks). NEVER derive accuracy as (correct / attempted × 100). Only copy the printed % / score.
 5. Per-question status in questions[] is your OCR guess and MAY disagree with the printed card. When they disagree, the printed card WINS. Do not alter totals to match your own counts.
-6. If the PDF has NO printed result card (raw question paper only), set totals.score = null, totals.max_score = null, accuracy = null, and say so plainly in performance_summary. Do not fabricate.
-7. readiness_score, subject_analysis[].accuracy, chapter_analysis[].accuracy must be consistent with the printed numbers — never contradict the source of truth.
+6. If the PDF has NO printed result card (raw question paper only) OR any of correct / wrong / skipped / score / max_score / accuracy is not clearly printed, set that field to null. The system will then REFUSE to save the report and show the student "Analysis unavailable because verified attempt data is incomplete." — this is the correct, safe behaviour. Do NOT fabricate a number to make the report save.
+7. NO-HALLUCINATION LANGUAGE: never write phrases like "approximately", "around", "probably", "estimated", "roughly", "about X marks" in ANY narrative field. Only cite numbers that are verbatim from the printed result card. If a number isn't printed, describe the gap qualitatively without inventing a value.
+8. readiness_score, subject_analysis[].accuracy, chapter_analysis[].accuracy must be consistent with the printed numbers — never contradict the source of truth.
 
 Return strict JSON only.`,
     }];
@@ -330,6 +331,27 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       }
     } catch (_) { /* ignore */ }
 
+    // Audit trail — every saved report carries the exact source values it was built from,
+    // so downstream modules (Report History, Performance Center, Selection Intelligence,
+    // Mock Revision Hub) can prove they read the same verified numbers.
+    parsed.__audit = {
+      report_id: reportId,
+      user_id: userId,
+      analysis_version: "v2-strict-2026-07",
+      generated_at: new Date().toISOString(),
+      data_verification_status: "verified",
+      verified_totals: {
+        questions: toNum(totals.questions),
+        correct: toNum(totals.correct),
+        wrong: toNum(totals.wrong),
+        skipped: toNum(totals.skipped),
+        score: toNum(totals.score),
+        max_score: toNum(totals.max_score),
+        accuracy: toNum(parsed.accuracy),
+        time_minutes: toNum(totals.time_minutes),
+      },
+    };
+
     await admin.from("ai_mock_reports").update({
       status: "completed",
       report: parsed,
@@ -345,7 +367,7 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       detected_topic: parsed.detected_topic ?? null,
       error: null,
     }).eq("id", reportId);
-    console.log("report done", reportId, "type=", reportType, "score=", totals.score, "accuracy=", parsed.accuracy);
+    console.log("report done (verified)", reportId, "score=", totals.score, "acc=", parsed.accuracy, "correct=", totals.correct);
 
     // ---- Smart Revision sync + Planner/Coach/Goals persistence (non-fatal) ----
     try {
@@ -406,12 +428,32 @@ function getReportValidationError(r: any): string | null {
   if (!r.totals || typeof r.totals !== "object") return "AI report is missing totals";
   const t = r.totals;
   const questions = toNum(t.questions ?? t.total_questions ?? t.total);
-  if (questions === null || questions <= 0) return "AI report has no detected question count";
-  if (toNum(r.accuracy) === null) return "AI report is missing accuracy";
+  if (questions === null || questions <= 0) return "Analysis unavailable because verified attempt data is incomplete. (missing: total questions)";
+
+  // STRICT DATA-INTEGRITY GATE — every core metric MUST be present in the printed result card.
+  // We refuse to save an analysis when the source of truth is incomplete, so the AI cannot
+  // hallucinate score/accuracy/marks. See the "SINGLE SOURCE OF TRUTH" prompt block above.
+  const required: Array<[string, number | null]> = [
+    ["correct answers", toNum(t.correct)],
+    ["wrong answers", toNum(t.wrong)],
+    ["skipped answers", toNum(t.skipped)],
+    ["score", toNum(t.score)],
+    ["max_score", toNum(t.max_score)],
+    ["accuracy", toNum(r.accuracy)],
+  ];
+  const missing = required.filter(([, v]) => v === null).map(([k]) => k);
+  if (missing.length > 0) {
+    return `Analysis unavailable because verified attempt data is incomplete. The uploaded PDF did not clearly show: ${missing.join(", ")}. Please upload a mock PDF that includes the printed result / score card.`;
+  }
+
+  // Cross-check: totals must be internally consistent with total questions
+  const sum = (toNum(t.correct) ?? 0) + (toNum(t.wrong) ?? 0) + (toNum(t.skipped) ?? 0);
+  if (Math.abs(sum - questions) > 1) {
+    return `Analysis unavailable — verified totals are inconsistent (correct+wrong+skipped=${sum}, total=${questions}).`;
+  }
+
   if (toNum(r.readiness_score) === null) return "AI report is missing readiness score";
-  if (!Array.isArray(r.subject_analysis)) return "AI report is missing subject analysis";
-  if (r.subject_analysis.length === 0) return "AI report has empty subject analysis";
-  // At least one narrative field must be non-empty
+  if (!Array.isArray(r.subject_analysis) || r.subject_analysis.length === 0) return "AI report is missing subject analysis";
   const narratives = [r.coach_feedback, r.overall_performance, r.performance_summary];
   if (!narratives.some((x) => typeof x === "string" && x.trim().length > 20 && x.trim() !== "-")) return "AI report has no usable coach feedback";
   const usefulArrays = [

@@ -495,7 +495,7 @@ function ReportCard({ r, onOpen, onAnalyze, onRename, onDuplicate, onDelete, ana
         {((r.error && r.status === "failed") || (r.status === "completed" && !validReport)) && (
           <div className="flex items-start gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>{r.error || "AI Analysis returned empty values. Please reanalyze."}</span>
+            <span>{r.error || "Analysis unavailable because verified attempt data is incomplete."}</span>
           </div>
         )}
         <div className="flex flex-wrap gap-1">
