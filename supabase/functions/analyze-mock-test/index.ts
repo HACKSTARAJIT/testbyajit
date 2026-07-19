@@ -330,6 +330,27 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       }
     } catch (_) { /* ignore */ }
 
+    // Audit trail — every saved report carries the exact source values it was built from,
+    // so downstream modules (Report History, Performance Center, Selection Intelligence,
+    // Mock Revision Hub) can prove they read the same verified numbers.
+    parsed.__audit = {
+      report_id: reportId,
+      user_id: userId,
+      analysis_version: "v2-strict-2026-07",
+      generated_at: new Date().toISOString(),
+      data_verification_status: "verified",
+      verified_totals: {
+        questions: toNum(totals.questions),
+        correct: toNum(totals.correct),
+        wrong: toNum(totals.wrong),
+        skipped: toNum(totals.skipped),
+        score: toNum(totals.score),
+        max_score: toNum(totals.max_score),
+        accuracy: toNum(parsed.accuracy),
+        time_minutes: toNum(totals.time_minutes),
+      },
+    };
+
     await admin.from("ai_mock_reports").update({
       status: "completed",
       report: parsed,
@@ -345,7 +366,7 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       detected_topic: parsed.detected_topic ?? null,
       error: null,
     }).eq("id", reportId);
-    console.log("report done", reportId, "type=", reportType, "score=", totals.score, "accuracy=", parsed.accuracy);
+    console.log("report done (verified)", reportId, "score=", totals.score, "acc=", parsed.accuracy, "correct=", totals.correct);
 
     // ---- Smart Revision sync + Planner/Coach/Goals persistence (non-fatal) ----
     try {
