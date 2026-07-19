@@ -610,15 +610,18 @@ function VerifyAttemptDialog({ report, open, onOpenChange, onVerified }: {
   useEffect(() => {
     if (!report || !open) return;
     const s = report.verified_attempt_snapshot ?? {};
+    const ocr = extractPrintedResultCard(report.ocr_text);
+    const t = (report as any).report?.totals ?? {};
+    const pick = (a: any, b: any, c: any, d: any) => a ?? b ?? c ?? d;
     setForm({
-      score: s.score != null ? String(s.score) : report.overall_score != null ? String(report.overall_score) : "",
-      totalMarks: s.total_marks != null ? String(s.total_marks) : s.max_score != null ? String(s.max_score) : "120",
-      correct: s.correct != null ? String(s.correct) : "",
-      wrong: s.wrong != null ? String(s.wrong) : "",
-      skipped: s.skipped != null ? String(s.skipped) : "0",
-      accuracy: s.accuracy != null ? String(s.accuracy) : report.accuracy != null ? String(report.accuracy) : "",
-      timeMinutes: s.time_taken_seconds != null ? String(Math.round(Number(s.time_taken_seconds) / 60)) : "0",
-      negativeMarks: s.negative_marks != null ? String(s.negative_marks) : "0",
+      score: str(pick(s.score, ocr.score, t.score, report.overall_score), ""),
+      totalMarks: str(pick(s.total_marks, s.max_score, ocr.totalMarks, t.max_score ?? t.total_marks), "120"),
+      correct: str(pick(s.correct, ocr.correct, t.correct, null), ""),
+      wrong: str(pick(s.wrong, ocr.wrong, t.wrong, null), ""),
+      skipped: str(pick(s.skipped, ocr.skipped, t.skipped, 0), "0"),
+      accuracy: str(pick(s.accuracy, ocr.accuracy, t.accuracy, report.accuracy), ""),
+      timeMinutes: str(s.time_taken_seconds != null ? Math.round(Number(s.time_taken_seconds) / 60) : pick(ocr.timeMinutes, t.time_minutes, null, 0), "0"),
+      negativeMarks: str(pick(s.negative_marks, ocr.negativeMarks, t.negative_marks, 0), "0"),
     });
   }, [report, open]);
 
