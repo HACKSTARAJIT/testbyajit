@@ -1,7 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+import { unifiedFetch } from "../_shared/unifiedAI.ts";
 const MODEL = "google/gemini-3-flash-preview";
 const BATCH_SIZE = 15;
 
@@ -148,10 +148,7 @@ Ground topic/concept in the provided subject and chapter context.`;
       };
 
       try {
-        const resp = await fetch(LOVABLE_AI_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({
+        const resp = await unifiedFetch({ body: {
             model: MODEL,
             messages: [
               { role: "system", content: sys },
@@ -159,8 +156,7 @@ Ground topic/concept in the provided subject and chapter context.`;
             ],
             tools: [{ type: "function", function: { name: "emit", description: "Return per-question analysis", parameters: schema } }],
             tool_choice: { type: "function", function: { name: "emit" } },
-          }),
-        });
+          }, feature: "analyze-test-questions" });
         if (resp.status === 429) { failures.push("rate_limited"); break; }
         if (resp.status === 402) { failures.push("credits_exhausted"); break; }
         if (!resp.ok) { failures.push(`http_${resp.status}`); continue; }

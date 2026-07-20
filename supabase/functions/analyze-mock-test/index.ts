@@ -1,7 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+import { unifiedFetch } from "../_shared/unifiedAI.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -234,16 +234,12 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
     let lastRaw = "";
     for (let attempt = 1; attempt <= 3; attempt++) {
       console.log("calling AI", { reportId, attempt, parts: contentParts.length });
-      const aiRes = await fetch(LOVABLE_AI_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${aiKey}` },
-        body: JSON.stringify({
+      const aiRes = await unifiedFetch({ body: {
           model: "google/gemini-2.5-pro",
           messages: [{ role: "user", content: contentParts }],
           response_format: { type: "json_object" },
           max_tokens: 16000,
-        }),
-      });
+        }, feature: "analyze-mock-test" });
 
       if (!aiRes.ok) {
         const errText = await aiRes.text();

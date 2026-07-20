@@ -3,7 +3,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+import { unifiedFetch } from "../_shared/unifiedAI.ts";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -273,15 +273,11 @@ Return ONLY the letter text, no JSON, no headings.
 ACADEMIC MEMORY:
 ${JSON.stringify(digest)}`;
 
-      const res = await fetch(LOVABLE_AI_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
+      const res = await unifiedFetch({ body: {
           model: "google/gemini-2.5-flash",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.4,
-        }),
-      });
+        }, feature: "academic-intelligence" });
       if (res.ok) {
         const j = await res.json();
         mentor = j?.choices?.[0]?.message?.content?.trim() ?? "";

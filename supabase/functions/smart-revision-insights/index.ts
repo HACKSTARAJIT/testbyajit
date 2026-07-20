@@ -1,7 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+import { unifiedFetch } from "../_shared/unifiedAI.ts";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -110,20 +110,13 @@ Rules:
 DATA:
 ${JSON.stringify(compact)}`;
 
-      const res = await fetch(LOVABLE_AI_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
+      const res = await unifiedFetch({ body: {
           model: "google/gemini-2.5-flash",
           messages: [
             { role: "system", content: "Return only strict JSON. No markdown." },
             { role: "user", content: prompt },
           ],
-        }),
-      });
+        }, feature: "smart-revision-insights" });
       if (res.ok) {
         const raw = await res.json();
         const txt = raw?.choices?.[0]?.message?.content ?? "";

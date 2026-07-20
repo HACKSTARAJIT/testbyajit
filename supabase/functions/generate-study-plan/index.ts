@@ -1,7 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+import { unifiedFetch } from "../_shared/unifiedAI.ts";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -113,16 +113,12 @@ RULES:
 - Include Revision on day 6–7 covering the week's chapters.
 - If weak_chapters is empty, generate a maintenance plan from latest_mock priorities. If both are empty, return summary "Enough data नहीं है — पहले एक Practice Test या Mock upload करें।" and days=[].`;
 
-    const aiRes = await fetch(LOVABLE_AI_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${aiKey}` },
-      body: JSON.stringify({
+    const aiRes = await unifiedFetch({ body: {
         model: "google/gemini-2.5-flash",
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         max_tokens: 4000,
-      }),
-    });
+      }, feature: "generate-study-plan" });
     if (!aiRes.ok) {
       const t = await aiRes.text();
       return json({ error: `AI ${aiRes.status}: ${t.slice(0, 300)}` }, aiRes.status === 402 || aiRes.status === 429 ? aiRes.status : 500);
