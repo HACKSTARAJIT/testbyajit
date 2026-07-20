@@ -335,7 +335,6 @@ async function getLeaderboard(admin: any) {
 
 async function getInsights(admin: any) {
   const [overview, list] = await Promise.all([getOverview(admin), getStudentsList(admin)]);
-  const key = Deno.env.get("LOVABLE_API_KEY");
   const s = (list as any).students as any[];
   const avgAcc = s.length ? Math.round(s.reduce((x, y) => x + y.accuracy, 0) / s.length) : 0;
   const stats = {
@@ -345,30 +344,29 @@ async function getInsights(admin: any) {
     revision_backlog: s.reduce((x, y) => x + y.revision_pending, 0),
     active_students: s.filter(x => x.questions_solved > 0).length,
   };
-  if (!key) return { insights: [
-    `Total students: ${stats.total_students}. Active this week: ${stats.active_week}.`,
-    `Average accuracy across students: ${stats.avg_accuracy}%.`,
-    `Pending smart revision items across all students: ${stats.revision_backlog}.`,
-  ], stats };
 
   try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
+    const res = await unifiedFetch({
+      body: {
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "You are an academic analytics assistant. Given aggregate student stats, produce 5-6 short, specific, data-backed insight one-liners for the admin. Return JSON array of strings only." },
           { role: "user", content: `Stats: ${JSON.stringify(stats)}` },
         ],
-      }),
+      },
+      feature: "admin-intelligence",
     });
+    if (!res.ok) throw new Error("ai unavailable");
     const data = await res.json();
     const txt = data.choices?.[0]?.message?.content ?? "[]";
     const match = txt.match(/\[[\s\S]*\]/);
     const arr = match ? JSON.parse(match[0]) : [];
     return { insights: arr, stats };
-  } catch (e) {
-    return { insights: [`Stats: ${JSON.stringify(stats)}`], stats };
+  } catch (_e) {
+    return { insights: [
+      `Total students: ${stats.total_students}. Active this week: ${stats.active_week}.`,
+      `Average accuracy across students: ${stats.avg_accuracy}%.`,
+      `Pending smart revision items across all students: ${stats.revision_backlog}.`,
+    ], stats };
   }
 }
