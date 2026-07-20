@@ -234,6 +234,45 @@ export type Database = {
           },
         ]
       }
+      ai_provider_logs: {
+        Row: {
+          created_at: string
+          error_code: string | null
+          fallback_used: boolean
+          feature: string | null
+          id: string
+          model: string | null
+          provider: string
+          response_time_ms: number
+          retry_count: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_code?: string | null
+          fallback_used?: boolean
+          feature?: string | null
+          id?: string
+          model?: string | null
+          provider: string
+          response_time_ms?: number
+          retry_count?: number
+          status: string
+        }
+        Update: {
+          created_at?: string
+          error_code?: string | null
+          fallback_used?: boolean
+          feature?: string | null
+          id?: string
+          model?: string | null
+          provider?: string
+          response_time_ms?: number
+          retry_count?: number
+          status?: string
+        }
+        Relationships: []
+      }
       ai_report_audit_logs: {
         Row: {
           analysis_version: string
