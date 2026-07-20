@@ -299,3 +299,44 @@ async function _run(body: ChatCompletionRequest, opts: ChatOptions): Promise<Cha
   (friendly as any).internal = lastError;
   throw friendly;
 }
+
+// ─── Drop-in fetch replacement ────────────────────────────────────────────────
+// Returns a Response-like object so existing code that reads `.ok`, `.status`,
+// `.json()`, `.text()` continues to work without any parsing changes.
+// Usage: `const res = await unifiedFetch({ body: {...}, feature: "..." });`
+export type UnifiedFetchInit = {
+  body: ChatCompletionRequest;
+  feature?: string;
+  dedupKey?: string;
+  timeoutMs?: number;
+};
+
+export async function unifiedFetch(init: UnifiedFetchInit): Promise<{
+  ok: boolean;
+  status: number;
+  json: () => Promise<any>;
+  text: () => Promise<string>;
+}> {
+  try {
+    const data = await chatCompletion(init.body, {
+      feature: init.feature,
+      dedupKey: init.dedupKey,
+      timeoutMs: init.timeoutMs,
+    });
+    return {
+      ok: true,
+      status: 200,
+      json: async () => data,
+      text: async () => JSON.stringify(data),
+    };
+  } catch (e) {
+    const err = e as Error & { code?: string; internal?: string };
+    const body = JSON.stringify({ error: err.message, code: err.code ?? null });
+    return {
+      ok: false,
+      status: 503,
+      json: async () => ({ error: err.message }),
+      text: async () => body,
+    };
+  }
+}
