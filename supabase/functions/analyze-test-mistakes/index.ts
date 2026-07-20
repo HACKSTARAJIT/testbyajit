@@ -1,7 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+import { unifiedFetch } from "../_shared/unifiedAI.ts";
 const MODEL = "google/gemini-3-flash-preview";
 
 const MISTAKE_CATEGORIES = [
@@ -275,10 +275,7 @@ Coach summary must be specific to this student's data — reference actual chapt
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) return json({ error: "LOVABLE_API_KEY missing" }, 500);
 
-    const aiResp = await fetch(LOVABLE_AI_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
+    const aiResp = await unifiedFetch({ body: {
         model: MODEL,
         messages: [
           { role: "system", content: sys },
@@ -289,8 +286,7 @@ Coach summary must be specific to this student's data — reference actual chapt
           function: { name: "emit_analysis", description: "Return the mistake intelligence report", parameters: schema },
         }],
         tool_choice: { type: "function", function: { name: "emit_analysis" } },
-      }),
-    });
+      }, feature: "analyze-test-mistakes" });
 
     if (aiResp.status === 429) return json({ error: "Rate limited. Try again shortly." }, 429);
     if (aiResp.status === 402) return json({ error: "AI credits exhausted. Add credits to continue." }, 402);

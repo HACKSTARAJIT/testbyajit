@@ -1,7 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+import { unifiedFetch } from "../_shared/unifiedAI.ts";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -163,10 +163,7 @@ Deno.serve(async (req) => {
     const aiKey = Deno.env.get("LOVABLE_API_KEY");
     if (aiKey && reps.length + atts.length > 0) {
       try {
-        const aiRes = await fetch(LOVABLE_AI_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${aiKey}` },
-          body: JSON.stringify({
+        const aiRes = await unifiedFetch({ body: {
             model: "google/gemini-2.5-flash",
             response_format: { type: "json_object" },
             messages: [
@@ -180,8 +177,7 @@ Deno.serve(async (req) => {
 Language: natural mix of simple Hindi (Devanagari) + English technical terms (Accuracy, Score, Revision, Chapter, Topic, Practice, Priority, Mock Test, Readiness). Keys stay English. Never invent numbers/chapters/topics that are not in DATA. If DATA is too thin, say so honestly in insights.` },
               { role: "user", content: `DATA:\n${JSON.stringify(aiContext)}` },
             ],
-          }),
-        });
+          }, feature: "preparation-360" });
         if (aiRes.ok) {
           const j = await aiRes.json();
           const raw = j.choices?.[0]?.message?.content ?? "{}";

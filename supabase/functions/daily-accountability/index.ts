@@ -1,7 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+import { unifiedFetch } from "../_shared/unifiedAI.ts";
 const MODEL = "google/gemini-2.5-flash";
 
 function json(body: unknown, status = 200) {
@@ -41,18 +41,14 @@ function seriousnessLevel(pct: number, activeDays: number, revisionDays: number,
 async function callAI(system: string, prompt: string): Promise<string> {
   const key = Deno.env.get("LOVABLE_API_KEY");
   if (!key) return "";
-  const res = await fetch(LOVABLE_AI_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
+  const res = await unifiedFetch({ body: {
       model: MODEL,
       messages: [
         { role: "system", content: system },
         { role: "user", content: prompt },
       ],
       temperature: 0.6,
-    }),
-  });
+    }, feature: "daily-accountability" });
   if (!res.ok) return "";
   const data = await res.json();
   return data?.choices?.[0]?.message?.content ?? "";
