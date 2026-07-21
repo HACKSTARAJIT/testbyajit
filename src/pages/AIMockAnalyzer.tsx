@@ -21,6 +21,7 @@ type Report = {
   id: string; title: string; exam_name: string | null; status: string;
   created_at: string; file_paths: string[]; report: any; ocr_text: string | null;
   accuracy: number | null; readiness_score: number | null; overall_score: number | null; error: string | null;
+  updated_at?: string | null;
 };
 
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,image/*,application/pdf";
@@ -187,6 +188,10 @@ export default function AIMockAnalyzer() {
             try { backendMsg = JSON.parse(text).error ?? text; } catch { backendMsg = text; }
           }
         } catch {}
+        await supabase
+          .from("ai_mock_reports")
+          .update({ status: "failed", error: backendMsg || "Analysis failed to start" })
+          .eq("id", id);
         throw new Error(backendMsg || "Analysis failed to start");
       }
       toast.info("Analyzing in background — this can take a few minutes.");
@@ -206,7 +211,7 @@ export default function AIMockAnalyzer() {
       } else if (fresh?.status === "failed") {
         throw new Error(fresh.error || "Analysis failed");
       } else {
-        toast.message("Still processing — check back shortly.");
+        toast.message("Still processing — check back shortly. If it takes too long, the card will show Retry automatically.");
       }
     } catch (e: any) {
       toast.error(friendly(e.message) || "AI analysis failed. Please retry.");
@@ -455,6 +460,12 @@ function hasValidReport(report: any) {
   return questions > 0 && report.accuracy != null && Array.isArray(report.subject_analysis) && report.subject_analysis.length > 0;
 }
 
+function isStaleAnalyzing(r: Report) {
+  if (r.status !== "analyzing") return false;
+  const at = new Date(r.updated_at || r.created_at).getTime();
+  return Number.isFinite(at) && Date.now() - at > 30 * 60 * 1000;
+}
+
 function StatCard({ icon, label, value, sub, tint, small }: { icon: React.ReactNode; label: string; value: any; sub?: string; tint: string; small?: boolean }) {
   return (
     <div className={`relative overflow-hidden rounded-xl border bg-gradient-to-br ${tint} p-3 backdrop-blur transition hover:scale-[1.02]`}>
@@ -472,7 +483,9 @@ function ReportCard({ r, onOpen, onAnalyze, onRename, onDuplicate, onDelete, ana
   r: Report; onOpen: () => void; onAnalyze: () => void; onRename: () => void; onDuplicate: () => void; onDelete: () => void; analyzing: boolean;
 }) {
   const pages = r.file_paths?.length ?? 0;
-  const validReport = r.status === "completed" && hasValidReport(r.report);
+  const reportHasData = hasValidReport(r.report);
+  const staleAnalyzing = isStaleAnalyzing(r);
+  const validReport = (r.status === "completed" || staleAnalyzing) && reportHasData;
   return (
     <Card className="group relative overflow-hidden bg-card/60 backdrop-blur transition hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5">
       <CardContent className="space-y-3 p-4">
@@ -481,7 +494,7 @@ function ReportCard({ r, onOpen, onAnalyze, onRename, onDuplicate, onDelete, ana
             <p className="truncate font-semibold">{r.title}</p>
             <p className="text-[11px] text-muted-foreground">{new Date(r.created_at).toLocaleString()}</p>
           </div>
-          <StatusBadge status={r.status} />
+          <StatusBadge status={staleAnalyzing && !reportHasData ? "stuck" : r.status} />
         </div>
         <div className="flex flex-wrap items-center gap-1">
           {r.exam_name && <Badge variant="outline" className="text-[10px]">{r.exam_name}</Badge>}
@@ -492,20 +505,20 @@ function ReportCard({ r, onOpen, onAnalyze, onRename, onDuplicate, onDelete, ana
           <Mini label="Score" value={r.overall_score ?? "—"} />
           <Mini label="Readiness" value={r.readiness_score ? `${r.readiness_score}%` : "—"} />
         </div>
-        {((r.error && r.status === "failed") || (r.status === "completed" && !validReport)) && (
+        {((r.error && r.status === "failed") || (r.status === "completed" && !validReport) || (staleAnalyzing && !reportHasData)) && (
           <div className="flex items-start gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>{r.error || "AI Analysis returned empty values. Please reanalyze."}</span>
+            <span>{r.error || (staleAnalyzing ? "Analysis got stuck. Please retry." : "AI Analysis returned empty values. Please reanalyze.")}</span>
           </div>
         )}
         <div className="flex flex-wrap gap-1">
           {validReport ? (
             <Button size="sm" variant="secondary" onClick={onOpen} className="flex-1">Open</Button>
-          ) : r.status === "analyzing" ? (
+          ) : r.status === "analyzing" && !staleAnalyzing ? (
             <Button size="sm" disabled className="flex-1"><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Analyzing</Button>
           ) : (
             <Button size="sm" onClick={onAnalyze} disabled={analyzing} className="flex-1">
-              {analyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Sparkles className="mr-1 h-3.5 w-3.5" />Analyze</>}
+              {analyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Sparkles className="mr-1 h-3.5 w-3.5" />{staleAnalyzing ? "Retry" : "Analyze"}</>}
             </Button>
           )}
           {r.status === "completed" && (
@@ -538,6 +551,7 @@ function StatusBadge({ status }: { status: string }) {
     analyzing: "bg-blue-500/15 text-blue-500 border-blue-500/30",
     completed: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
     failed: "bg-red-500/15 text-red-500 border-red-500/30",
+    stuck: "bg-amber-500/15 text-amber-500 border-amber-500/30",
   };
   return <Badge className={`text-[10px] ${map[status] ?? ""}`} variant="outline">{status}</Badge>;
 }
