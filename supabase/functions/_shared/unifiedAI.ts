@@ -1,6 +1,7 @@
-// Unified AI Service — routes every AJIT 360 AI call through OpenRouter (primary)
-// with automatic silent failover to NVIDIA NIM (backup). New providers can be
-// registered by adding to the PROVIDERS array below.
+// Unified AI Service — routes every AJIT 360 AI call through Google Gemini (primary)
+// with automatic silent failover to Groq → OpenRouter → NVIDIA NIM. New providers
+// can be registered by adding to the PROVIDERS array below.
+
 //
 // Never called directly from the frontend. Only Supabase Edge Functions import this.
 // API keys are read from environment secrets and never leave this module.
@@ -48,9 +49,42 @@ type ProviderConfig = {
 };
 
 // ─── Provider registry ────────────────────────────────────────────────────────
-// Add new providers (Gemini, Groq, Claude, OpenAI, DeepSeek …) by pushing here.
+// Add new providers (Claude, OpenAI, DeepSeek …) by pushing here.
 // Ordering = priority (index 0 is primary).
 const PROVIDERS: ProviderConfig[] = [
+  {
+    name: "gemini",
+    // Google Gemini exposes an OpenAI-compatible chat/completions endpoint.
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    envKey: "GEMINI_API_KEY",
+    mapModel: (m) => {
+      const lower = (m || "").toLowerCase();
+      if (!lower) return "gemini-2.5-flash";
+      // Strip vendor prefix ("google/gemini-2.5-flash" → "gemini-2.5-flash").
+      const bare = lower.includes("/") ? lower.split("/").pop()! : lower;
+      return bare;
+    },
+    transformBody: (body) => {
+      // Gemini's OpenAI shim doesn't accept response_format json_object reliably.
+      const { response_format, ...rest } = body;
+      return rest;
+    },
+  },
+  {
+    name: "groq",
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
+    envKey: "GROQ_API_KEY",
+    mapModel: (m) => {
+      const lower = (m || "").toLowerCase();
+      if (lower.includes("vision") || lower.includes("image")) {
+        return "meta-llama/llama-4-scout-17b-16e-instruct";
+      }
+      if (lower.includes("flash-lite") || lower.includes("nano") || lower.includes("mini") || lower.includes("8b")) {
+        return "llama-3.1-8b-instant";
+      }
+      return "llama-3.3-70b-versatile";
+    },
+  },
   {
     name: "openrouter",
     endpoint: "https://openrouter.ai/api/v1/chat/completions",
@@ -84,6 +118,7 @@ const PROVIDERS: ProviderConfig[] = [
     },
   },
 ];
+
 
 // ─── Health tracking ──────────────────────────────────────────────────────────
 // In-memory per-worker; cheap and good enough. If a provider fails, quarantine
