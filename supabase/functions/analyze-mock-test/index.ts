@@ -27,6 +27,10 @@ Deno.serve(async (req) => {
       .from("ai_mock_reports").select("*").eq("id", reportId).eq("user_id", userId).maybeSingle();
     if (rErr || !report) return json({ error: "Report not found" }, 404);
 
+    if (report.status === "analyzing" && !isStaleReport(report.updated_at ?? report.created_at)) {
+      return json({ ok: true, status: "analyzing", deduped: true }, 202);
+    }
+
     // Mark analyzing, then process in background so we return immediately
     // and avoid the 150s edge-function idle timeout for slow AI calls.
     await supabase.from("ai_mock_reports").update({ status: "analyzing", error: null }).eq("id", reportId);
@@ -42,6 +46,11 @@ Deno.serve(async (req) => {
     return json({ error: msg }, 500);
   }
 });
+
+function isStaleReport(value?: string | null) {
+  const t = value ? Date.parse(value) : NaN;
+  return Number.isFinite(t) ? Date.now() - t > 30 * 60 * 1000 : true;
+}
 
 async function processReport(admin: any, reportId: string, userId: string, report: any) {
   try {
