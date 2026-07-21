@@ -1,6 +1,7 @@
-// Unified AI Service — routes every AJIT 360 AI call through OpenRouter (primary)
-// with automatic silent failover to NVIDIA NIM (backup). New providers can be
-// registered by adding to the PROVIDERS array below.
+// Unified AI Service — routes every AJIT 360 AI call through Google Gemini (primary)
+// with automatic silent failover to Groq → OpenRouter → NVIDIA NIM. New providers
+// can be registered by adding to the PROVIDERS array below.
+
 //
 // Never called directly from the frontend. Only Supabase Edge Functions import this.
 // API keys are read from environment secrets and never leave this module.
