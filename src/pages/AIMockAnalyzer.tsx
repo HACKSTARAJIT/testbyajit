@@ -176,8 +176,7 @@ export default function AIMockAnalyzer() {
   const analyze = async (id: string) => {
     setAnalyzingId(id);
     try {
-      await supabase.from("ai_mock_reports").update({ status: "analyzing", error: null }).eq("id", id);
-      await load();
+      setReports((list) => list.map((r) => r.id === id ? { ...r, status: "analyzing", error: null, updated_at: new Date().toISOString() } : r));
       const { error } = await supabase.functions.invoke("analyze-mock-test", { body: { reportId: id } });
       if (error) {
         let backendMsg = error.message;
