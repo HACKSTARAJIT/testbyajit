@@ -188,7 +188,7 @@ const PROVIDERS: ProviderConfig[] = [
     name: "groq",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     envKey: "GROQ_API_KEY",
-    mapModel: (m) => {
+    mapModel: (m, body) => {
       const lower = (m || "").toLowerCase();
       if (hasMedia(body ?? {} as ChatCompletionRequest) || lower.includes("vision") || lower.includes("image")) {
         return "meta-llama/llama-4-scout-17b-16e-instruct";
@@ -215,7 +215,7 @@ const PROVIDERS: ProviderConfig[] = [
     endpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
     envKey: "NVIDIA_API_KEY",
     // Gemini isn't on NIM — map to a strong OSS equivalent.
-    mapModel: (m) => {
+    mapModel: (m, body) => {
       const lower = (m || "").toLowerCase();
       if (hasMedia(body ?? {} as ChatCompletionRequest) || lower.includes("vision") || lower.includes("pro") || lower.includes("image")) {
         return "meta/llama-3.2-90b-vision-instruct";
@@ -306,7 +306,7 @@ async function callProvider(
       ...transformed,
       ...(p.auth === "query_key" ? {} : { model }),
     };
-    const res = await fetch(p.endpoint, {
+    const res = await fetch(endpoint, {
       method: "POST",
       signal: controller.signal,
       headers: {
@@ -476,6 +476,7 @@ export type UnifiedFetchInit = {
   feature?: string;
   dedupKey?: string;
   timeoutMs?: number;
+  overallTimeoutMs?: number;
 };
 
 export async function unifiedFetch(init: UnifiedFetchInit): Promise<{
@@ -489,6 +490,7 @@ export async function unifiedFetch(init: UnifiedFetchInit): Promise<{
       feature: init.feature,
       dedupKey: init.dedupKey,
       timeoutMs: init.timeoutMs,
+      overallTimeoutMs: init.overallTimeoutMs,
     });
     return {
       ok: true,
