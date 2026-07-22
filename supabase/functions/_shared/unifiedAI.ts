@@ -188,9 +188,9 @@ const PROVIDERS: ProviderConfig[] = [
     name: "groq",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     envKey: "GROQ_API_KEY",
-    mapModel: (m, body) => {
+    mapModel: (m, reqBody) => {
       const lower = (m || "").toLowerCase();
-      if (hasMedia(body ?? {} as ChatCompletionRequest) || lower.includes("vision") || lower.includes("image")) {
+      if ((reqBody ? hasMedia(reqBody) : false) || lower.includes("vision") || lower.includes("image")) {
         return "meta-llama/llama-4-scout-17b-16e-instruct";
       }
       if (lower.includes("flash-lite") || lower.includes("nano") || lower.includes("mini") || lower.includes("8b")) {
@@ -215,9 +215,9 @@ const PROVIDERS: ProviderConfig[] = [
     endpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
     envKey: "NVIDIA_API_KEY",
     // Gemini isn't on NIM — map to a strong OSS equivalent.
-    mapModel: (m, body) => {
+    mapModel: (m, reqBody) => {
       const lower = (m || "").toLowerCase();
-      if (hasMedia(body ?? {} as ChatCompletionRequest) || lower.includes("vision") || lower.includes("pro") || lower.includes("image")) {
+      if ((reqBody ? hasMedia(reqBody) : false) || lower.includes("vision") || lower.includes("pro") || lower.includes("image")) {
         return "meta/llama-3.2-90b-vision-instruct";
       }
       if (lower.includes("flash-lite") || lower.includes("nano") || lower.includes("mini")) {

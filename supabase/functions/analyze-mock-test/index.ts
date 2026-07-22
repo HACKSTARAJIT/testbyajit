@@ -241,7 +241,7 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
     for (let attempt = 1; attempt <= 3; attempt++) {
       console.log("calling AI", { reportId, attempt, parts: contentParts.length });
       const aiRes = await unifiedFetch({ body: {
-          model: "google/gemini-2.5-pro",
+          model: "google/gemini-2.5-flash",
           messages: [{ role: "user", content: contentParts }],
           response_format: { type: "json_object" },
           max_tokens: 16000,
