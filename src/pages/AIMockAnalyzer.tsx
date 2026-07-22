@@ -64,7 +64,15 @@ export default function AIMockAnalyzer() {
     if (!user) return;
     const { data } = await supabase.from("ai_mock_reports")
       .select("*").eq("user_id", user.id).order("created_at", { ascending: false });
-    setReports((data as any) ?? []);
+    const list = ((data as any) ?? []) as Report[];
+    const stale = list.filter((r) => isStaleAnalyzing(r) && !hasValidReport(r.report));
+    if (stale.length > 0) {
+      const error = "Analysis timed out before completion. Please retry; if it repeats, upload clearer screenshots or split the PDF into smaller parts.";
+      await supabase.from("ai_mock_reports").update({ status: "failed", error }).in("id", stale.map((r) => r.id));
+      setReports(list.map((r) => stale.some((s) => s.id === r.id) ? { ...r, status: "failed", error } : r));
+    } else {
+      setReports(list);
+    }
     setLoading(false);
   };
   useEffect(() => { load(); }, [user]);
@@ -446,6 +454,7 @@ export default function AIMockAnalyzer() {
 
 function friendly(msg?: string) {
   if (!msg) return msg;
+  if (/temporarily unavailable|safe processing window|AbortError|aborted/i.test(msg)) return "AI service timed out. Please retry once.";
   if (/ocr/i.test(msg)) return "OCR failed. Please retry.";
   if (/timeout|timed out/i.test(msg)) return "Request timed out. Please retry.";
   if (/network|fetch/i.test(msg)) return "Network error. Check your connection.";

@@ -235,27 +235,23 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
       });
     }
 
-    const aiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!aiKey) throw new Error("LOVABLE_API_KEY missing");
-
     let parsed: any = null;
     let lastErr = "";
     let lastRaw = "";
     for (let attempt = 1; attempt <= 3; attempt++) {
       console.log("calling AI", { reportId, attempt, parts: contentParts.length });
       const aiRes = await unifiedFetch({ body: {
-          model: "google/gemini-2.5-pro",
+          model: "google/gemini-2.5-flash",
           messages: [{ role: "user", content: contentParts }],
           response_format: { type: "json_object" },
           max_tokens: 16000,
-        }, feature: "analyze-mock-test" });
+        }, feature: "analyze-mock-test", dedupKey: `analyze-mock-test:${reportId}`, timeoutMs: 60_000, overallTimeoutMs: 135_000 });
 
       if (!aiRes.ok) {
         const errText = await aiRes.text();
         lastErr = `AI ${aiRes.status}: ${errText.slice(0, 400)}`;
         console.error("AI request failed", reportId, attempt, lastErr);
-        if (aiRes.status === 429 || aiRes.status === 402) throw new Error(lastErr);
-        continue;
+        throw new Error(lastErr);
       }
       const aiData = await aiRes.json();
       const finish = aiData.choices?.[0]?.finish_reason;
@@ -329,8 +325,18 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
   } catch (e) {
     const msg = e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e);
     console.error("processReport failed", reportId, msg);
-    await admin.from("ai_mock_reports").update({ status: "failed", error: msg.slice(0, 1000) }).eq("id", reportId);
+    await admin.from("ai_mock_reports").update({ status: "failed", error: friendlyAnalysisError(msg) }).eq("id", reportId);
   }
+}
+
+function friendlyAnalysisError(msg: string) {
+  if (/AI service is temporarily unavailable|safe processing window|AbortError|aborted|timeout|timed out/i.test(msg)) {
+    return "AI analysis timed out while reading this mock. Please retry once; if it repeats, upload clearer screenshots or split the PDF into smaller parts.";
+  }
+  if (/JSON parse failed|invalid report|missing totals|empty subject analysis|no detected question count/i.test(msg)) {
+    return msg.split("\n")[0].slice(0, 900);
+  }
+  return "AI analysis failed before completion. Please retry; if it repeats, upload a clearer PDF/image.";
 }
 
 function extractJSON(raw: string): any {

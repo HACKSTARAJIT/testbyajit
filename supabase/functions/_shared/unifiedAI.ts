@@ -39,14 +39,131 @@ export type ChatCompletionResponse = {
 
 type ProviderConfig = {
   name: string;
-  endpoint: string;
+  endpoint: string | ((model: string, apiKey: string) => string);
   envKey: string;                       // env var name for its API key
+  auth?: "bearer" | "query_key";
   extraHeaders?: (apiKey: string) => Record<string, string>;
   // Translate a canonical model id to whatever this provider accepts.
-  mapModel: (canonical: string) => string;
+  mapModel: (canonical: string, body?: ChatCompletionRequest) => string;
   // Some providers reject unknown fields — strip them here.
   transformBody?: (body: ChatCompletionRequest) => Record<string, any>;
+  normalizeResponse?: (data: any, requestedModel: string) => ChatCompletionResponse;
+  supports?: (body: ChatCompletionRequest) => boolean;
 };
+
+function contentToPlainText(content: any): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content.map((part) => {
+    if (typeof part === "string") return part;
+    if (part?.type === "text") return part.text ?? "";
+    return "";
+  }).join("\n");
+}
+
+function dataUriToInlineData(uri: string): { inlineData: { mimeType: string; data: string } } | null {
+  const match = uri.match(/^data:([^;,]+);base64,(.*)$/s);
+  if (!match) return null;
+  return { inlineData: { mimeType: match[1], data: match[2] } };
+}
+
+function openAiContentToGeminiParts(content: any): any[] {
+  if (typeof content === "string") return [{ text: content }];
+  if (!Array.isArray(content)) return [{ text: String(content ?? "") }];
+  const parts: any[] = [];
+  for (const part of content) {
+    if (typeof part === "string") { parts.push({ text: part }); continue; }
+    if (part?.type === "text") { parts.push({ text: part.text ?? "" }); continue; }
+    if (part?.type === "image_url") {
+      const url = typeof part.image_url === "string" ? part.image_url : part.image_url?.url;
+      const inline = typeof url === "string" ? dataUriToInlineData(url) : null;
+      if (inline) parts.push(inline);
+      else if (url) parts.push({ text: `[Image URL: ${url}]` });
+      continue;
+    }
+    if (part?.type === "file") {
+      const fileData = part.file?.file_data ?? part.file?.data ?? part.file_data;
+      const inline = typeof fileData === "string" ? dataUriToInlineData(fileData) : null;
+      if (inline) parts.push(inline);
+      else parts.push({ text: `[Attached file: ${part.file?.filename ?? "document"}]` });
+    }
+  }
+  return parts.length ? parts : [{ text: "" }];
+}
+
+function hasPdfFile(body: ChatCompletionRequest): boolean {
+  return body.messages.some((m) => Array.isArray(m.content) && m.content.some((part: any) =>
+    part?.type === "file" && typeof part?.file?.file_data === "string" && part.file.file_data.startsWith("data:application/pdf;base64,"),
+  ));
+}
+
+function hasMedia(body: ChatCompletionRequest): boolean {
+  return body.messages.some((m) => Array.isArray(m.content) && m.content.some((part: any) =>
+    part?.type === "image_url" || part?.type === "file",
+  ));
+}
+
+function toGeminiNativeBody(body: ChatCompletionRequest): Record<string, any> {
+  const systemParts: any[] = [];
+  const contents: any[] = [];
+  for (const message of body.messages) {
+    if (message.role === "system") {
+      const text = contentToPlainText(message.content);
+      if (text.trim()) systemParts.push({ text });
+      continue;
+    }
+    contents.push({
+      role: message.role === "assistant" ? "model" : "user",
+      parts: openAiContentToGeminiParts(message.content),
+    });
+  }
+
+  const generationConfig: Record<string, any> = {};
+  if (typeof body.temperature === "number") generationConfig.temperature = body.temperature;
+  if (typeof body.max_tokens === "number") generationConfig.maxOutputTokens = body.max_tokens;
+  if (body.response_format?.type === "json_object") generationConfig.responseMimeType = "application/json";
+
+  return {
+    ...(systemParts.length ? { systemInstruction: { parts: systemParts } } : {}),
+    contents,
+    ...(Object.keys(generationConfig).length ? { generationConfig } : {}),
+  };
+}
+
+function normalizeGeminiNative(data: any, requestedModel: string): ChatCompletionResponse {
+  const candidate = data?.candidates?.[0] ?? {};
+  const parts = candidate?.content?.parts ?? [];
+  const content = Array.isArray(parts) ? parts.map((p: any) => p?.text ?? "").join("") : "";
+  return {
+    id: data?.responseId ?? crypto.randomUUID(),
+    provider: "gemini",
+    model: requestedModel,
+    choices: [{
+      index: 0,
+      message: { role: "assistant", content },
+      finish_reason: candidate?.finishReason ?? null,
+    }],
+    usage: data?.usageMetadata ? {
+      prompt_tokens: data.usageMetadata.promptTokenCount,
+      completion_tokens: data.usageMetadata.candidatesTokenCount,
+      total_tokens: data.usageMetadata.totalTokenCount,
+    } : undefined,
+  };
+}
+
+function stripPdfPartsForTextProviders(body: ChatCompletionRequest): Record<string, any> {
+  const clone = structuredClone(body);
+  clone.messages = clone.messages.map((m) => {
+    if (!Array.isArray(m.content)) return m;
+    return {
+      ...m,
+      content: m.content.map((part: any) => part?.type === "file"
+        ? { type: "text", text: "[PDF attachment omitted because this backup provider cannot read PDF files directly.]" }
+        : part),
+    };
+  });
+  return clone;
+}
 
 // ─── Provider registry ────────────────────────────────────────────────────────
 // Add new providers (Claude, OpenAI, DeepSeek …) by pushing here.
@@ -54,9 +171,9 @@ type ProviderConfig = {
 const PROVIDERS: ProviderConfig[] = [
   {
     name: "gemini",
-    // Google Gemini exposes an OpenAI-compatible chat/completions endpoint.
-    endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    endpoint: (model, apiKey) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
     envKey: "GEMINI_API_KEY",
+    auth: "query_key",
     mapModel: (m) => {
       const lower = (m || "").toLowerCase();
       if (!lower) return "gemini-2.5-flash";
@@ -64,19 +181,16 @@ const PROVIDERS: ProviderConfig[] = [
       const bare = lower.includes("/") ? lower.split("/").pop()! : lower;
       return bare;
     },
-    transformBody: (body) => {
-      // Gemini's OpenAI shim doesn't accept response_format json_object reliably.
-      const { response_format, ...rest } = body;
-      return rest;
-    },
+    transformBody: toGeminiNativeBody,
+    normalizeResponse: normalizeGeminiNative,
   },
   {
     name: "groq",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     envKey: "GROQ_API_KEY",
-    mapModel: (m) => {
+    mapModel: (m, reqBody) => {
       const lower = (m || "").toLowerCase();
-      if (lower.includes("vision") || lower.includes("image")) {
+      if ((reqBody ? hasMedia(reqBody) : false) || lower.includes("vision") || lower.includes("image")) {
         return "meta-llama/llama-4-scout-17b-16e-instruct";
       }
       if (lower.includes("flash-lite") || lower.includes("nano") || lower.includes("mini") || lower.includes("8b")) {
@@ -84,6 +198,7 @@ const PROVIDERS: ProviderConfig[] = [
       }
       return "llama-3.3-70b-versatile";
     },
+    supports: (body) => !hasPdfFile(body),
   },
   {
     name: "openrouter",
@@ -100,9 +215,9 @@ const PROVIDERS: ProviderConfig[] = [
     endpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
     envKey: "NVIDIA_API_KEY",
     // Gemini isn't on NIM — map to a strong OSS equivalent.
-    mapModel: (m) => {
+    mapModel: (m, reqBody) => {
       const lower = (m || "").toLowerCase();
-      if (lower.includes("vision") || lower.includes("pro") || lower.includes("image")) {
+      if ((reqBody ? hasMedia(reqBody) : false) || lower.includes("vision") || lower.includes("pro") || lower.includes("image")) {
         return "meta/llama-3.2-90b-vision-instruct";
       }
       if (lower.includes("flash-lite") || lower.includes("nano") || lower.includes("mini")) {
@@ -113,9 +228,10 @@ const PROVIDERS: ProviderConfig[] = [
     transformBody: (body) => {
       // NVIDIA NIM rejects response_format json_object on some models — drop it and
       // rely on the prompt to enforce JSON.
-      const { response_format, ...rest } = body;
+      const { response_format, ...rest } = stripPdfPartsForTextProviders(body);
       return rest;
     },
+    supports: (body) => !hasPdfFile(body),
   },
 ];
 
@@ -183,16 +299,19 @@ async function callProvider(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    const model = p.mapModel(body.model ?? "", body);
+    const endpoint = typeof p.endpoint === "function" ? p.endpoint(model, apiKey) : p.endpoint;
+    const transformed = p.transformBody ? p.transformBody(body) : body;
     const outBody = {
-      ...(p.transformBody ? p.transformBody(body) : body),
-      model: p.mapModel(body.model ?? ""),
+      ...transformed,
+      ...(p.auth === "query_key" ? {} : { model }),
     };
-    const res = await fetch(p.endpoint, {
+    const res = await fetch(endpoint, {
       method: "POST",
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        ...(p.auth === "query_key" ? {} : { Authorization: `Bearer ${apiKey}` }),
         ...(p.extraHeaders ? p.extraHeaders(apiKey) : {}),
       },
       body: JSON.stringify(outBody),
@@ -217,11 +336,12 @@ async function callProvider(
   }
 }
 
-function normalize(providerName: string, data: any, requestedModel: string): ChatCompletionResponse {
+function normalize(p: ProviderConfig, data: any, requestedModel: string): ChatCompletionResponse {
+  if (p.normalizeResponse) return p.normalizeResponse(data, requestedModel);
   const choices = Array.isArray(data?.choices) ? data.choices : [];
   return {
     id: data?.id ?? crypto.randomUUID(),
-    provider: providerName,
+    provider: p.name,
     model: data?.model ?? requestedModel,
     choices: choices.map((c: any, i: number) => ({
       index: c.index ?? i,
@@ -244,6 +364,7 @@ export type ChatOptions = {
   feature?: string;         // for logging only ("analyze-mock-test", etc.)
   dedupKey?: string;        // if set, in-flight identical calls share a promise
   timeoutMs?: number;       // per-attempt timeout (default 90s)
+  overallTimeoutMs?: number;
 };
 
 export async function chatCompletion(
@@ -264,6 +385,7 @@ export async function chatCompletion(
 
 async function _run(body: ChatCompletionRequest, opts: ChatOptions): Promise<ChatCompletionResponse> {
   const timeoutMs = opts.timeoutMs ?? 90_000;
+  const deadline = Date.now() + (opts.overallTimeoutMs ?? 0);
   const feature = opts.feature ?? null;
   const requestedModel = body.model ?? "";
   const started = Date.now();
@@ -281,6 +403,10 @@ async function _run(body: ChatCompletionRequest, opts: ChatOptions): Promise<Cha
 
   for (let i = 0; i < ordered.length; i++) {
     const p = ordered[i];
+    if (p.supports && !p.supports(body)) {
+      lastCode = `unsupported_${p.name}`;
+      continue;
+    }
     const apiKey = Deno.env.get(p.envKey);
     if (!apiKey) {
       lastCode = `missing_${p.envKey}`;
@@ -289,10 +415,16 @@ async function _run(body: ChatCompletionRequest, opts: ChatOptions): Promise<Cha
     if (i > 0) fallbackUsed = true;
 
     for (let attempt = 0; attempt <= MAX_RETRIES_PER_PROVIDER; attempt++) {
-      const result = await callProvider(p, apiKey, body, timeoutMs);
+      if (opts.overallTimeoutMs && Date.now() >= deadline) {
+        lastCode = "timeout";
+        lastError = "AI request exceeded the safe processing window";
+        break;
+      }
+      const remaining = opts.overallTimeoutMs ? Math.max(1_000, deadline - Date.now() - 500) : timeoutMs;
+      const result = await callProvider(p, apiKey, body, Math.min(timeoutMs, remaining));
       if (result.ok) {
         markHealthy(p.name);
-        const normalized = normalize(p.name, result.data, requestedModel);
+        const normalized = normalize(p, result.data, requestedModel);
         logCall({
           provider: p.name,
           fallback_used: fallbackUsed,
@@ -344,6 +476,7 @@ export type UnifiedFetchInit = {
   feature?: string;
   dedupKey?: string;
   timeoutMs?: number;
+  overallTimeoutMs?: number;
 };
 
 export async function unifiedFetch(init: UnifiedFetchInit): Promise<{
@@ -357,6 +490,7 @@ export async function unifiedFetch(init: UnifiedFetchInit): Promise<{
       feature: init.feature,
       dedupKey: init.dedupKey,
       timeoutMs: init.timeoutMs,
+      overallTimeoutMs: init.overallTimeoutMs,
     });
     return {
       ok: true,
