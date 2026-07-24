@@ -65,13 +65,23 @@ export default function AIMockAnalyzer() {
     const { data } = await supabase.from("ai_mock_reports")
       .select("*").eq("user_id", user.id).order("created_at", { ascending: false });
     const list = ((data as any) ?? []) as Report[];
+    const completedButMarkedAnalyzing = list.filter((r) => isStaleAnalyzing(r) && hasValidReport(r.report));
     const stale = list.filter((r) => isStaleAnalyzing(r) && !hasValidReport(r.report));
+    let nextList = list;
+    if (completedButMarkedAnalyzing.length > 0) {
+      await supabase
+        .from("ai_mock_reports")
+        .update({ status: "completed", error: null })
+        .in("id", completedButMarkedAnalyzing.map((r) => r.id));
+      nextList = nextList.map((r) => completedButMarkedAnalyzing.some((s) => s.id === r.id) ? { ...r, status: "completed", error: null } : r);
+    }
     if (stale.length > 0) {
       const error = "Analysis timed out before completion. Please retry; if it repeats, upload clearer screenshots or split the PDF into smaller parts.";
       await supabase.from("ai_mock_reports").update({ status: "failed", error }).in("id", stale.map((r) => r.id));
-      setReports(list.map((r) => stale.some((s) => s.id === r.id) ? { ...r, status: "failed", error } : r));
+      nextList = nextList.map((r) => stale.some((s) => s.id === r.id) ? { ...r, status: "failed", error } : r);
+      setReports(nextList);
     } else {
-      setReports(list);
+      setReports(nextList);
     }
     setLoading(false);
   };
