@@ -68,7 +68,7 @@ async function processReport(admin: any, reportId: string, userId: string, repor
       text: `You are a senior SSC / competitive-exam faculty personally reviewing the mock test of your student "${firstName}". You are NOT an AI chatbot. Write like an experienced teacher who has sat across the table with the student — warm, specific, blunt where needed, motivational, never generic. Every observation MUST be grounded in what you actually see in the uploaded pages. Never invent chapters/topics/numbers that are not visible.
 
 STEP 1 — Read every visible element: questions, options, marked answers, correct answers, section-wise score, timing, subjects, chapters, topics.
-STEP 2 — Return ONE strict JSON object, no prose outside JSON, matching this schema EXACTLY (keys in English, narrative in bilingual as described below):
+STEP 2 — Return ONE strict JSON object, no prose outside JSON, matching this schema EXACTLY (keys in English, narrative in bilingual as described below). Keep output compact enough to finish; do not waste tokens on already-correct questions.
 
 {
  "exam_name": string|null,
@@ -165,7 +165,7 @@ STEP 2 — Return ONE strict JSON object, no prose outside JSON, matching this s
    "tasks": string[]
  }],
 
- "questions": [{ "q_no": number|null, "text": string, "options": { "a": string|null, "b": string|null, "c": string|null, "d": string|null }, "marked": "A"|"B"|"C"|"D"|null, "correct": "A"|"B"|"C"|"D"|null, "status": "correct"|"wrong"|"skipped"|"unknown", "subject": string|null, "chapter": string|null, "topic": string|null, "mistake_category": string|null, "explanation": string|null }],
+  "questions": [{ "q_no": number|null, "text": string, "options": { "a": string|null, "b": string|null, "c": string|null, "d": string|null }, "marked": "A"|"B"|"C"|"D"|null, "correct": "A"|"B"|"C"|"D"|null, "status": "correct"|"wrong"|"skipped"|"unknown", "subject": string|null, "chapter": string|null, "topic": string|null, "mistake_category": string|null, "explanation": string|null }],
 
  "ocr_text": string
 }
@@ -192,7 +192,7 @@ LANGUAGE & TONE RULES (STRICT — the report must read like a senior SSC faculty
 - Every string must be specific to THIS paper. Avoid repetitive sentences, avoid generic advice, avoid hallucinations. If a field cannot be determined, use null / [] / 0.
 - Never return an empty object, placeholder-only object, or all-zero report. If the file is readable, extract the visible totals and analysis. If the file is not readable, still return a valid JSON object with ocr_text explaining what was visible/unreadable and leave unknown fields null / [] / 0.
 - A report is INVALID if totals.questions is 0/null, accuracy is missing, subject_analysis is empty, and all feedback fields are blank. Do not output that shape.
-- For the "questions" array you MUST include EVERY question that is visible in the paper — do not sample or skip. For each question extract the full question text and, whenever the four options are printed in the PDF, populate options.a/b/c/d with the exact option text (without the "A." / "(A)" prefix). If an option is not clearly visible leave that specific option null. marked/correct must be a single letter A|B|C|D (map "1/2/3/4" → A/B/C/D). explanation should carry the visible solution/explanation text if printed, else null.
+- For the "questions" array, PRIORITIZE automatic revision-test creation: include every visible WRONG and SKIPPED question. Include GUESSED/unknown questions if clearly marked. Do NOT include long lists of correct questions unless the file is very small. For each included question extract full question text and, whenever four options are printed, populate options.a/b/c/d with exact option text (without the "A." / "(A)" prefix). If an option is not clearly visible leave that specific option null. marked/correct must be a single letter A|B|C|D (map "1/2/3/4" → A/B/C/D). explanation should carry the visible solution/explanation text if printed, else null.
 
 Return strict JSON only.`,
     }];
@@ -244,8 +244,8 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
           model: "google/gemini-2.5-flash",
           messages: [{ role: "user", content: contentParts }],
           response_format: { type: "json_object" },
-          max_tokens: 16000,
-        }, feature: "analyze-mock-test", dedupKey: `analyze-mock-test:${reportId}`, timeoutMs: 60_000, overallTimeoutMs: 135_000 });
+          max_tokens: attempt === 1 ? 12000 : 8000,
+        }, feature: "analyze-mock-test", dedupKey: `analyze-mock-test:${reportId}:attempt-${attempt}`, timeoutMs: 45_000, overallTimeoutMs: 105_000 });
 
       if (!aiRes.ok) {
         const errText = await aiRes.text();
@@ -330,8 +330,11 @@ recent_attempts: ${JSON.stringify(attempts ?? [])}`,
 }
 
 function friendlyAnalysisError(msg: string) {
-  if (/AI service is temporarily unavailable|safe processing window|AbortError|aborted|timeout|timed out/i.test(msg)) {
+  if (/AI service is temporarily unavailable|safe processing window|AbortError|aborted|timeout|timed out|gemini_0|openrouter_0/i.test(msg)) {
     return "AI analysis timed out while reading this mock. Please retry once; if it repeats, upload clearer screenshots or split the PDF into smaller parts.";
+  }
+  if (/gemini_400|openrouter_400|unsupported_|missing_/i.test(msg)) {
+    return msg.split("\n")[0].slice(0, 900);
   }
   if (/JSON parse failed|invalid report|missing totals|empty subject analysis|no detected question count/i.test(msg)) {
     return msg.split("\n")[0].slice(0, 900);

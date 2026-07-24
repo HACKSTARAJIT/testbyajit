@@ -378,7 +378,10 @@ export async function chatCompletion(
   const promise = _run(body, opts);
   if (dedupKey) {
     inflight.set(dedupKey, promise);
-    promise.finally(() => inflight.delete(dedupKey));
+    promise.then(
+      () => inflight.delete(dedupKey),
+      () => inflight.delete(dedupKey),
+    );
   }
   return promise;
 }
@@ -398,18 +401,19 @@ async function _run(body: ChatCompletionRequest, opts: ChatOptions): Promise<Cha
 
   let lastError = "AI service is temporarily unavailable. Please try again later.";
   let lastCode: string | null = null;
+  let sawProviderFailure = false;
   let fallbackUsed = false;
   let totalRetries = 0;
 
   for (let i = 0; i < ordered.length; i++) {
     const p = ordered[i];
     if (p.supports && !p.supports(body)) {
-      lastCode = `unsupported_${p.name}`;
+      if (!sawProviderFailure && !lastCode) lastCode = `unsupported_${p.name}`;
       continue;
     }
     const apiKey = Deno.env.get(p.envKey);
     if (!apiKey) {
-      lastCode = `missing_${p.envKey}`;
+      if (!sawProviderFailure && !lastCode) lastCode = `missing_${p.envKey}`;
       continue;
     }
     if (i > 0) fallbackUsed = true;
@@ -437,8 +441,17 @@ async function _run(body: ChatCompletionRequest, opts: ChatOptions): Promise<Cha
         });
         return normalized;
       }
+      sawProviderFailure = true;
       lastError = result.error || `HTTP ${result.status}`;
-      lastCode = String(result.status);
+      lastCode = `${p.name}_${result.status}`;
+      console.error("AI provider failed", {
+        provider: p.name,
+        status: result.status,
+        retryable: result.retryable,
+        attempt: attempt + 1,
+        feature,
+        error: lastError.slice(0, 500),
+      });
       totalRetries++;
       if (!result.retryable) break;                // terminal for this provider → move on
       if (attempt < MAX_RETRIES_PER_PROVIDER) {
