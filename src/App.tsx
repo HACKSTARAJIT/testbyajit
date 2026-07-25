@@ -46,6 +46,7 @@ const AIPerformanceCenter = lazy(() => import("./pages/AIPerformanceCenter.tsx")
 const SelectionIntelligence = lazy(() => import("./pages/SelectionIntelligence.tsx"));
 const Accountability = lazy(() => import("./pages/Accountability.tsx"));
 const Profile = lazy(() => import("./pages/Profile.tsx"));
+const AnalysisImport = lazy(() => import("./pages/AnalysisImport.tsx"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -113,6 +114,7 @@ const App = () => (
             <Route path="/ai-coach" element={withLayout(<AICoach />)} />
             <Route path="/ai-coach/chat" element={withLayout(<AICoachChat />)} />
             <Route path="/ai-coach/chat/:threadId" element={withLayout(<AICoachChat />)} />
+            <Route path="/analysis-import" element={withLayout(<AnalysisImport />)} />
 
             <Route
               path="/admin"

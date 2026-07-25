@@ -541,6 +541,182 @@ export type Database = {
         }
         Relationships: []
       }
+      imported_coach_memory: {
+        Row: {
+          last_report_id: string | null
+          memory: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_report_id?: string | null
+          memory?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_report_id?: string | null
+          memory?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      imported_mock_reports: {
+        Row: {
+          accuracy: number | null
+          attempt_percent: number | null
+          created_at: string
+          exam_readiness: string | null
+          extracted: Json
+          extraction_error: string | null
+          extraction_status: string
+          id: string
+          mock_name: string | null
+          negative_marks: number | null
+          original_text: string
+          report_number: number
+          score: number | null
+          time_used: string | null
+          updated_at: string
+          user_id: string
+          verdict: string | null
+        }
+        Insert: {
+          accuracy?: number | null
+          attempt_percent?: number | null
+          created_at?: string
+          exam_readiness?: string | null
+          extracted?: Json
+          extraction_error?: string | null
+          extraction_status?: string
+          id?: string
+          mock_name?: string | null
+          negative_marks?: number | null
+          original_text: string
+          report_number?: number
+          score?: number | null
+          time_used?: string | null
+          updated_at?: string
+          user_id: string
+          verdict?: string | null
+        }
+        Update: {
+          accuracy?: number | null
+          attempt_percent?: number | null
+          created_at?: string
+          exam_readiness?: string | null
+          extracted?: Json
+          extraction_error?: string | null
+          extraction_status?: string
+          id?: string
+          mock_name?: string | null
+          negative_marks?: number | null
+          original_text?: string
+          report_number?: number
+          score?: number | null
+          time_used?: string | null
+          updated_at?: string
+          user_id?: string
+          verdict?: string | null
+        }
+        Relationships: []
+      }
+      imported_report_insights: {
+        Row: {
+          action_plan_3day: Json
+          calculation_errors: Json
+          conceptual_errors: Json
+          created_at: string
+          critical_topics: Json
+          guesswork: Json
+          high_roi_chapters: Json
+          high_roi_topics: Json
+          id: string
+          next_mock_strategy: Json
+          reading_errors: Json
+          red_flags: Json
+          report_id: string
+          revision_priority: Json
+          silly_mistakes: Json
+          strengths: Json
+          strong_chapters: Json
+          strong_subjects: Json
+          strong_topics: Json
+          time_problems: Json
+          updated_at: string
+          user_id: string
+          weak_chapters: Json
+          weak_subjects: Json
+          weak_topics: Json
+          weaknesses: Json
+        }
+        Insert: {
+          action_plan_3day?: Json
+          calculation_errors?: Json
+          conceptual_errors?: Json
+          created_at?: string
+          critical_topics?: Json
+          guesswork?: Json
+          high_roi_chapters?: Json
+          high_roi_topics?: Json
+          id?: string
+          next_mock_strategy?: Json
+          reading_errors?: Json
+          red_flags?: Json
+          report_id: string
+          revision_priority?: Json
+          silly_mistakes?: Json
+          strengths?: Json
+          strong_chapters?: Json
+          strong_subjects?: Json
+          strong_topics?: Json
+          time_problems?: Json
+          updated_at?: string
+          user_id: string
+          weak_chapters?: Json
+          weak_subjects?: Json
+          weak_topics?: Json
+          weaknesses?: Json
+        }
+        Update: {
+          action_plan_3day?: Json
+          calculation_errors?: Json
+          conceptual_errors?: Json
+          created_at?: string
+          critical_topics?: Json
+          guesswork?: Json
+          high_roi_chapters?: Json
+          high_roi_topics?: Json
+          id?: string
+          next_mock_strategy?: Json
+          reading_errors?: Json
+          red_flags?: Json
+          report_id?: string
+          revision_priority?: Json
+          silly_mistakes?: Json
+          strengths?: Json
+          strong_chapters?: Json
+          strong_subjects?: Json
+          strong_topics?: Json
+          time_problems?: Json
+          updated_at?: string
+          user_id?: string
+          weak_chapters?: Json
+          weak_subjects?: Json
+          weak_topics?: Json
+          weaknesses?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imported_report_insights_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "imported_mock_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mistake_dna: {
         Row: {
           distribution: Json
