@@ -33,27 +33,40 @@ Deno.serve(async (req) => {
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: reports } = await admin
       .from("imported_mock_reports")
-      .select("id, report_number, mock_name, score, accuracy, attempt_percent, negative_marks, time_used, verdict, exam_readiness, extracted, created_at")
+      .select("id, report_number, mock_name, source_ai, score, accuracy, attempt_percent, negative_marks, overall_rank, percentile, section_scores, time_used, verdict, exam_readiness, extracted, created_at")
       .eq("user_id", userId)
       .order("report_number", { ascending: true })
       .limit(30);
 
     if (!reports || reports.length === 0) {
-      return json({ answer: "Insufficient Data. Please import at least one Gemini mock analysis report first." });
+      return json({ answer: "Insufficient Data. Please import at least one AI mock analysis report first." });
     }
+
+    const { data: insights } = await admin
+      .from("imported_report_insights")
+      .select("report_id, mistake_bank, skipped_bank, learning_repository, additional_insights, improving_topics, declining_topics")
+      .eq("user_id", userId);
+
+    const insightsById = new Map<string, any>();
+    (insights ?? []).forEach((i: any) => insightsById.set(i.report_id, i));
 
     const contextJson = JSON.stringify(reports.map((r: any) => ({
       report_number: r.report_number,
       mock_name: r.mock_name,
+      source_ai: r.source_ai,
       date: r.created_at,
       score: r.score,
       accuracy: r.accuracy,
       attempt_percent: r.attempt_percent,
       negative_marks: r.negative_marks,
+      overall_rank: r.overall_rank,
+      percentile: r.percentile,
+      section_scores: r.section_scores,
       time_used: r.time_used,
       verdict: r.verdict,
       exam_readiness: r.exam_readiness,
       extracted: r.extracted,
+      banks: insightsById.get(r.id) ?? null,
     })));
 
     const systemPrompt = `You are AJIT AI Coach. You must answer ONLY using the imported Gemini mock analysis reports provided below as JSON. NEVER invent, guess, or use outside knowledge. If the answer is not present in the reports, reply exactly: "Insufficient Data."

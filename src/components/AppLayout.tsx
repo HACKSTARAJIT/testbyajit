@@ -22,7 +22,6 @@ const navItems = [
   { to: "/my-dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/smart-revision", label: "स्मार्ट रिवीजन / Smart Revision", icon: Brain },
   { to: "/ai-performance-center", label: "AI Performance Center", icon: Sparkles },
-  { to: "/analysis-import", label: "📥 Analysis Import", icon: Upload },
   { to: "/selection-intelligence", label: "🎯 Selection Intelligence", icon: Target },
 ];
 
