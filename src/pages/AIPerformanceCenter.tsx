@@ -19,6 +19,7 @@ import AICoach from "./AICoach";
 import Preparation360 from "@/components/prep360/Preparation360";
 import AIMemory from "./AIMemory";
 import AcademicIntelligence from "./AcademicIntelligence";
+import AnalysisImportPanel from "@/components/AnalysisImportPanel";
 
 type Report = {
   id: string; title: string; status: string; created_at: string; report: any;
@@ -131,7 +132,8 @@ export default function AIPerformanceCenter() {
           <TabsTrigger value="memory"><Brain className="mr-1 h-3.5 w-3.5" />🧠 AI Memory</TabsTrigger>
           <TabsTrigger value="academic"><Brain className="mr-1 h-3.5 w-3.5" />🎓 Academic Intelligence</TabsTrigger>
           <TabsTrigger value="overview"><BarChart3 className="mr-1 h-3.5 w-3.5" />📊 Overview</TabsTrigger>
-          <TabsTrigger value="mock"><FileText className="mr-1 h-3.5 w-3.5" />📝 Full Mock</TabsTrigger>
+          <TabsTrigger value="mock"><FileText className="mr-1 h-3.5 w-3.5" />📝 Full Mock (PDF)</TabsTrigger>
+          <TabsTrigger value="import"><Sparkles className="mr-1 h-3.5 w-3.5" />📥 Import AI Report</TabsTrigger>
           <TabsTrigger value="subject"><BookOpen className="mr-1 h-3.5 w-3.5" />📚 Subject</TabsTrigger>
           <TabsTrigger value="chapter"><BookMarked className="mr-1 h-3.5 w-3.5" />📖 Chapter</TabsTrigger>
           <TabsTrigger value="topic"><Target className="mr-1 h-3.5 w-3.5" />🎯 Topic</TabsTrigger>
@@ -199,6 +201,11 @@ export default function AIPerformanceCenter() {
         {/* -------- FULL MOCK -------- */}
         <TabsContent value="mock">
           <AIMockAnalyzer />
+        </TabsContent>
+
+        {/* -------- IMPORT AI REPORT (any AI, paste-based) -------- */}
+        <TabsContent value="import">
+          <AnalysisImportPanel />
         </TabsContent>
 
         {/* -------- SUBJECT / CHAPTER / TOPIC filtered report lists -------- */}

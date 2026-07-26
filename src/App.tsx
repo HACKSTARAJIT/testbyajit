@@ -114,7 +114,7 @@ const App = () => (
             <Route path="/ai-coach" element={withLayout(<AICoach />)} />
             <Route path="/ai-coach/chat" element={withLayout(<AICoachChat />)} />
             <Route path="/ai-coach/chat/:threadId" element={withLayout(<AICoachChat />)} />
-            <Route path="/analysis-import" element={withLayout(<AnalysisImport />)} />
+            <Route path="/analysis-import" element={withLayout(<AIPerformanceCenter />)} />
 
             <Route
               path="/admin"
