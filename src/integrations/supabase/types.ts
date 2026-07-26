@@ -575,8 +575,12 @@ export type Database = {
           mock_name: string | null
           negative_marks: number | null
           original_text: string
+          overall_rank: number | null
+          percentile: number | null
           report_number: number
           score: number | null
+          section_scores: Json | null
+          source_ai: string | null
           time_used: string | null
           updated_at: string
           user_id: string
@@ -594,8 +598,12 @@ export type Database = {
           mock_name?: string | null
           negative_marks?: number | null
           original_text: string
+          overall_rank?: number | null
+          percentile?: number | null
           report_number?: number
           score?: number | null
+          section_scores?: Json | null
+          source_ai?: string | null
           time_used?: string | null
           updated_at?: string
           user_id: string
@@ -613,8 +621,12 @@ export type Database = {
           mock_name?: string | null
           negative_marks?: number | null
           original_text?: string
+          overall_rank?: number | null
+          percentile?: number | null
           report_number?: number
           score?: number | null
+          section_scores?: Json | null
+          source_ai?: string | null
           time_used?: string | null
           updated_at?: string
           user_id?: string
@@ -625,20 +637,27 @@ export type Database = {
       imported_report_insights: {
         Row: {
           action_plan_3day: Json
+          additional_insights: Json | null
           calculation_errors: Json
           conceptual_errors: Json
           created_at: string
           critical_topics: Json
+          declining_topics: Json | null
           guesswork: Json
           high_roi_chapters: Json
           high_roi_topics: Json
           id: string
+          improving_topics: Json | null
+          learning_repository: Json | null
+          mistake_bank: Json | null
           next_mock_strategy: Json
+          question_level: Json | null
           reading_errors: Json
           red_flags: Json
           report_id: string
           revision_priority: Json
           silly_mistakes: Json
+          skipped_bank: Json | null
           strengths: Json
           strong_chapters: Json
           strong_subjects: Json
@@ -653,20 +672,27 @@ export type Database = {
         }
         Insert: {
           action_plan_3day?: Json
+          additional_insights?: Json | null
           calculation_errors?: Json
           conceptual_errors?: Json
           created_at?: string
           critical_topics?: Json
+          declining_topics?: Json | null
           guesswork?: Json
           high_roi_chapters?: Json
           high_roi_topics?: Json
           id?: string
+          improving_topics?: Json | null
+          learning_repository?: Json | null
+          mistake_bank?: Json | null
           next_mock_strategy?: Json
+          question_level?: Json | null
           reading_errors?: Json
           red_flags?: Json
           report_id: string
           revision_priority?: Json
           silly_mistakes?: Json
+          skipped_bank?: Json | null
           strengths?: Json
           strong_chapters?: Json
           strong_subjects?: Json
@@ -681,20 +707,27 @@ export type Database = {
         }
         Update: {
           action_plan_3day?: Json
+          additional_insights?: Json | null
           calculation_errors?: Json
           conceptual_errors?: Json
           created_at?: string
           critical_topics?: Json
+          declining_topics?: Json | null
           guesswork?: Json
           high_roi_chapters?: Json
           high_roi_topics?: Json
           id?: string
+          improving_topics?: Json | null
+          learning_repository?: Json | null
+          mistake_bank?: Json | null
           next_mock_strategy?: Json
+          question_level?: Json | null
           reading_errors?: Json
           red_flags?: Json
           report_id?: string
           revision_priority?: Json
           silly_mistakes?: Json
+          skipped_bank?: Json | null
           strengths?: Json
           strong_chapters?: Json
           strong_subjects?: Json
