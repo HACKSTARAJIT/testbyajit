@@ -38,7 +38,6 @@ const Admin = lazy(() => import("./pages/Admin.tsx"));
 const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics.tsx"));
 const AdminIntelligence = lazy(() => import("./pages/AdminIntelligence.tsx"));
 const AdminTestManager = lazy(() => import("./pages/AdminTestManager.tsx"));
-const AIMockAnalyzer = lazy(() => import("./pages/AIMockAnalyzer.tsx"));
 const PerformanceIntelligence = lazy(() => import("./pages/PerformanceIntelligence.tsx"));
 const AICoach = lazy(() => import("./pages/AICoach.tsx"));
 const AICoachChat = lazy(() => import("./pages/AICoachChat.tsx"));
@@ -46,7 +45,6 @@ const AIPerformanceCenter = lazy(() => import("./pages/AIPerformanceCenter.tsx")
 const SelectionIntelligence = lazy(() => import("./pages/SelectionIntelligence.tsx"));
 const Accountability = lazy(() => import("./pages/Accountability.tsx"));
 const Profile = lazy(() => import("./pages/Profile.tsx"));
-const AnalysisImport = lazy(() => import("./pages/AnalysisImport.tsx"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -106,7 +104,8 @@ const App = () => (
             <Route path="/mock-auto-test/:reportId" element={withLayout(<MockAutoTest />)} />
             <Route path="/about" element={withLayout(<About />)} />
             <Route path="/profile" element={withLayout(<Profile />)} />
-            <Route path="/ai-mock-analyzer" element={withLayout(<AIMockAnalyzer />)} />
+            <Route path="/ai-mock-analyzer" element={<Navigate to="/ai-performance-center" replace />} />
+            <Route path="/analysis-import" element={<Navigate to="/ai-performance-center" replace />} />
             <Route path="/ai-performance-center" element={withLayout(<AIPerformanceCenter />)} />
             <Route path="/selection-intelligence" element={withLayout(<SelectionIntelligence />)} />
             <Route path="/accountability" element={withLayout(<Accountability />)} />

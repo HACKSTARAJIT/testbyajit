@@ -189,7 +189,7 @@ export default function AnalysisImportPanel() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <ClipboardPaste className="h-4 w-4 text-primary" />
-                Paste AI Report (Gemini / ChatGPT / Claude / DeepSeek / any)
+                New Mock Analysis — paste report from any AI (Gemini / ChatGPT / Claude / DeepSeek / any)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -200,7 +200,7 @@ export default function AnalysisImportPanel() {
                 maxLength={120}
               />
               <Textarea
-                placeholder="Paste your complete AI-generated mock analysis here — any AI, any format, any language…"
+                placeholder="Paste your complete AI-generated mock analysis report here..."
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 rows={14}
@@ -212,7 +212,7 @@ export default function AnalysisImportPanel() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button onClick={handleImport} disabled={importing || text.trim().length < 40}>
-                  {importing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Importing…</> : <><Upload className="mr-2 h-4 w-4" />Import Analysis</>}
+                  {importing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing…</> : <><Upload className="mr-2 h-4 w-4" />Analyze &amp; Save</>}
                 </Button>
                 <Button variant="outline" onClick={() => { setText(""); setMockName(""); }} disabled={importing}>
                   <RotateCcw className="mr-2 h-4 w-4" />Clear

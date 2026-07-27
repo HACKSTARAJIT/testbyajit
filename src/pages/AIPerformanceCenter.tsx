@@ -13,7 +13,7 @@ import {
   Sparkles, CalendarDays, Loader2, ArrowRight, Trophy, Flame,
 } from "lucide-react";
 import { toast } from "sonner";
-import AIMockAnalyzer from "./AIMockAnalyzer";
+
 import PerformanceIntelligence from "./PerformanceIntelligence";
 import AICoach from "./AICoach";
 import Preparation360 from "@/components/prep360/Preparation360";
@@ -132,8 +132,7 @@ export default function AIPerformanceCenter() {
           <TabsTrigger value="memory"><Brain className="mr-1 h-3.5 w-3.5" />🧠 AI Memory</TabsTrigger>
           <TabsTrigger value="academic"><Brain className="mr-1 h-3.5 w-3.5" />🎓 Academic Intelligence</TabsTrigger>
           <TabsTrigger value="overview"><BarChart3 className="mr-1 h-3.5 w-3.5" />📊 Overview</TabsTrigger>
-          <TabsTrigger value="mock"><FileText className="mr-1 h-3.5 w-3.5" />📝 Full Mock (PDF)</TabsTrigger>
-          <TabsTrigger value="import"><Sparkles className="mr-1 h-3.5 w-3.5" />📥 Import AI Report</TabsTrigger>
+          <TabsTrigger value="import"><Sparkles className="mr-1 h-3.5 w-3.5" />📥 New Mock Analysis</TabsTrigger>
           <TabsTrigger value="subject"><BookOpen className="mr-1 h-3.5 w-3.5" />📚 Subject</TabsTrigger>
           <TabsTrigger value="chapter"><BookMarked className="mr-1 h-3.5 w-3.5" />📖 Chapter</TabsTrigger>
           <TabsTrigger value="topic"><Target className="mr-1 h-3.5 w-3.5" />🎯 Topic</TabsTrigger>
@@ -192,18 +191,13 @@ export default function AIPerformanceCenter() {
                     <Badge variant="outline" className="text-[10px]">{r.accuracy ?? 0}%</Badge>
                   </div>
                 ))}
-                {completed.length === 0 && <p className="text-xs text-muted-foreground">No AI reports yet — upload a mock to start.</p>}
+                {completed.length === 0 && <p className="text-xs text-muted-foreground">No AI reports yet — paste one in “New Mock Analysis”.</p>}
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        {/* -------- FULL MOCK -------- */}
-        <TabsContent value="mock">
-          <AIMockAnalyzer />
-        </TabsContent>
-
-        {/* -------- IMPORT AI REPORT (any AI, paste-based) -------- */}
+        {/* -------- NEW MOCK ANALYSIS (paste AI report, any provider) -------- */}
         <TabsContent value="import">
           <AnalysisImportPanel />
         </TabsContent>
@@ -212,7 +206,7 @@ export default function AIPerformanceCenter() {
         <TabsContent value="subject">
           <FilteredReportList
             reports={subjectReports}
-            emptyLabel="Upload a subject-only paper (e.g. only Maths) — AI will auto-detect and analyze."
+            emptyLabel="Paste a subject-only AI analysis in New Mock Analysis — AI will auto-detect and organize it."
             typeIcon="📚"
             typeName="Subject"
             groupKey="detected_subject"
@@ -221,7 +215,7 @@ export default function AIPerformanceCenter() {
         <TabsContent value="chapter">
           <FilteredReportList
             reports={chapterReports}
-            emptyLabel="Upload a chapter-only paper — AI will auto-detect and analyze."
+            emptyLabel="Paste a chapter-only AI analysis in New Mock Analysis — AI will auto-detect and organize it."
             typeIcon="📖"
             typeName="Chapter"
             groupKey="detected_chapter"
@@ -230,7 +224,7 @@ export default function AIPerformanceCenter() {
         <TabsContent value="topic">
           <FilteredReportList
             reports={topicReports}
-            emptyLabel="Upload a topic-only paper — AI will auto-detect and analyze."
+            emptyLabel="Paste a topic-only AI analysis in New Mock Analysis — AI will auto-detect and organize it."
             typeIcon="🎯"
             typeName="Topic"
             groupKey="detected_topic"
@@ -313,7 +307,7 @@ function FilteredReportList({ reports, emptyLabel, typeIcon, typeName, groupKey 
           <div className="text-4xl">{typeIcon}</div>
           <p className="text-sm font-semibold">No {typeName} reports yet</p>
           <p className="max-w-sm text-xs text-muted-foreground">{emptyLabel}</p>
-          <Button asChild size="sm" className="mt-2"><Link to="/ai-performance-center">Upload in Full Mock tab <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link></Button>
+          <Button asChild size="sm" className="mt-2"><Link to="/ai-performance-center">Open New Mock Analysis <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link></Button>
         </CardContent>
       </Card>
     );
