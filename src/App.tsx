@@ -103,6 +103,7 @@ const App = () => (
             <Route path="/revise/:testId" element={withLayout(<RevisionRunner />)} />
             <Route path="/mock-revision-hub" element={withLayout(<MockRevisionHub />)} />
             <Route path="/mock-auto-test/:reportId" element={withLayout(<MockAutoTest />)} />
+            <Route path="/imported-auto-test/:id" element={withLayout(<ImportedAutoTest />)} />
             <Route path="/about" element={withLayout(<About />)} />
             <Route path="/profile" element={withLayout(<Profile />)} />
             <Route path="/ai-mock-analyzer" element={<Navigate to="/ai-performance-center" replace />} />
