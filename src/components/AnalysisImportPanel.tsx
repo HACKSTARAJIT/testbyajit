@@ -204,8 +204,10 @@ export default function AnalysisImportPanel() {
       <Tabs defaultValue="new" className="w-full">
         <TabsList className="flex flex-wrap h-auto justify-start bg-card/60 backdrop-blur">
           <TabsTrigger value="new"><Upload className="mr-1 h-3.5 w-3.5" />📥 New Analysis</TabsTrigger>
+          <TabsTrigger value="brain"><Sparkles className="mr-1 h-3.5 w-3.5" />🧠 AI Analysis</TabsTrigger>
+          <TabsTrigger value="tests"><BookMarked className="mr-1 h-3.5 w-3.5" />🎯 Personalized Tests</TabsTrigger>
           <TabsTrigger value="history"><FileText className="mr-1 h-3.5 w-3.5" />📚 History</TabsTrigger>
-          <TabsTrigger value="repos"><BookMarked className="mr-1 h-3.5 w-3.5" />🧠 Repositories</TabsTrigger>
+          <TabsTrigger value="repos"><BookMarked className="mr-1 h-3.5 w-3.5" />📚 Repositories</TabsTrigger>
           <TabsTrigger value="compare"><TrendingUp className="mr-1 h-3.5 w-3.5" />📈 Compare</TabsTrigger>
         </TabsList>
 
