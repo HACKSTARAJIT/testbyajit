@@ -75,20 +75,24 @@ export default function AnalysisImportPanel() {
   const [text, setText] = useState("");
   const [mockName, setMockName] = useState("");
   const [importing, setImporting] = useState(false);
+  const [importStage, setImportStage] = useState<string>("");
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [insights, setInsights] = useState<Insights[]>([]);
+  const [autoTests, setAutoTests] = useState<AutoTest[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState<ReportRow | null>(null);
 
   async function load() {
     if (!user) return;
     setLoading(true);
-    const [{ data: r }, { data: ins }] = await Promise.all([
+    const [{ data: r }, { data: ins }, { data: at }] = await Promise.all([
       supabase.from("imported_mock_reports").select("*").eq("user_id", user.id).order("report_number", { ascending: false }),
       supabase.from("imported_report_insights").select("*").eq("user_id", user.id),
+      supabase.from("imported_auto_tests").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
     ]);
     setReports((r as any) ?? []);
     setInsights((ins as any) ?? []);
+    setAutoTests((at as any) ?? []);
     setLoading(false);
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id]);
@@ -99,19 +103,32 @@ export default function AnalysisImportPanel() {
       return;
     }
     setImporting(true);
+    setImportStage("Extracting structure…");
+    // rolling stage hints so the user sees what's happening
+    const stageTimer = setTimeout(() => setImportStage("Deep analysis: subjects → chapters → topics…"), 8000);
+    const stageTimer2 = setTimeout(() => setImportStage("Detecting recurring patterns & scoring…"), 22000);
+    const stageTimer3 = setTimeout(() => setImportStage("Generating personalized recovery tests…"), 40000);
     try {
       const { data, error } = await supabase.functions.invoke("import-mock-analysis", {
         body: { text, mockName: mockName || null },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      toast({ title: "✅ Analysis imported", description: `Saved as Mock ${(data as any).report.report_number}.` });
+      const d: any = data;
+      toast({
+        title: "✅ Analysis complete",
+        description: `Mock ${d.report.report_number} · ${d.auto_tests_generated ?? 0} personalized tests generated · deep analysis ${d.deep_analysis_status ?? "done"}.`,
+      });
       setText(""); setMockName("");
       load();
     } catch (e: any) {
       toast({ title: "Import failed", description: e.message ?? "Try again.", variant: "destructive" });
-    } finally { setImporting(false); }
+    } finally {
+      clearTimeout(stageTimer); clearTimeout(stageTimer2); clearTimeout(stageTimer3);
+      setImportStage(""); setImporting(false);
+    }
   }
+
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this imported report?")) return;
