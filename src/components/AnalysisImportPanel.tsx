@@ -246,11 +246,23 @@ export default function AnalysisImportPanel() {
                   <RotateCcw className="mr-2 h-4 w-4" />Clear
                 </Button>
               </div>
+              {importing && (
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs">
+                  <div className="flex items-center gap-2 font-medium text-primary">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {importStage || "Extracting structure…"}
+                  </div>
+                  <p className="mt-1 text-muted-foreground">
+                    AJIT AI is extracting insights, building a Subject → Chapter → Topic → Subtopic map, detecting recurring patterns and auto-generating personalized recovery tests. Please stay on this screen.
+                  </p>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
-                🧠 AJIT 360 semantically understands the report — different headings, different languages, any AI — and organises it into your Mistake Bank, Skipped Bank & Learning Repository.
+                🧠 After import, AJIT 360 automatically deep-analyses the report, refreshes every module in the Performance Center, and generates Wrong / Skipped / Weak-Subject / Chapter / Topic / Recurring / Recovery tests for you.
               </p>
             </CardContent>
           </Card>
+
 
           <Card className="border-dashed bg-card/40">
             <CardContent className="p-4 text-xs text-muted-foreground">
