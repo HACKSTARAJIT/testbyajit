@@ -33,6 +33,7 @@ const StudentDashboard = lazy(() => import("./pages/StudentDashboard.tsx"));
 const RevisionRunner = lazy(() => import("./pages/RevisionRunner.tsx"));
 const MockRevisionHub = lazy(() => import("./pages/MockRevisionHub.tsx"));
 const MockAutoTest = lazy(() => import("./pages/MockAutoTest.tsx"));
+const ImportedAutoTest = lazy(() => import("./pages/ImportedAutoTest.tsx"));
 const About = lazy(() => import("./pages/About.tsx"));
 const Admin = lazy(() => import("./pages/Admin.tsx"));
 const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics.tsx"));
