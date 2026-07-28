@@ -33,6 +33,7 @@ const StudentDashboard = lazy(() => import("./pages/StudentDashboard.tsx"));
 const RevisionRunner = lazy(() => import("./pages/RevisionRunner.tsx"));
 const MockRevisionHub = lazy(() => import("./pages/MockRevisionHub.tsx"));
 const MockAutoTest = lazy(() => import("./pages/MockAutoTest.tsx"));
+const ImportedAutoTest = lazy(() => import("./pages/ImportedAutoTest.tsx"));
 const About = lazy(() => import("./pages/About.tsx"));
 const Admin = lazy(() => import("./pages/Admin.tsx"));
 const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics.tsx"));
@@ -102,6 +103,7 @@ const App = () => (
             <Route path="/revise/:testId" element={withLayout(<RevisionRunner />)} />
             <Route path="/mock-revision-hub" element={withLayout(<MockRevisionHub />)} />
             <Route path="/mock-auto-test/:reportId" element={withLayout(<MockAutoTest />)} />
+            <Route path="/imported-auto-test/:id" element={withLayout(<ImportedAutoTest />)} />
             <Route path="/about" element={withLayout(<About />)} />
             <Route path="/profile" element={withLayout(<Profile />)} />
             <Route path="/ai-mock-analyzer" element={<Navigate to="/ai-performance-center" replace />} />

@@ -224,14 +224,268 @@ Deno.serve(async (req) => {
       question_level: asObjArr(extracted.question_level),
     });
 
+    // ==== DEEP ANALYSIS PASS + AUTO TEST GENERATION ============================
+    // Turn the imported report into the primary data source for the whole
+    // Performance Center: build a Subject→Chapter→Topic→Subtopic hierarchy,
+    // detect recurring patterns across the user's history, compute deterministic
+    // scores, and auto-generate personalized recovery tests.
+    let deepStatus = "pending";
+    let deepError: string | null = null;
+    let hierarchy: any = {};
+    let patterns: any = {};
+    let recurring: any = {};
+    let scores: any = {};
+    try {
+      const { data: history } = await admin
+        .from("imported_report_insights")
+        .select("report_id, weak_subjects, weak_chapters, weak_topics, critical_topics")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      const deepPrompt = `You are an exam-preparation analyst. Given a structured JSON extraction of a student's mock-test analysis, output a compact deep-analysis JSON.
+
+Return ONLY JSON (no prose, no fences) with this exact schema:
+
+{
+  "hierarchy": {
+    "subjects": [
+      { "name": string, "accuracy": number|null, "mistakes": number, "skipped": number, "priority": "critical"|"high"|"medium"|"low",
+        "chapters": [
+          { "name": string, "mistakes": number, "skipped": number, "priority": "critical"|"high"|"medium"|"low",
+            "topics": [
+              { "name": string, "mistakes": number, "skipped": number, "priority": "critical"|"high"|"medium"|"low",
+                "subtopics": [ { "name": string, "mistakes": number, "skipped": number } ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "patterns": {
+    "time_management": string[],
+    "silly_mistakes": string[],
+    "concept_mistakes": string[],
+    "guesswork": string[],
+    "confidence_issues": string[],
+    "skipped_patterns": string[],
+    "question_patterns": string[]
+  }
+}
+
+Rules:
+- Use ONLY subjects/chapters/topics that actually appear in the input.
+- If a level (chapter/topic/subtopic) is not present, omit that array (do not fabricate).
+- Priority = critical if mistakes+skipped >= 5 OR the topic is explicitly called "critical"; high if >=3; medium if >=1; low otherwise.
+- Preserve original language (English/Hindi/Hinglish).
+- Keep pattern strings short (one phrase).`;
+
+      const deepInput = {
+        weak_subjects: extracted.weak_subjects,
+        strong_subjects: extracted.strong_subjects,
+        weak_chapters: extracted.weak_chapters,
+        weak_topics: extracted.weak_topics,
+        critical_topics: extracted.critical_topics,
+        conceptual_errors: extracted.conceptual_errors,
+        silly_mistakes: extracted.silly_mistakes,
+        guesswork: extracted.guesswork,
+        calculation_errors: extracted.calculation_errors,
+        reading_errors: extracted.reading_errors,
+        time_problems: extracted.time_problems,
+        mistake_bank: extracted.mistake_bank,
+        skipped_bank: extracted.skipped_bank,
+        section_scores: extracted.section_scores,
+        question_level: extracted.question_level,
+      };
+
+      try {
+        const dresp = await chatCompletion({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: deepPrompt },
+            { role: "user", content: JSON.stringify(deepInput) },
+          ],
+          temperature: 0,
+          max_tokens: 6000,
+          response_format: { type: "json_object" },
+        }, { feature: "deep_mock_analysis", timeoutMs: 90_000, overallTimeoutMs: 150_000 });
+        const draw = dresp.choices?.[0]?.message?.content ?? "";
+        const parsed = extractJson(draw) ?? {};
+        hierarchy = parsed.hierarchy ?? {};
+        patterns = parsed.patterns ?? {};
+      } catch (e) {
+        deepError = e instanceof Error ? e.message : String(e);
+      }
+
+      const countMap = (getter: (r: any) => any[]) => {
+        const m = new Map<string, number>();
+        (history ?? []).forEach((h) => {
+          const arr = getter(h) ?? [];
+          const seen = new Set<string>();
+          arr.forEach((v: any) => {
+            const key = typeof v === "string" ? v.trim() : (v?.name ?? v?.topic ?? "");
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            m.set(key, (m.get(key) ?? 0) + 1);
+          });
+        });
+        return m;
+      };
+      const topRepeating = (m: Map<string, number>, min = 2) =>
+        [...m.entries()].filter(([, c]) => c >= min).sort((a, b) => b[1] - a[1]).slice(0, 20)
+          .map(([name, count]) => ({ name, count }));
+
+      recurring = {
+        weak_subjects: topRepeating(countMap((r) => r.weak_subjects)),
+        weak_chapters: topRepeating(countMap((r) => r.weak_chapters)),
+        weak_topics: topRepeating(countMap((r) => r.weak_topics)),
+        critical_topics: topRepeating(countMap((r) => r.critical_topics)),
+      };
+
+      const mCount = Array.isArray(extracted.mistake_bank) ? extracted.mistake_bank.length : 0;
+      const sCount = Array.isArray(extracted.skipped_bank) ? extracted.skipped_bank.length : 0;
+      const accuracy = typeof extracted.accuracy === "number" ? extracted.accuracy : null;
+      const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+      const weaknessScore = clamp((mCount * 3) + (sCount * 2) + (recurring.critical_topics?.length ?? 0) * 5);
+      const masteryScore = accuracy != null ? clamp(accuracy) : clamp(100 - weaknessScore);
+      const confidenceScore = clamp(100 - ((extracted.guesswork?.length ?? 0) * 6) - ((extracted.silly_mistakes?.length ?? 0) * 4));
+      const recoveryScore = clamp(100 - (mCount * 2) - (recurring.weak_topics?.length ?? 0) * 4);
+      const learningProgress = accuracy != null && history && history.length >= 2
+        ? clamp(accuracy)
+        : clamp((masteryScore + confidenceScore) / 2);
+
+      scores = {
+        mastery: masteryScore,
+        weakness: weaknessScore,
+        recovery: recoveryScore,
+        confidence: confidenceScore,
+        learning_progress: learningProgress,
+      };
+
+      deepStatus = deepError ? "partial" : "completed";
+    } catch (e) {
+      deepError = e instanceof Error ? e.message : String(e);
+      deepStatus = "failed";
+    }
+
+    await admin
+      .from("imported_report_insights")
+      .update({ hierarchy, patterns, recurring, scores, deep_analysis_status: deepStatus, deep_analysis_error: deepError })
+      .eq("report_id", reportRow.id);
+
+    // ==== AUTO TEST GENERATION ================================================
+    // Never mix skipped with wrong. Always separate repositories & tests.
+    const mistakes: any[] = Array.isArray(extracted.mistake_bank) ? extracted.mistake_bank : [];
+    const skipped: any[] = Array.isArray(extracted.skipped_bank) ? extracted.skipped_bank : [];
+
+    type AutoTest = {
+      kind: string; title: string; subject?: string | null; chapter?: string | null;
+      topic?: string | null; subtopic?: string | null; items: any[];
+      priority: "critical" | "high" | "medium" | "low"; difficulty_curve?: string | null; meta?: any;
+    };
+    const tests: AutoTest[] = [];
+
+    if (mistakes.length) tests.push({
+      kind: "wrong_all", title: `Wrong Question Test — Mock ${reportNumber}`,
+      items: mistakes, priority: "high", difficulty_curve: "easy→hard",
+    });
+    if (skipped.length) tests.push({
+      kind: "skipped_all", title: `Skipped Question Test — Mock ${reportNumber}`,
+      items: skipped, priority: "medium", difficulty_curve: "easy→hard",
+    });
+
+    const bucketBy = (arr: any[], key: "subject" | "chapter" | "topic") => {
+      const m = new Map<string, any[]>();
+      arr.forEach((it) => {
+        const k = (it?.[key] ?? "").toString().trim();
+        if (!k) return;
+        const list = m.get(k) ?? []; list.push(it); m.set(k, list);
+      });
+      return m;
+    };
+
+    bucketBy(mistakes, "subject").forEach((items, name) => {
+      if (items.length >= 2) tests.push({
+        kind: "weak_subject", title: `Weak Subject Recovery — ${name}`,
+        subject: name, items, priority: items.length >= 5 ? "critical" : "high",
+      });
+    });
+    bucketBy(mistakes, "chapter").forEach((items, name) => {
+      if (items.length >= 2) tests.push({
+        kind: "weak_chapter", title: `Weak Chapter Recovery — ${name}`,
+        chapter: name, items, priority: items.length >= 4 ? "critical" : "high",
+      });
+    });
+    bucketBy(mistakes, "topic").forEach((items, name) => {
+      if (items.length >= 3) tests.push({
+        kind: "topic_recovery", title: `Topic Recovery Test — ${name}`,
+        topic: name, items, priority: "high", difficulty_curve: "easy→medium→hard",
+      });
+    });
+
+    const recTopics: string[] = (recurring.weak_topics ?? []).map((t: any) => t.name).filter(Boolean);
+    recTopics.forEach((name) => {
+      const items = mistakes.filter((m) => (m?.topic ?? "").trim() === name);
+      if (items.length) tests.push({
+        kind: "priority_recovery", title: `🔥 Priority Recovery — ${name} (recurring)`,
+        topic: name, items, priority: "critical",
+        meta: { reason: "topic weak in multiple mocks" },
+      });
+    });
+
+    if (mistakes.length >= 5) {
+      const critical = mistakes.filter((m) =>
+        recTopics.includes((m?.topic ?? "").trim()) ||
+        (Array.isArray(extracted.critical_topics) && extracted.critical_topics.includes(m?.topic)));
+      const pool = (critical.length ? critical : mistakes).slice(0, 30);
+      tests.push({
+        kind: "full_recovery", title: `Full Recovery Test — Mock ${reportNumber}`,
+        items: pool, priority: "critical", difficulty_curve: "mixed",
+      });
+    }
+
+    await admin.from("imported_auto_tests").delete().eq("report_id", reportRow.id).eq("user_id", userId);
+    if (tests.length) {
+      await admin.from("imported_auto_tests").insert(tests.map((t) => ({
+        user_id: userId,
+        report_id: reportRow.id,
+        kind: t.kind,
+        title: t.title,
+        subject: t.subject ?? null,
+        chapter: t.chapter ?? null,
+        topic: t.topic ?? null,
+        subtopic: t.subtopic ?? null,
+        items: t.items,
+        item_count: t.items.length,
+        priority: t.priority,
+        difficulty_curve: t.difficulty_curve ?? null,
+        meta: t.meta ?? {},
+      })));
+    }
+
     await admin.from("imported_coach_memory").upsert({
       user_id: userId,
       last_report_id: reportRow.id,
-      memory: { last_imported_at: new Date().toISOString(), last_report_number: reportNumber },
+      memory: {
+        last_imported_at: new Date().toISOString(),
+        last_report_number: reportNumber,
+        scores,
+        hierarchy,
+        patterns,
+        recurring,
+        auto_tests_generated: tests.length,
+      },
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
 
-    return json({ ok: true, report: reportRow });
+    return json({
+      ok: true,
+      report: reportRow,
+      deep_analysis_status: deepStatus,
+      auto_tests_generated: tests.length,
+      scores,
+    });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }

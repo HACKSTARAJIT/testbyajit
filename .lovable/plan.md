@@ -1,52 +1,56 @@
-# Admin Intelligence Center
 
-Hidden admin-only module. Zero changes to existing student modules — purely additive.
+# Imported Report → Single Source of Truth
 
-## Access & routing
-- New route `/admin/intelligence` wrapped in the existing `AdminRoute` guard (already checks `has_role(auth.uid(), 'admin')`).
-- Add a link inside the existing Admin dashboard (`/admin`) only. No entry in student nav (`AppLayout` nav stays as-is).
-- Server-side role check on every edge function via `has_role` RPC before returning any data.
+Goal: After every "Analyze & Save", AJIT 360 must automatically deep-analyze the imported report, refresh every AI module from that structured data, and auto-generate personalized recovery tests. No second manual step.
 
-## Data sources (all existing tables — no schema changes needed)
-- `profiles`, `user_roles`, `auth.users` (via existing `admin_get_user_emails` RPC)
-- `test_attempts`, `tests`, `questions`, `subjects`, `chapters`
-- `wrong_questions`, `revision_items`, `revision_tests`
-- `ai_mock_reports`, `ai_coach_snapshots`, `ai_chat_threads`, `study_plan_tasks`
-- `study_activity`, `performance`, `smart_goals`
+## 1. Deeper post-import analysis (server)
 
-## New edge functions (admin-only, JWT + has_role check)
-1. `admin-overview` — aggregate counts: total students, online-now (activity in last 5 min), active today/week, new registrations (last 7d), premium/guest breakdown.
-2. `admin-live-activity` — recent `study_activity` + latest `test_attempts` joined with profile/email/subject/chapter/test for a live feed.
-3. `admin-students-list` — paginated + searchable list with per-student aggregates (readiness, accuracy, questions solved, wrong count, revision pending/done, streak).
-4. `admin-student-detail` — full 360° for one student: subject/chapter/topic accuracy, mock history, test history, AI reports, revision progress, weak/strong areas, trend, planner, coach threads.
-5. `admin-leaderboard` — top accuracy / score / most active / most improved / longest streak / highest revision completion.
-6. `admin-insights` — Gemini via Lovable AI: generates 4–6 short data-backed one-liners from aggregated stats.
+Extend `supabase/functions/import-mock-analysis/index.ts`:
 
-All 6 functions:
-- Verify JWT from `Authorization` header, call `has_role(user_id, 'admin')` with service-role client, 403 otherwise.
-- Return JSON; no raw SQL from client.
+- After the current extraction pass, run a **second AI pass** ("deep understanding") on the same text + first-pass JSON. Output a richer schema:
+  - `subjects[]`, `chapters[]`, `topics[]`, `subtopics[]` — each with `{ name, parent, mistakes, skipped, accuracy, priority }`
+  - `recurring_weaknesses[]`, `recurring_strengths[]` — computed by cross-referencing the user's prior imported reports (`imported_report_insights`) with the new one
+  - `patterns` — `time_management`, `silly_mistakes`, `concept_mistakes`, `guesswork`, `confidence_issues`, `skipped_patterns`
+  - `revision_priority[]` (ranked), `high_roi_topics[]`, `action_plan[]`
+  - `scores` — `mastery`, `weakness`, `recovery`, `confidence`, `learning_progress` (0-100, computed deterministically from extracted counts)
+- Write the enriched blob into `imported_report_insights` (new columns) and also aggregate into `imported_coach_memory.memory` so the coach chat + every dashboard reads one canonical structure.
+- Classify every mistake/skipped entry into the `Subject → Chapter → Topic → Subtopic` hierarchy; store on `mistake_bank` / `skipped_bank` items.
 
-## Frontend (new files only)
-- `src/pages/AdminIntelligence.tsx` — tabbed shell (Overview / Live Activity / Students / Leaderboard / Insights).
-- `src/components/admin-intel/OverviewTab.tsx` — hero stat grid + Insights panel.
-- `src/components/admin-intel/LiveActivityTab.tsx` — polling every 15s.
-- `src/components/admin-intel/StudentsTab.tsx` — search, filters (subject, chapter, accuracy, readiness, reg date, last login, streak, premium, guest), CSV export.
-- `src/components/admin-intel/StudentDetailDrawer.tsx` — opens on row click; shows full 360° profile, mock history, test history, AI report, revision, planner, coach threads.
-- `src/components/admin-intel/LeaderboardTab.tsx`.
-- Export helpers: CSV (client-side), Excel via `xlsx` npm pkg, PDF via existing `jspdf` if present else CSV+print.
+## 2. Auto test generation (server)
 
-## Router wiring
-- `src/App.tsx`: add `<Route path="/admin/intelligence" element={<AdminRoute><AppLayout><AdminIntelligence /></AppLayout></AdminRoute>} />`.
-- `src/pages/Admin.tsx`: add one card linking to `/admin/intelligence`.
+Same edge function, after analysis persists, populate `mock_generated_questions` (already exists) tagged with `report_id`, `bucket`, `subject`, `chapter`, `topic`, `subtopic`, `difficulty`:
 
-## Security
-- No client-side role trust: every fetch hits an edge function that re-verifies admin via `has_role`.
-- No new RLS policies needed — edge functions use service role after admin check, mirroring existing `admin-get-user-emails` pattern.
-- Route double-guarded by `AdminRoute` + server check.
+- Wrong Question Test — all `mistake_bank` items
+- Skipped Question Test — all `skipped_bank` items (kept strictly separate)
+- Weak Subject / Chapter / Topic Tests — one per detected weak node
+- Topic Recovery Test — auto-created when a topic has ≥3 mistakes, ordered easy→hard
+- Recurring Weakness → Priority Recovery Test — when the same topic appears weak in ≥2 reports
+- Full Recovery Test — mixed pool of highest-priority items
 
-## Out of scope (kept intact)
-Practice Tests, Smart Revision, AI Mock Analyzer, AI Performance Center, Dashboard, PDF Library, Auth, existing Admin & AdminAnalytics pages, student nav.
+Tests are represented as rows in a new `imported_auto_tests` table `{ report_id, user_id, kind, subject, chapter, topic, subtopic, question_ids[], difficulty_curve, priority, created_at }`. Runner reuses existing `MockAutoTest` page by report_id + test kind.
 
-## Notes
-- "Premium Users" and "Phone" fields don't exist in current schema → shown as "—" with a small "not tracked" note. No migration added since spec says do not modify existing functionality; can wire up later if user confirms adding columns.
-- "Online now" = `study_activity.updated_at` within last 5 minutes (best available signal without new presence infra).
+## 3. Client wiring
+
+- `AnalysisImportPanel.tsx` — after save, show live progress ("Analyzing… classifying topics… generating tests…") and refetch. No extra button.
+- `AIPerformanceCenter.tsx` and its tabs (Overview, Memory, Subject, Chapter, Topic, Repositories, Planner, History, Compare, AI Coach, Preparation 360, Academic Intelligence) — swap their data sources to read from the enriched `imported_report_insights` + `imported_coach_memory` for the selected/latest report, instead of raw text or legacy tables. A single `useImportedReport(reportId)` hook centralizes this.
+- `MockRevisionHub.tsx` — surface the new auto-generated test buckets per imported report with "▶ Start" buttons.
+- `imported-coach-chat` edge function — feed it the enriched structured JSON, not raw text.
+
+## 4. Database
+
+One migration:
+- Add JSONB columns to `imported_report_insights`: `hierarchy`, `patterns`, `scores`, `recurring`, `deep_analysis_status`.
+- New table `imported_auto_tests` with RLS + GRANTs (owner-only, `service_role` full).
+- Extend `mock_generated_questions` with `report_id` link + `bucket`, `subject`, `chapter`, `topic`, `subtopic` columns if missing.
+
+## Technical notes
+
+- Deep analysis uses `unifiedAI.ts` chat completion, JSON-only, with retries. All prompts server-side.
+- Scoring formulas are deterministic in TS so dashboards never depend on model whims.
+- Existing legacy raw-text paths remain read-only fallbacks but every UI prefers structured data.
+- Everything runs inside the existing `import-mock-analysis` request; user sees one spinner, one success toast.
+
+## Out of scope
+
+- No visual redesign. No changes to Practice Tests, PDF library, Admin, auth, or Smart Revision core.
+- No new AI provider work.

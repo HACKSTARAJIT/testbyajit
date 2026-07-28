@@ -39,6 +39,15 @@ type Insights = {
   mistake_bank: any[]; skipped_bank: any[]; learning_repository: any[];
   additional_insights: string[]; improving_topics: string[]; declining_topics: string[];
   weak_chapters: string[]; weak_topics: string[]; strong_subjects: string[]; weak_subjects: string[];
+  hierarchy?: any; patterns?: any; scores?: any; recurring?: any;
+  deep_analysis_status?: string; deep_analysis_error?: string | null;
+};
+
+type AutoTest = {
+  id: string; report_id: string; kind: string; title: string;
+  subject: string | null; chapter: string | null; topic: string | null; subtopic: string | null;
+  item_count: number; priority: string; difficulty_curve: string | null; meta: any;
+  created_at: string;
 };
 
 function Chips({ items }: { items: string[] }) {
@@ -66,20 +75,24 @@ export default function AnalysisImportPanel() {
   const [text, setText] = useState("");
   const [mockName, setMockName] = useState("");
   const [importing, setImporting] = useState(false);
+  const [importStage, setImportStage] = useState<string>("");
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [insights, setInsights] = useState<Insights[]>([]);
+  const [autoTests, setAutoTests] = useState<AutoTest[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState<ReportRow | null>(null);
 
   async function load() {
     if (!user) return;
     setLoading(true);
-    const [{ data: r }, { data: ins }] = await Promise.all([
+    const [{ data: r }, { data: ins }, { data: at }] = await Promise.all([
       supabase.from("imported_mock_reports").select("*").eq("user_id", user.id).order("report_number", { ascending: false }),
       supabase.from("imported_report_insights").select("*").eq("user_id", user.id),
+      supabase.from("imported_auto_tests").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
     ]);
     setReports((r as any) ?? []);
     setInsights((ins as any) ?? []);
+    setAutoTests((at as any) ?? []);
     setLoading(false);
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id]);
@@ -90,19 +103,32 @@ export default function AnalysisImportPanel() {
       return;
     }
     setImporting(true);
+    setImportStage("Extracting structure…");
+    // rolling stage hints so the user sees what's happening
+    const stageTimer = setTimeout(() => setImportStage("Deep analysis: subjects → chapters → topics…"), 8000);
+    const stageTimer2 = setTimeout(() => setImportStage("Detecting recurring patterns & scoring…"), 22000);
+    const stageTimer3 = setTimeout(() => setImportStage("Generating personalized recovery tests…"), 40000);
     try {
       const { data, error } = await supabase.functions.invoke("import-mock-analysis", {
         body: { text, mockName: mockName || null },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      toast({ title: "✅ Analysis imported", description: `Saved as Mock ${(data as any).report.report_number}.` });
+      const d: any = data;
+      toast({
+        title: "✅ Analysis complete",
+        description: `Mock ${d.report.report_number} · ${d.auto_tests_generated ?? 0} personalized tests generated · deep analysis ${d.deep_analysis_status ?? "done"}.`,
+      });
       setText(""); setMockName("");
       load();
     } catch (e: any) {
       toast({ title: "Import failed", description: e.message ?? "Try again.", variant: "destructive" });
-    } finally { setImporting(false); }
+    } finally {
+      clearTimeout(stageTimer); clearTimeout(stageTimer2); clearTimeout(stageTimer3);
+      setImportStage(""); setImporting(false);
+    }
   }
+
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this imported report?")) return;
@@ -178,8 +204,10 @@ export default function AnalysisImportPanel() {
       <Tabs defaultValue="new" className="w-full">
         <TabsList className="flex flex-wrap h-auto justify-start bg-card/60 backdrop-blur">
           <TabsTrigger value="new"><Upload className="mr-1 h-3.5 w-3.5" />📥 New Analysis</TabsTrigger>
+          <TabsTrigger value="brain"><Sparkles className="mr-1 h-3.5 w-3.5" />🧠 AI Analysis</TabsTrigger>
+          <TabsTrigger value="tests"><BookMarked className="mr-1 h-3.5 w-3.5" />🎯 Personalized Tests</TabsTrigger>
           <TabsTrigger value="history"><FileText className="mr-1 h-3.5 w-3.5" />📚 History</TabsTrigger>
-          <TabsTrigger value="repos"><BookMarked className="mr-1 h-3.5 w-3.5" />🧠 Repositories</TabsTrigger>
+          <TabsTrigger value="repos"><BookMarked className="mr-1 h-3.5 w-3.5" />📚 Repositories</TabsTrigger>
           <TabsTrigger value="compare"><TrendingUp className="mr-1 h-3.5 w-3.5" />📈 Compare</TabsTrigger>
         </TabsList>
 
@@ -218,18 +246,185 @@ export default function AnalysisImportPanel() {
                   <RotateCcw className="mr-2 h-4 w-4" />Clear
                 </Button>
               </div>
+              {importing && (
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs">
+                  <div className="flex items-center gap-2 font-medium text-primary">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {importStage || "Extracting structure…"}
+                  </div>
+                  <p className="mt-1 text-muted-foreground">
+                    AJIT AI is extracting insights, building a Subject → Chapter → Topic → Subtopic map, detecting recurring patterns and auto-generating personalized recovery tests. Please stay on this screen.
+                  </p>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
-                🧠 AJIT 360 semantically understands the report — different headings, different languages, any AI — and organises it into your Mistake Bank, Skipped Bank & Learning Repository.
+                🧠 After import, AJIT 360 automatically deep-analyses the report, refreshes every module in the Performance Center, and generates Wrong / Skipped / Weak-Subject / Chapter / Topic / Recurring / Recovery tests for you.
               </p>
             </CardContent>
           </Card>
-
-          <Card className="border-dashed bg-card/40">
-            <CardContent className="p-4 text-xs text-muted-foreground">
-              💡 <b>PDF Upload:</b> For direct PDF-to-analysis, use the <b>Full Mock</b> tab in AI Performance Center. This panel is for reports you generated externally in another AI and want AJIT 360 to remember.
-            </CardContent>
-          </Card>
         </TabsContent>
+
+        {/* AI ANALYSIS — deep understanding of latest report */}
+        <TabsContent value="brain" className="space-y-4">
+          {(() => {
+            const latest = reports[0];
+            const latestIns = latest ? insights.find((i) => i.report_id === latest.id) : null;
+            if (!latest || !latestIns) {
+              return <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">Import a report to unlock AI Analysis.</CardContent></Card>;
+            }
+            const s = latestIns.scores ?? {};
+            const h = latestIns.hierarchy ?? {};
+            const p = latestIns.patterns ?? {};
+            const rec = latestIns.recurring ?? {};
+            const scoreCards: Array<[string, number | undefined, string]> = [
+              ["Mastery", s.mastery, "text-emerald-500"],
+              ["Weakness", s.weakness, "text-destructive"],
+              ["Recovery", s.recovery, "text-amber-500"],
+              ["Confidence", s.confidence, "text-primary"],
+              ["Learning Progress", s.learning_progress, "text-sky-500"],
+            ];
+            return (
+              <>
+                <Card className="border-primary/30">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary" /> Mock {latest.report_number} — {latest.mock_name ?? "Latest"}
+                      <Badge variant="outline" className="text-[10px]">{latestIns.deep_analysis_status ?? "pending"}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                      {scoreCards.map(([label, val, color]) => (
+                        <div key={label} className="rounded-md border bg-muted/40 p-2 text-center">
+                          <p className="text-[10px] uppercase text-muted-foreground">{label}</p>
+                          <p className={`text-xl font-bold ${color}`}>{val ?? "—"}{val != null && <span className="text-xs">/100</span>}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {latestIns.deep_analysis_error && (
+                      <p className="mt-2 text-[11px] text-destructive">Deep analysis warning: {latestIns.deep_analysis_error}</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-base">📚 Subject → Chapter → Topic Map</CardTitle></CardHeader>
+                  <CardContent>
+                    {Array.isArray(h.subjects) && h.subjects.length ? (
+                      <ScrollArea className="max-h-[420px] pr-2">
+                        <div className="space-y-3">
+                          {h.subjects.map((sub: any, i: number) => (
+                            <div key={i} className="rounded-md border bg-muted/30 p-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="default">{sub.name}</Badge>
+                                {sub.priority && <Badge variant={sub.priority === "critical" ? "destructive" : "outline"} className="text-[10px]">{sub.priority}</Badge>}
+                                {sub.accuracy != null && <span className="text-xs text-muted-foreground">Accuracy: {sub.accuracy}%</span>}
+                                <span className="text-xs text-muted-foreground">❌ {sub.mistakes ?? 0} · ⏭ {sub.skipped ?? 0}</span>
+                              </div>
+                              {Array.isArray(sub.chapters) && sub.chapters.map((ch: any, j: number) => (
+                                <div key={j} className="ml-3 mt-2 border-l-2 border-primary/30 pl-3">
+                                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                                    <Badge variant="secondary" className="text-[10px]">{ch.name}</Badge>
+                                    {ch.priority && <Badge variant="outline" className="text-[10px]">{ch.priority}</Badge>}
+                                    <span className="text-muted-foreground">❌ {ch.mistakes ?? 0} · ⏭ {ch.skipped ?? 0}</span>
+                                  </div>
+                                  {Array.isArray(ch.topics) && ch.topics.map((tp: any, k: number) => (
+                                    <div key={k} className="ml-3 mt-1 border-l border-border pl-2 text-[11px]">
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="font-medium">{tp.name}</span>
+                                        {tp.priority && <Badge variant="outline" className="text-[10px]">{tp.priority}</Badge>}
+                                        <span className="text-muted-foreground">❌ {tp.mistakes ?? 0} · ⏭ {tp.skipped ?? 0}</span>
+                                      </div>
+                                      {Array.isArray(tp.subtopics) && tp.subtopics.length > 0 && (
+                                        <div className="ml-2 mt-0.5 flex flex-wrap gap-1">
+                                          {tp.subtopics.map((st: any, m: number) => (
+                                            <Badge key={m} variant="outline" className="text-[10px]">{st.name} ({(st.mistakes ?? 0) + (st.skipped ?? 0)})</Badge>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    ) : <p className="text-xs text-muted-foreground">Hierarchy not built yet — re-import if deep analysis failed.</p>}
+                  </CardContent>
+                </Card>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm">🧩 Detected Patterns</CardTitle></CardHeader>
+                    <CardContent className="space-y-2">
+                      <Section title="Time Management" items={p.time_management ?? []} />
+                      <Section title="Silly Mistakes" items={p.silly_mistakes ?? []} />
+                      <Section title="Concept Mistakes" items={p.concept_mistakes ?? []} />
+                      <Section title="Guesswork" items={p.guesswork ?? []} />
+                      <Section title="Confidence" items={p.confidence_issues ?? []} />
+                      <Section title="Skipped Patterns" items={p.skipped_patterns ?? []} />
+                      <Section title="Question Patterns" items={p.question_patterns ?? []} />
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm">🔁 Recurring Across Mocks</CardTitle></CardHeader>
+                    <CardContent className="space-y-2">
+                      <Section title="Recurring Weak Subjects" items={(rec.weak_subjects ?? []).map((x: any) => `${x.name} (×${x.count})`)} />
+                      <Section title="Recurring Weak Chapters" items={(rec.weak_chapters ?? []).map((x: any) => `${x.name} (×${x.count})`)} />
+                      <Section title="Recurring Weak Topics" items={(rec.weak_topics ?? []).map((x: any) => `${x.name} (×${x.count})`)} />
+                      <Section title="Recurring Critical Topics" items={(rec.critical_topics ?? []).map((x: any) => `${x.name} (×${x.count})`)} />
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            );
+          })()}
+        </TabsContent>
+
+        {/* PERSONALIZED TESTS — auto-generated per report */}
+        <TabsContent value="tests" className="space-y-3">
+          {loading ? (
+            <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : autoTests.length === 0 ? (
+            <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">Personalized tests appear here automatically after each import.</CardContent></Card>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Auto-generated from your imported reports. Wrong and skipped repositories are always kept separate.
+              </p>
+              {autoTests.map((t) => {
+                const rep = reports.find((r) => r.id === t.report_id);
+                const priorityVariant = t.priority === "critical" ? "destructive" : t.priority === "high" ? "default" : "secondary";
+                return (
+                  <Card key={t.id} className="border-border/60 hover:border-primary/40 transition">
+                    <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-sm font-medium">{t.title}</span>
+                          <Badge variant={priorityVariant as any} className="text-[10px]">{t.priority}</Badge>
+                          <Badge variant="outline" className="text-[10px]">{t.kind.replace(/_/g, " ")}</Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                          {rep && <span>Mock {rep.report_number}</span>}
+                          <span>{t.item_count} items</span>
+                          {t.difficulty_curve && <span>{t.difficulty_curve}</span>}
+                          {t.subject && <span>· {t.subject}</span>}
+                          {t.chapter && <span>· {t.chapter}</span>}
+                          {t.topic && <span>· {t.topic}</span>}
+                        </div>
+                      </div>
+                      <Button size="sm" onClick={() => (window.location.href = `/imported-auto-test/${t.id}`)}>
+                        <Sparkles className="mr-1 h-4 w-4" />Start
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </>
+          )}
+        </TabsContent>
+
 
         {/* HISTORY */}
         <TabsContent value="history" className="space-y-3">
