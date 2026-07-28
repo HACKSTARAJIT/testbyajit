@@ -541,6 +541,71 @@ export type Database = {
         }
         Relationships: []
       }
+      imported_auto_tests: {
+        Row: {
+          chapter: string | null
+          created_at: string
+          difficulty_curve: string | null
+          id: string
+          item_count: number
+          items: Json
+          kind: string
+          meta: Json
+          priority: string
+          report_id: string
+          subject: string | null
+          subtopic: string | null
+          title: string
+          topic: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chapter?: string | null
+          created_at?: string
+          difficulty_curve?: string | null
+          id?: string
+          item_count?: number
+          items?: Json
+          kind: string
+          meta?: Json
+          priority?: string
+          report_id: string
+          subject?: string | null
+          subtopic?: string | null
+          title: string
+          topic?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chapter?: string | null
+          created_at?: string
+          difficulty_curve?: string | null
+          id?: string
+          item_count?: number
+          items?: Json
+          kind?: string
+          meta?: Json
+          priority?: string
+          report_id?: string
+          subject?: string | null
+          subtopic?: string | null
+          title?: string
+          topic?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imported_auto_tests_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "imported_mock_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       imported_coach_memory: {
         Row: {
           last_report_id: string | null
@@ -643,7 +708,10 @@ export type Database = {
           created_at: string
           critical_topics: Json
           declining_topics: Json | null
+          deep_analysis_error: string | null
+          deep_analysis_status: string
           guesswork: Json
+          hierarchy: Json
           high_roi_chapters: Json
           high_roi_topics: Json
           id: string
@@ -651,11 +719,14 @@ export type Database = {
           learning_repository: Json | null
           mistake_bank: Json | null
           next_mock_strategy: Json
+          patterns: Json
           question_level: Json | null
           reading_errors: Json
+          recurring: Json
           red_flags: Json
           report_id: string
           revision_priority: Json
+          scores: Json
           silly_mistakes: Json
           skipped_bank: Json | null
           strengths: Json
@@ -678,7 +749,10 @@ export type Database = {
           created_at?: string
           critical_topics?: Json
           declining_topics?: Json | null
+          deep_analysis_error?: string | null
+          deep_analysis_status?: string
           guesswork?: Json
+          hierarchy?: Json
           high_roi_chapters?: Json
           high_roi_topics?: Json
           id?: string
@@ -686,11 +760,14 @@ export type Database = {
           learning_repository?: Json | null
           mistake_bank?: Json | null
           next_mock_strategy?: Json
+          patterns?: Json
           question_level?: Json | null
           reading_errors?: Json
+          recurring?: Json
           red_flags?: Json
           report_id: string
           revision_priority?: Json
+          scores?: Json
           silly_mistakes?: Json
           skipped_bank?: Json | null
           strengths?: Json
@@ -713,7 +790,10 @@ export type Database = {
           created_at?: string
           critical_topics?: Json
           declining_topics?: Json | null
+          deep_analysis_error?: string | null
+          deep_analysis_status?: string
           guesswork?: Json
+          hierarchy?: Json
           high_roi_chapters?: Json
           high_roi_topics?: Json
           id?: string
@@ -721,11 +801,14 @@ export type Database = {
           learning_repository?: Json | null
           mistake_bank?: Json | null
           next_mock_strategy?: Json
+          patterns?: Json
           question_level?: Json | null
           reading_errors?: Json
+          recurring?: Json
           red_flags?: Json
           report_id?: string
           revision_priority?: Json
+          scores?: Json
           silly_mistakes?: Json
           skipped_bank?: Json | null
           strengths?: Json
