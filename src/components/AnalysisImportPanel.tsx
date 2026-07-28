@@ -39,6 +39,15 @@ type Insights = {
   mistake_bank: any[]; skipped_bank: any[]; learning_repository: any[];
   additional_insights: string[]; improving_topics: string[]; declining_topics: string[];
   weak_chapters: string[]; weak_topics: string[]; strong_subjects: string[]; weak_subjects: string[];
+  hierarchy?: any; patterns?: any; scores?: any; recurring?: any;
+  deep_analysis_status?: string; deep_analysis_error?: string | null;
+};
+
+type AutoTest = {
+  id: string; report_id: string; kind: string; title: string;
+  subject: string | null; chapter: string | null; topic: string | null; subtopic: string | null;
+  item_count: number; priority: string; difficulty_curve: string | null; meta: any;
+  created_at: string;
 };
 
 function Chips({ items }: { items: string[] }) {
