@@ -106,6 +106,10 @@ const App = () => (
             <Route path="/revise" element={withLayout(<RevisionRunner />)} />
             <Route path="/revise/:testId" element={withLayout(<RevisionRunner />)} />
             <Route path="/mock-revision-hub" element={withLayout(<MockRevisionHub />)} />
+            <Route path="/mock-mistakes" element={withLayout(<MockMistakes />)} />
+            <Route path="/mock-mistakes/:subject" element={withLayout(<MockMistakesSubject />)} />
+            <Route path="/mock-mistakes/:subject/:mockId" element={withLayout(<MockMistakesMock />)} />
+            <Route path="/mock-mistakes/:subject/:mockId/test" element={withLayout(<MockMistakesTest />)} />
             <Route path="/mock-auto-test/:reportId" element={withLayout(<MockAutoTest />)} />
             <Route path="/imported-auto-test/:id" element={withLayout(<ImportedAutoTest />)} />
             <Route path="/about" element={withLayout(<About />)} />
