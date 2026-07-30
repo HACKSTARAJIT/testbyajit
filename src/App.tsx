@@ -34,6 +34,10 @@ const RevisionRunner = lazy(() => import("./pages/RevisionRunner.tsx"));
 const MockRevisionHub = lazy(() => import("./pages/MockRevisionHub.tsx"));
 const MockAutoTest = lazy(() => import("./pages/MockAutoTest.tsx"));
 const ImportedAutoTest = lazy(() => import("./pages/ImportedAutoTest.tsx"));
+const MockMistakes = lazy(() => import("./pages/MockMistakes.tsx"));
+const MockMistakesSubject = lazy(() => import("./pages/MockMistakesSubject.tsx"));
+const MockMistakesMock = lazy(() => import("./pages/MockMistakesMock.tsx"));
+const MockMistakesTest = lazy(() => import("./pages/MockMistakesTest.tsx"));
 const About = lazy(() => import("./pages/About.tsx"));
 const Admin = lazy(() => import("./pages/Admin.tsx"));
 const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics.tsx"));
@@ -102,6 +106,10 @@ const App = () => (
             <Route path="/revise" element={withLayout(<RevisionRunner />)} />
             <Route path="/revise/:testId" element={withLayout(<RevisionRunner />)} />
             <Route path="/mock-revision-hub" element={withLayout(<MockRevisionHub />)} />
+            <Route path="/mock-mistakes" element={withLayout(<MockMistakes />)} />
+            <Route path="/mock-mistakes/:subject" element={withLayout(<MockMistakesSubject />)} />
+            <Route path="/mock-mistakes/:subject/:mockId" element={withLayout(<MockMistakesMock />)} />
+            <Route path="/mock-mistakes/:subject/:mockId/test" element={withLayout(<MockMistakesTest />)} />
             <Route path="/mock-auto-test/:reportId" element={withLayout(<MockAutoTest />)} />
             <Route path="/imported-auto-test/:id" element={withLayout(<ImportedAutoTest />)} />
             <Route path="/about" element={withLayout(<About />)} />

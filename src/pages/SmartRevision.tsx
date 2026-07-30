@@ -209,6 +209,21 @@ export default function SmartRevision() {
         <ChevronRight className="h-5 w-5" />
       </button>
 
+      {/* 📝 Mock Mistakes — private mistake notebook + mock tests */}
+      <button
+        onClick={() => navigate("/mock-mistakes")}
+        className="btn-ripple relative flex w-full items-center gap-3 overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 p-5 text-left text-white shadow-lg transition-transform hover:scale-[1.01]"
+      >
+        <div className="rounded-2xl bg-white/20 p-3 backdrop-blur-sm text-xl">📝</div>
+        <div className="flex-1">
+          <p className="text-lg font-bold">Mock Mistakes</p>
+          <p className="text-xs text-white/85">
+            Save your mock wrong questions subject-wise and practise them as a real mock test.
+          </p>
+        </div>
+        <ChevronRight className="h-5 w-5" />
+      </button>
+
       <Tabs defaultValue="pending" className="w-full">
         <TabsList className="grid w-full grid-cols-3 rounded-2xl">
           <TabsTrigger value="pending" className="rounded-xl">🔴 Pending</TabsTrigger>

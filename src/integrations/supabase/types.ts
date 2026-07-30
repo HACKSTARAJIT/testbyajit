@@ -934,6 +934,98 @@ export type Database = {
           },
         ]
       }
+      mock_mistake_mocks: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mock_mistake_questions: {
+        Row: {
+          chapter: string | null
+          correct_answer: string | null
+          created_at: string
+          explanation: string | null
+          id: string
+          mock_id: string
+          option_a: string | null
+          option_b: string | null
+          option_c: string | null
+          option_d: string | null
+          question_text: string
+          sort_order: number
+          topic: string | null
+          updated_at: string
+          user_answer: string | null
+          user_id: string
+        }
+        Insert: {
+          chapter?: string | null
+          correct_answer?: string | null
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          mock_id: string
+          option_a?: string | null
+          option_b?: string | null
+          option_c?: string | null
+          option_d?: string | null
+          question_text: string
+          sort_order?: number
+          topic?: string | null
+          updated_at?: string
+          user_answer?: string | null
+          user_id: string
+        }
+        Update: {
+          chapter?: string | null
+          correct_answer?: string | null
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          mock_id?: string
+          option_a?: string | null
+          option_b?: string | null
+          option_c?: string | null
+          option_d?: string | null
+          question_text?: string
+          sort_order?: number
+          topic?: string | null
+          updated_at?: string
+          user_answer?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mock_mistake_questions_mock_id_fkey"
+            columns: ["mock_id"]
+            isOneToOne: false
+            referencedRelation: "mock_mistake_mocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           chapter_id: string
