@@ -436,7 +436,7 @@ function ChapterCard({
         <QuickAction icon={<BookMarked className="h-3.5 w-3.5" />} label="Read" onClick={onToggleExpand} disabled={pdfs.length === 0} />
         <QuickAction icon={<ClipboardList className="h-3.5 w-3.5" />} label="Practice" onClick={onToggleExpand} disabled={tests.length === 0} />
         <QuickAction icon={<RotateCw className="h-3.5 w-3.5" />} label="Revise" asLink={`/smart-revision/subject/${subjectId}/chapter/${chapter.id}`} />
-        <QuickAction icon={<BarChart3 className="h-3.5 w-3.5" />} label="Analyze" asLink="/ai-performance-center" />
+        <QuickAction icon={<BarChart3 className="h-3.5 w-3.5" />} label="Analyze" asLink="/smart-revision/ai" />
       </div>
 
       {/* Expand toggle */}

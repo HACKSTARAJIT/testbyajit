@@ -7,7 +7,7 @@ export default function FloatingAIButton() {
   const [open, setOpen] = useState(false);
   const links = [
     { to: "/ai-coach", icon: MessageCircle, label: "Ask AI" },
-    { to: "/ai-performance-center", icon: HelpCircle, label: "New Mock Analysis" },
+    { to: "/smart-revision/ai", icon: HelpCircle, label: "Revision Intelligence" },
     { to: "/ai-performance", icon: CalendarClock, label: "Study Plan" },
     { to: "/performance", icon: Gauge, label: "Performance" },
   ];

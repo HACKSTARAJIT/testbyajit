@@ -200,8 +200,8 @@ function recRoute(type: string) {
     case "practice": return "/tests";
     case "revision": return "/smart-revision";
     case "pdf": return "/pdfs";
-    case "planner": return "/ai-performance-center";
-    default: return "/ai-performance-center";
+    case "planner": return "/smart-revision/ai";
+    default: return "/smart-revision/ai";
   }
 }
 
