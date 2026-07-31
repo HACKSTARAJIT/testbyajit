@@ -419,7 +419,7 @@ export default function MockRevisionHubPage() {
                   <button
                     onClick={() => {
                       if (canRevise) navigate(`/revise?${params.toString()}`);
-                      else navigate(`/ai-performance-center?report=${m.id}`);
+                      else navigate("/smart-revision/ai");
                     }}
                     className="btn-ripple flex w-full items-start gap-3 text-left"
                   >

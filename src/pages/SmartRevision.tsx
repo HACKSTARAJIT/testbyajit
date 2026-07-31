@@ -193,7 +193,24 @@ export default function SmartRevision() {
         </div>
       )}
 
+      {/* 🧠 Revision Intelligence — AI now lives only inside Smart Revision */}
+      <button
+        onClick={() => navigate("/smart-revision/ai")}
+        className="btn-ripple relative flex w-full items-center gap-3 overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500 via-orange-600 to-rose-600 p-5 text-left text-white shadow-lg transition-transform hover:scale-[1.01]"
+      >
+        <Wand2 className="absolute -right-4 -top-4 h-24 w-24 opacity-15" />
+        <div className="rounded-2xl bg-white/20 p-3 backdrop-blur-sm"><Brain className="h-6 w-6" /></div>
+        <div className="flex-1">
+          <p className="text-lg font-bold">🧠 Revision Intelligence</p>
+          <p className="text-xs text-white/85">
+            Strict AI mentor trained only on your imported mock mistakes — weak topics, repeat errors & daily orders.
+          </p>
+        </div>
+        <ChevronRight className="h-5 w-5" />
+      </button>
+
       {/* 🧠 Mock Revision Hub — single entry card to a dedicated page */}
+
       <button
         onClick={() => navigate("/mock-revision-hub")}
         className="btn-ripple relative flex w-full items-center gap-3 overflow-hidden rounded-3xl bg-gradient-to-br from-fuchsia-600 via-purple-600 to-indigo-700 p-5 text-left text-white shadow-lg transition-transform hover:scale-[1.01]"
