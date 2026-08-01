@@ -110,6 +110,9 @@ export default function MockMistakesMock() {
         </div>
       )}
 
+      <PracticeHistory attempts={attempts} />
+
+
       {total > 0 && (
         <Button variant="ghost" className="w-full rounded-2xl text-destructive" onClick={clearQuestions}>
           <Trash2 className="mr-1 h-4 w-4" /> Delete all imported questions
