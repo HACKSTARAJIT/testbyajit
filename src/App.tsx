@@ -115,6 +115,7 @@ const App = () => (
             <Route path="/mock-auto-test/:reportId" element={withLayout(<MockAutoTest />)} />
             <Route path="/about" element={withLayout(<About />)} />
             <Route path="/profile" element={withLayout(<Profile />)} />
+            <Route path="/smart-revision/ai" element={<Navigate to="/smart-revision" replace />} />
             <Route path="/ai-mock-analyzer" element={<Navigate to="/smart-revision" replace />} />
             <Route path="/analysis-import" element={<Navigate to="/smart-revision" replace />} />
             <Route path="/ai-performance-center" element={<Navigate to="/smart-revision" replace />} />
