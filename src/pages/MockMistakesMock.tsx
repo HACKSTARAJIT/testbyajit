@@ -8,6 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, ClipboardPaste, Play, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { IMPORT_TEMPLATE, parseMockMistakes } from "@/lib/mockMistakes";
+import { PracticeHistory } from "@/components/PracticeHistory";
+import { loadAttempts, type AttemptRow } from "@/lib/revisionPractice";
 
 export default function MockMistakesMock() {
   const { subject = "", mockId = "" } = useParams();
