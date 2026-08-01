@@ -8,6 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, ClipboardPaste, Play, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { IMPORT_TEMPLATE, parseMockMistakes } from "@/lib/mockMistakes";
+import { PracticeHistory } from "@/components/PracticeHistory";
+import { loadAttempts, type AttemptRow } from "@/lib/revisionPractice";
 
 export default function MockMistakesMock() {
   const { subject = "", mockId = "" } = useParams();
@@ -20,17 +22,21 @@ export default function MockMistakesMock() {
   const [showPaste, setShowPaste] = useState(false);
   const [text, setText] = useState("");
   const [importing, setImporting] = useState(false);
+  const [attempts, setAttempts] = useState<AttemptRow[]>([]);
 
   const load = async () => {
     if (!user) { setLoading(false); return; }
-    const [{ data: mock }, { count }] = await Promise.all([
+    const [{ data: mock }, { count }, att] = await Promise.all([
       supabase.from("mock_mistake_mocks").select("name").eq("id", mockId).maybeSingle(),
       supabase.from("mock_mistake_questions").select("id", { count: "exact", head: true }).eq("mock_id", mockId),
+      loadAttempts(user.id, "mock_mistakes", mockId),
     ]);
     setMockName((mock as any)?.name ?? "Mock");
     setTotal(count ?? 0);
+    setAttempts(att);
     setLoading(false);
   };
+
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [user, mockId]);
 
@@ -103,6 +109,9 @@ export default function MockMistakesMock() {
           </Button>
         </div>
       )}
+
+      <PracticeHistory attempts={attempts} />
+
 
       {total > 0 && (
         <Button variant="ghost" className="w-full rounded-2xl text-destructive" onClick={clearQuestions}>

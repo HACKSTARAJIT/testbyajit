@@ -33,8 +33,8 @@ export default function SmartRevisionSubject() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <Button variant="ghost" size="sm" onClick={() => navigate("/smart-revision")}>
-        <ArrowLeft className="mr-1 h-4 w-4" /> Smart Revision
+      <Button variant="ghost" size="sm" onClick={() => navigate("/smart-revision/wrong")}>
+        <ArrowLeft className="mr-1 h-4 w-4" /> Wrong Questions
       </Button>
 
       <div className="rounded-3xl bg-gradient-royal p-6 text-white shadow-lg">
@@ -42,7 +42,7 @@ export default function SmartRevisionSubject() {
           <div className="rounded-2xl bg-white/20 p-3"><BookOpen className="h-6 w-6" /></div>
           <div>
             <h1 className="text-2xl font-bold font-display">{subjectName}</h1>
-            <p className="text-sm text-white/85">Chapters with pending mistakes</p>
+            <p className="text-sm text-white/85">Chapters with pending wrong / skipped questions</p>
           </div>
         </div>
       </div>

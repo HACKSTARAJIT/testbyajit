@@ -1453,6 +1453,69 @@ export type Database = {
         }
         Relationships: []
       }
+      revision_practice_attempts: {
+        Row: {
+          accuracy: number
+          ai_analysis: string | null
+          ai_comparison: string | null
+          chapter: string | null
+          correct_count: number
+          created_at: string
+          details: Json
+          id: string
+          skipped_count: number
+          source: string
+          source_key: string
+          subject: string | null
+          time_taken_seconds: number
+          title: string
+          total_questions: number
+          updated_at: string
+          user_id: string
+          wrong_count: number
+        }
+        Insert: {
+          accuracy?: number
+          ai_analysis?: string | null
+          ai_comparison?: string | null
+          chapter?: string | null
+          correct_count?: number
+          created_at?: string
+          details?: Json
+          id?: string
+          skipped_count?: number
+          source: string
+          source_key: string
+          subject?: string | null
+          time_taken_seconds?: number
+          title?: string
+          total_questions?: number
+          updated_at?: string
+          user_id: string
+          wrong_count?: number
+        }
+        Update: {
+          accuracy?: number
+          ai_analysis?: string | null
+          ai_comparison?: string | null
+          chapter?: string | null
+          correct_count?: number
+          created_at?: string
+          details?: Json
+          id?: string
+          skipped_count?: number
+          source?: string
+          source_key?: string
+          subject?: string | null
+          time_taken_seconds?: number
+          title?: string
+          total_questions?: number
+          updated_at?: string
+          user_id?: string
+          wrong_count?: number
+        }
+        Relationships: []
+      }
       revision_tests: {
         Row: {
           chapter_id: string | null
