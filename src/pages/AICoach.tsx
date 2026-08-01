@@ -175,7 +175,7 @@ export default function AICoach() {
   if (!hasAnyData) {
     return (
       <div className="max-w-3xl mx-auto p-6 space-y-4">
-        <Button variant="ghost" onClick={() => navigate("/smart-revision/ai")}>
+        <Button variant="ghost" onClick={() => navigate("/smart-revision")}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Button>
         <Card className="border-white/10 bg-white/5 backdrop-blur">
@@ -185,7 +185,7 @@ export default function AICoach() {
             <p className="text-muted-foreground">Attempt a Practice Test या Upload a Mock Test — फिर AI Coach आपकी personalised journey बनाना शुरू करेगा।</p>
             <div className="flex gap-2 justify-center pt-2">
               <Button asChild><Link to="/tests">Start Practice</Link></Button>
-              <Button asChild variant="outline"><Link to="/smart-revision/ai">Revision Intelligence</Link></Button>
+              <Button asChild variant="outline"><Link to="/smart-revision">Revision Intelligence</Link></Button>
             </div>
           </CardContent>
         </Card>
@@ -214,7 +214,7 @@ export default function AICoach() {
             <div className="flex flex-wrap gap-2">
               <Button asChild size="sm" variant="secondary"><Link to="/ai-coach/chat"><MessageSquare className="w-4 h-4 mr-1" /> Chat with Coach</Link></Button>
               <Button asChild size="sm" variant="outline"><Link to="/smart-revision">Smart Revision</Link></Button>
-              <Button asChild size="sm" variant="ghost"><Link to="/smart-revision/ai"><ArrowLeft className="w-4 h-4 mr-1" /> Revision Intelligence</Link></Button>
+              <Button asChild size="sm" variant="ghost"><Link to="/smart-revision"><ArrowLeft className="w-4 h-4 mr-1" /> Revision Intelligence</Link></Button>
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-5">

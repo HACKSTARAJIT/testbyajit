@@ -126,7 +126,7 @@ export default function PerformanceIntelligence() {
         </div>
         <p className="text-lg font-semibold">No completed mocks yet</p>
         <p className="text-sm text-muted-foreground">Analyze mocks to unlock Performance Intelligence.</p>
-        <Button asChild><Link to="/smart-revision/ai">Go to Revision Intelligence</Link></Button>
+        <Button asChild><Link to="/smart-revision">Go to Revision Intelligence</Link></Button>
       </CardContent></Card>
     );
   }
