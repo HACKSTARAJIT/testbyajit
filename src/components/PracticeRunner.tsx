@@ -188,6 +188,7 @@ export function PracticeRunner({
             <RotateCcw className="mr-2 h-4 w-4" /> Practice Again
           </Button>
         </div>
+        {fx.overlay}
       </div>
     );
   }
