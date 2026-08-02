@@ -6,9 +6,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  saveAttempt, requestAI, formatDuration,
+  saveAttempt, requestAI, formatDuration, loadAttempts,
   type AttemptRow, type PracticeQuestion, type PracticeSource,
 } from "@/lib/revisionPractice";
+import { useFeedbackFX } from "@/hooks/useFeedbackFX";
 
 const LETTERS = ["A", "B", "C", "D"] as const;
 
