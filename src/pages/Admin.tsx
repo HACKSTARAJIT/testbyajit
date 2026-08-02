@@ -79,6 +79,8 @@ export default function Admin() {
         <TabsContent value="ai" className="pt-4"><AITestGenerator subjects={subjects} chapters={chapters} reload={load} /></TabsContent>
         <TabsContent value="performance" className="pt-4"><PerformanceTab subjects={subjects} chapters={chapters} performance={performance} reload={load} del={del} /></TabsContent>
         <TabsContent value="app" className="pt-4"><AppTab /></TabsContent>
+        <TabsContent value="intro" className="pt-4"><AppIntroTab /></TabsContent>
+        <TabsContent value="feedback" className="pt-4"><VoiceFeedbackTab /></TabsContent>
       </Tabs>
     </div>
   );
