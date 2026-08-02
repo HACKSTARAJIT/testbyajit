@@ -65,6 +65,8 @@ export default function Admin() {
           <TabsTrigger value="ai"><Sparkles className="mr-1 h-4 w-4" /> AI Test Generator</TabsTrigger>
           <TabsTrigger value="performance"><BarChart3 className="mr-1 h-4 w-4" /> Results</TabsTrigger>
           <TabsTrigger value="app"><Smartphone className="mr-1 h-4 w-4" /> App (APK)</TabsTrigger>
+          <TabsTrigger value="intro">🎬 App Intro</TabsTrigger>
+          <TabsTrigger value="feedback">🎙️ Voice & Animation</TabsTrigger>
         </TabsList>
 
         <TabsContent value="subjects" className="pt-4"><SubjectsTab subjects={subjects} reload={load} del={del} /></TabsContent>
