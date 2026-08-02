@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { ProtectedRoute, AdminRoute } from "@/components/RouteGuards";
 import { SaveGateProvider } from "@/hooks/useSaveGate";
 import { Loader2 } from "lucide-react";
+import { IntroSplash } from "@/components/IntroSplash";
 
 // Eagerly-loaded (small / critical-path)
 import Index from "./pages/Index.tsx";
