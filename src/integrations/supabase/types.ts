@@ -327,6 +327,42 @@ export type Database = {
           },
         ]
       }
+      app_intro: {
+        Row: {
+          created_at: string
+          duration_seconds: number
+          enabled: boolean
+          file_path: string | null
+          id: string
+          media_kind: string
+          mime_type: string | null
+          skip_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number
+          enabled?: boolean
+          file_path?: string | null
+          id?: string
+          media_kind?: string
+          mime_type?: string | null
+          skip_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number
+          enabled?: boolean
+          file_path?: string | null
+          id?: string
+          media_kind?: string
+          mime_type?: string | null
+          skip_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_release: {
         Row: {
           created_at: string
@@ -538,6 +574,75 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      feedback_media: {
+        Row: {
+          category: string
+          created_at: string
+          enabled: boolean
+          file_path: string
+          id: string
+          label: string | null
+          media_type: string
+          mime_type: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          enabled?: boolean
+          file_path: string
+          id?: string
+          label?: string | null
+          media_type: string
+          mime_type?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          enabled?: boolean
+          file_path?: string
+          id?: string
+          label?: string | null
+          media_type?: string
+          mime_type?: string | null
+        }
+        Relationships: []
+      }
+      feedback_settings: {
+        Row: {
+          animation_duration_ms: number
+          animation_enabled: boolean
+          category_flags: Json
+          created_at: string
+          id: string
+          random_playback: boolean
+          updated_at: string
+          voice_enabled: boolean
+          volume: number
+        }
+        Insert: {
+          animation_duration_ms?: number
+          animation_enabled?: boolean
+          category_flags?: Json
+          created_at?: string
+          id?: string
+          random_playback?: boolean
+          updated_at?: string
+          voice_enabled?: boolean
+          volume?: number
+        }
+        Update: {
+          animation_duration_ms?: number
+          animation_enabled?: boolean
+          category_flags?: Json
+          created_at?: string
+          id?: string
+          random_playback?: boolean
+          updated_at?: string
+          voice_enabled?: boolean
+          volume?: number
         }
         Relationships: []
       }
