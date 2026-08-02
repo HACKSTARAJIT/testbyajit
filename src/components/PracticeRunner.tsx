@@ -287,6 +287,7 @@ export function PracticeRunner({
         )}
       </div>
       {!revealed && <p className="text-center text-xs text-muted-foreground">Select an option to see the answer instantly.</p>}
+      {fx.overlay}
     </div>
   );
 }
