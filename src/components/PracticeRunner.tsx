@@ -6,9 +6,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  saveAttempt, requestAI, formatDuration,
+  saveAttempt, requestAI, formatDuration, loadAttempts,
   type AttemptRow, type PracticeQuestion, type PracticeSource,
 } from "@/lib/revisionPractice";
+import { useFeedbackFX } from "@/hooks/useFeedbackFX";
 
 const LETTERS = ["A", "B", "C", "D"] as const;
 
@@ -41,6 +42,7 @@ export function PracticeRunner({
   const [aiBusy, setAiBusy] = useState<"analyze" | "compare" | null>(null);
   const [aiError, setAiError] = useState("");
   const startedAt = useRef(Date.now());
+  const fx = useFeedbackFX();
 
   const stats = useMemo(() => {
     const answered = questions.filter((q) => answers[q.id]);
@@ -54,9 +56,18 @@ export function PracticeRunner({
     };
   }, [questions, answers]);
 
+  function selectAnswer(qid: string, letter: string, correctAnswer: string | null) {
+    setAnswers((a) => ({ ...a, [qid]: letter }));
+    fx.play(letter === correctAnswer ? "correct" : "wrong");
+  }
+
   async function finish() {
     setFinished(true);
     setSaving(true);
+    const previous = await loadAttempts(userId, source, sourceKey);
+    const previousBest = previous.length
+      ? Math.max(...previous.map((p) => p.correct_count ?? 0))
+      : null;
     const row = await saveAttempt({
       userId, source, sourceKey, title, subject, chapter,
       questions, answers,
@@ -65,6 +76,14 @@ export function PracticeRunner({
     setAttempt(row);
     setSaving(false);
     onFinished?.();
+
+    // Completion → Perfect → Improvement feedback, then AI analysis stays visible.
+    await fx.play("completion");
+    if (stats.correct === questions.length && questions.length > 0) {
+      window.setTimeout(() => fx.play("perfect"), 900);
+    } else if (previousBest !== null && stats.correct > previousBest) {
+      window.setTimeout(() => fx.play("improvement"), 900);
+    }
   }
 
   async function runAI(mode: "analyze" | "compare") {
@@ -90,6 +109,7 @@ export function PracticeRunner({
     setAnalysis("");
     setComparison("");
     setAiError("");
+    fx.resetSession();
     startedAt.current = Date.now();
   }
 
@@ -168,6 +188,7 @@ export function PracticeRunner({
             <RotateCcw className="mr-2 h-4 w-4" /> Practice Again
           </Button>
         </div>
+        {fx.overlay}
       </div>
     );
   }
@@ -210,7 +231,7 @@ export function PracticeRunner({
               <button
                 key={L}
                 disabled={revealed}
-                onClick={() => setAnswers((a) => ({ ...a, [q.id]: L }))}
+                onClick={() => selectAnswer(q.id, L, q.correct_answer)}
                 className={cn(
                   "flex w-full items-start gap-2 rounded-2xl border p-3 text-left text-sm transition-colors",
                   !revealed && "border-border hover:bg-muted",
@@ -266,6 +287,7 @@ export function PracticeRunner({
         )}
       </div>
       {!revealed && <p className="text-center text-xs text-muted-foreground">Select an option to see the answer instantly.</p>}
+      {fx.overlay}
     </div>
   );
 }

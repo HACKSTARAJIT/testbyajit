@@ -1,0 +1,1 @@
+CREATE POLICY "branding read for anon" ON storage.objects FOR SELECT TO anon USING (bucket_id = 'branding');

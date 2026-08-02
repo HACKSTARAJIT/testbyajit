@@ -18,6 +18,8 @@ import { AITestGenerator } from "@/components/AITestGenerator";
 import { TestDebugPanel } from "@/components/TestDebugPanel";
 import { TestAIReviewDialog } from "@/components/TestAIReviewDialog";
 import { TestSimilarityDialog } from "@/components/TestSimilarityDialog";
+import { AppIntroTab } from "@/components/admin/AppIntroTab";
+import { VoiceFeedbackTab } from "@/components/admin/VoiceFeedbackTab";
 
 export default function Admin() {
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -65,6 +67,8 @@ export default function Admin() {
           <TabsTrigger value="ai"><Sparkles className="mr-1 h-4 w-4" /> AI Test Generator</TabsTrigger>
           <TabsTrigger value="performance"><BarChart3 className="mr-1 h-4 w-4" /> Results</TabsTrigger>
           <TabsTrigger value="app"><Smartphone className="mr-1 h-4 w-4" /> App (APK)</TabsTrigger>
+          <TabsTrigger value="intro">🎬 App Intro</TabsTrigger>
+          <TabsTrigger value="feedback">🎙️ Voice & Animation</TabsTrigger>
         </TabsList>
 
         <TabsContent value="subjects" className="pt-4"><SubjectsTab subjects={subjects} reload={load} del={del} /></TabsContent>
@@ -77,6 +81,8 @@ export default function Admin() {
         <TabsContent value="ai" className="pt-4"><AITestGenerator subjects={subjects} chapters={chapters} reload={load} /></TabsContent>
         <TabsContent value="performance" className="pt-4"><PerformanceTab subjects={subjects} chapters={chapters} performance={performance} reload={load} del={del} /></TabsContent>
         <TabsContent value="app" className="pt-4"><AppTab /></TabsContent>
+        <TabsContent value="intro" className="pt-4"><AppIntroTab /></TabsContent>
+        <TabsContent value="feedback" className="pt-4"><VoiceFeedbackTab /></TabsContent>
       </Tabs>
     </div>
   );
