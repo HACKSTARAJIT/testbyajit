@@ -231,7 +231,7 @@ export function PracticeRunner({
               <button
                 key={L}
                 disabled={revealed}
-                onClick={() => setAnswers((a) => ({ ...a, [q.id]: L }))}
+                onClick={() => selectAnswer(q.id, L, q.correct_answer)}
                 className={cn(
                   "flex w-full items-start gap-2 rounded-2xl border p-3 text-left text-sm transition-colors",
                   !revealed && "border-border hover:bg-muted",
