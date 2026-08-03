@@ -305,6 +305,161 @@ function MiniStat({ icon: Icon, label, value }: { icon: any; label: string; valu
   );
 }
 
+function RepeatedWeaknessAlerts({ items }: { items: any[] }) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  return (
+    <Card className="border-amber-500/30 bg-amber-500/5">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <AlertTriangle className="h-4 w-4 text-amber-600" /> बार-बार कमजोर Topics
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {items.map((r: any, i: number) => (
+          <div key={i} className="flex items-start gap-2 rounded-xl border border-amber-500/20 bg-background/60 p-2.5 text-sm">
+            <span className="leading-relaxed">
+              {r.alert ?? `⚠️ ${r.topic} पिछले ${r.tests} tests में weak Topic रहा है।`}
+            </span>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TopicMistakeGroups({ items }: { items: any[] }) {
+  const groups = useMemo(() => {
+    const bySubject = new Map<string, any[]>();
+    (Array.isArray(items) ? items : []).forEach((t: any) => {
+      const s = t.subject || "अन्य";
+      bySubject.set(s, [...(bySubject.get(s) ?? []), t]);
+    });
+    return [...bySubject.entries()];
+  }, [items]);
+
+  if (groups.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <BookOpen className="h-4 w-4 text-primary" /> किन Topics से Score गया
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {groups.map(([subject, rows]) => (
+          <div key={subject} className="rounded-xl border p-3">
+            <p className="text-sm font-semibold">{subject}</p>
+            <div className="mt-2 space-y-1.5">
+              {rows.map((t: any, i: number) => (
+                <div key={i} className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="font-medium text-foreground">• {t.topic}</span>
+                  {t.subtopic && <span className="text-muted-foreground">({t.subtopic})</span>}
+                  {t.chapter && <Badge variant="outline" className="text-[10px]">{t.chapter}</Badge>}
+                  {t.wrong > 0 && <Badge className="bg-rose-500/15 text-rose-700 text-[10px]">{t.wrong} Wrong</Badge>}
+                  {t.skipped > 0 && <Badge className="bg-amber-500/15 text-amber-700 text-[10px]">{t.skipped} Skipped</Badge>}
+                  {t.lost_marks > 0 && <span className="text-muted-foreground">-{t.lost_marks} अंक</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function HindiReport({ report, attempt }: { report: any; attempt: any }) {
+  if (!report || Object.keys(report).length === 0) return null;
+  const listBlock = (title: string, arr: any, tone: "good" | "bad") =>
+    Array.isArray(arr) && arr.length > 0 ? (
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {arr.map((x: string, i: number) => (
+            <Badge key={i} variant="outline" className={tone === "good"
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700"
+              : "border-rose-500/40 bg-rose-500/10 text-rose-700"}>{x}</Badge>
+          ))}
+        </div>
+      </div>
+    ) : null;
+
+  return (
+    <Card className="border-primary/20">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Sparkles className="h-4 w-4 text-primary" /> पूरी AJIT AI रिपोर्ट (हिंदी)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {[
+            ["कुल प्रश्न", attempt?.total_questions ?? "—"],
+            ["सही", attempt?.correct_count ?? 0],
+            ["गलत", attempt?.incorrect_count ?? 0],
+            ["छोड़े", attempt?.unattempted_count ?? 0],
+            ["Accuracy", `${attempt?.accuracy ?? 0}%`],
+          ].map(([l, v]) => (
+            <div key={l as string} className="rounded-xl border bg-muted/30 p-2 text-center">
+              <p className="text-[10px] text-muted-foreground">{l}</p>
+              <p className="text-sm font-bold tabular-nums">{v as any}</p>
+            </div>
+          ))}
+        </div>
+
+        {report.overall_performance && (
+          <p className="leading-relaxed text-foreground/90">{report.overall_performance}</p>
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          {listBlock("मजबूत Subjects", report.strong_subjects, "good")}
+          {listBlock("कमजोर Subjects", report.weak_subjects, "bad")}
+          {listBlock("मजबूत Chapters", report.strong_chapters, "good")}
+          {listBlock("कमजोर Chapters", report.weak_chapters, "bad")}
+          {listBlock("मजबूत Topics", report.strong_topics, "good")}
+          {listBlock("कमजोर Topics", report.weak_topics, "bad")}
+        </div>
+
+        {Array.isArray(report.repeated_mistakes) && report.repeated_mistakes.length > 0 && (
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">दोहराई जा रही गलतियाँ</p>
+            <ul className="mt-1 space-y-1 text-sm">
+              {report.repeated_mistakes.map((x: string, i: number) => <li key={i}>🔁 {x}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {Array.isArray(report.topics_to_revise_first) && report.topics_to_revise_first.length > 0 && (
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">सबसे पहले Revise करने वाले Topics</p>
+            <ul className="mt-1 space-y-1 text-sm">
+              {report.topics_to_revise_first.map((x: string, i: number) => <li key={i}>📖 {x}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {Array.isArray(report.revise_before_next_test) && report.revise_before_next_test.length > 0 && (
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">अगले Test से पहले</p>
+            <ul className="mt-1 space-y-1 text-sm">
+              {report.revise_before_next_test.map((x: string, i: number) => <li key={i}>🎯 {x}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {report.final_conclusion && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">निष्कर्ष</p>
+            <p className="mt-1 leading-relaxed">{report.final_conclusion}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+
 function StrengthWeakness({ overall }: { overall: any }) {
   const chip = (name: string, tone: "good" | "bad") => (
     <Badge key={name} variant="outline" className={tone === "good" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700" : "border-rose-500/40 bg-rose-500/10 text-rose-700"}>
