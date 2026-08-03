@@ -19,6 +19,9 @@ import NotFound from "./pages/NotFound.tsx";
 // Lazy-loaded (heavy or secondary routes) — cuts initial JS significantly
 const Subjects = lazy(() => import("./pages/Subjects.tsx"));
 const SubjectDetail = lazy(() => import("./pages/SubjectDetail.tsx"));
+const ChapterHub = lazy(() => import("./pages/ChapterHub.tsx"));
+const ChapterTests = lazy(() => import("./pages/ChapterTests.tsx"));
+const ChapterPdfs = lazy(() => import("./pages/ChapterPdfs.tsx"));
 const Tests = lazy(() => import("./pages/Tests.tsx"));
 const TestRunner = lazy(() => import("./pages/TestRunner.tsx"));
 const TestAnalysis = lazy(() => import("./pages/TestAnalysis.tsx"));
@@ -94,6 +97,9 @@ const App = () => (
             <Route path="/my-dashboard" element={withLayout(<StudentDashboard />)} />
             <Route path="/subjects" element={withLayout(<Subjects />)} />
             <Route path="/subjects/:id" element={withLayout(<SubjectDetail />)} />
+            <Route path="/subjects/:id/chapter/:chapterId" element={withLayout(<ChapterHub />)} />
+            <Route path="/subjects/:id/chapter/:chapterId/tests" element={withLayout(<ChapterTests />)} />
+            <Route path="/subjects/:id/chapter/:chapterId/pdfs" element={withLayout(<ChapterPdfs />)} />
             <Route path="/tests" element={withLayout(<Tests />)} />
             <Route path="/test/:id" element={withLayout(<TestRunner />)} />
             <Route path="/analysis" element={withLayout(<TestAnalysis />)} />
