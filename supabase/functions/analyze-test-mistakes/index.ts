@@ -81,14 +81,22 @@ Deno.serve(async (req) => {
 
     // Historical context
     const [{ data: pastReports }, { data: pastAttempts }, { data: dnaRow }, { data: relatedTests }, { data: relatedPdfs }] = await Promise.all([
-      admin.from("test_mistake_analyses").select("mistake_distribution,coach_summary,created_at,overall")
-        .eq("user_id", userId).order("created_at", { ascending: false }).limit(6),
+      admin.from("test_mistake_analyses").select("attempt_id,mistake_distribution,coach_summary,created_at,overall,topic_breakdown")
+        .eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
       admin.from("test_attempts").select("accuracy,marks_obtained,time_taken_seconds,total_questions,test_id,tests(subject_id)")
         .eq("user_id", userId).eq("status", "completed").order("created_at", { ascending: false }).limit(30),
       admin.from("mistake_dna").select("*").eq("user_id", userId).maybeSingle(),
       admin.from("tests").select("id,title,subject_id").eq("subject_id", (attempt.tests as any)?.subject_id ?? "").limit(6),
       admin.from("pdfs").select("id,title,subject_id,chapter_id").eq("subject_id", (attempt.tests as any)?.subject_id ?? "").limit(6),
     ]);
+
+    // Chapter names for every question
+    const chapterIds = [...new Set((questions ?? []).map((q: any) => q.chapter_id).filter(Boolean))] as string[];
+    const { data: chapterRows } = chapterIds.length
+      ? await admin.from("chapters").select("id,name").in("id", chapterIds)
+      : { data: [] as any[] };
+    const chapterName = new Map((chapterRows ?? []).map((c: any) => [c.id, c.name]));
+    const subjectName = (attempt.tests as any)?.subjects?.name ?? "General";
 
     // Per-question quick facts
     const perQ = (questions ?? []).map((q: any, i: number) => {
@@ -107,6 +115,11 @@ Deno.serve(async (req) => {
         marks: q.marks ?? 1,
         explanation: q.explanation?.slice(0, 400) ?? null,
         difficulty: qDifficulty(q.id),
+        subject: subjectName,
+        chapter: q.chapter_id ? (chapterName.get(q.chapter_id) ?? "अन्य") : "अन्य",
+        topic: (q.topic ?? "").trim() || null,
+        subtopic: (q.subtopic ?? "").trim() || null,
+        concept: (q.concept ?? "").trim() || null,
         status: isCorrect ? "correct" : isWrong ? "wrong" : "skipped",
         marked_for_review: isMarked,
         peer_accuracy: qStats[q.id]?.attempts ? Math.round((qStats[q.id].correct / qStats[q.id].attempts) * 100) : null,
@@ -119,19 +132,90 @@ Deno.serve(async (req) => {
     const lostMarks = wrongQs.reduce((s, q) => s + q.marks, 0) + skippedQs.reduce((s, q) => s + q.marks, 0);
     const avgTimePerQ = attempt.total_questions ? Math.round((attempt.time_taken_seconds ?? 0) / attempt.total_questions) : 0;
 
+    // ---- Deterministic Subject → Chapter → Topic → Subtopic grouping of mistakes ----
+    type Node = {
+      subject: string; chapter: string; topic: string; subtopic: string | null;
+      wrong: number; skipped: number; total: number; lost_marks: number; question_indexes: number[];
+    };
+    const nodeMap = new Map<string, Node>();
+    for (const q of perQ) {
+      const topic = q.topic ?? q.concept ?? q.chapter ?? "अवर्गीकृत";
+      const key = `${q.subject}||${q.chapter}||${topic}||${q.subtopic ?? ""}`;
+      const n = nodeMap.get(key) ?? {
+        subject: q.subject, chapter: q.chapter, topic, subtopic: q.subtopic,
+        wrong: 0, skipped: 0, total: 0, lost_marks: 0, question_indexes: [],
+      };
+      n.total++;
+      if (q.status === "wrong") { n.wrong++; n.lost_marks += q.marks; n.question_indexes.push(q.index); }
+      if (q.status === "skipped") { n.skipped++; n.lost_marks += q.marks; n.question_indexes.push(q.index); }
+      nodeMap.set(key, n);
+    }
+    const topicBreakdown = [...nodeMap.values()]
+      .filter((n) => n.wrong + n.skipped > 0)
+      .map((n) => ({ ...n, accuracy: n.total ? Math.round(((n.total - n.wrong - n.skipped) / n.total) * 100) : 0 }))
+      .sort((a, b) => (b.wrong + b.skipped) - (a.wrong + a.skipped));
+
+    // ---- Repeated weakness detection across previous analysed tests ----
+    const repeatCount = new Map<string, { subject: string; topic: string; tests: number; wrong: number; last_seen: string }>();
+    for (const r of (pastReports ?? [])) {
+      if ((r as any).attempt_id === attemptId) continue;
+      const tb = ((r as any).topic_breakdown ?? []) as any[];
+      const seen = new Set<string>();
+      for (const t of tb) {
+        const bad = Number(t?.wrong ?? 0) + Number(t?.skipped ?? 0);
+        if (!t?.topic || bad <= 0) continue;
+        const k = `${t.subject ?? ""}||${t.topic}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const cur = repeatCount.get(k) ?? { subject: t.subject ?? "", topic: t.topic, tests: 0, wrong: 0, last_seen: (r as any).created_at };
+        cur.tests++; cur.wrong += bad;
+        repeatCount.set(k, cur);
+      }
+    }
+    // include the current test
+    for (const n of topicBreakdown) {
+      const k = `${n.subject}||${n.topic}`;
+      const cur = repeatCount.get(k) ?? { subject: n.subject, topic: n.topic, tests: 0, wrong: 0, last_seen: new Date().toISOString() };
+      cur.tests++; cur.wrong += n.wrong + n.skipped;
+      repeatCount.set(k, cur);
+    }
+    const repeatedWeaknesses = [...repeatCount.values()]
+      .filter((r) => r.tests >= 2)
+      .sort((a, b) => b.tests - a.tests || b.wrong - a.wrong)
+      .slice(0, 12)
+      .map((r) => ({
+        ...r,
+        alert: `⚠️ ${r.topic} पिछले ${r.tests} tests में weak Topic रहा है (कुल ${r.wrong} गलत/छूटे)।`,
+      }));
+
     const historySummary = {
       recent_accuracy_trend: (pastAttempts ?? []).slice(0, 8).map((a: any) => a.accuracy).reverse(),
       previous_mistake_dna: dnaRow?.distribution ?? null,
       recent_coach_notes: (pastReports ?? []).slice(0, 3).map((r: any) => r.coach_summary).filter(Boolean),
+      repeated_weak_topics: repeatedWeaknesses,
+      previous_topic_breakdowns: (pastReports ?? []).slice(0, 5).map((r: any) => ({
+        at: r.created_at,
+        topics: ((r.topic_breakdown ?? []) as any[]).slice(0, 10).map((t) => ({ subject: t.subject, chapter: t.chapter, topic: t.topic, wrong: t.wrong, skipped: t.skipped })),
+      })),
     };
+
 
     const sys = `You are AJIT AI — a senior competitive-exam mentor.
 Analyse a completed practice test and produce STRICT JSON only (no markdown fences).
-Ground every insight in the provided data — never invent facts.
-For each wrong/skipped question, assign 1–2 root-cause categories from this fixed list:
+
+भाषा नियम (सबसे ज़रूरी): हर एक text value हिंदी (देवनागरी) में लिखो — headline, coach_summary, why_wrong, suggestions, action plan, hindi_report, सब कुछ।
+सिर्फ़ Question/Topic/Chapter/Subject के नाम, formula नाम और तकनीकी exam शब्द अंग्रेज़ी में रह सकते हैं। बाकी सब आसान, स्वाभाविक हिंदी में।
+अंग्रेज़ी में पूरा वाक्य कभी मत लिखो।
+
+Evidence नियम: सिर्फ़ दिए गए data (यह test + पिछली history + दी गई topic_breakdown और repeated_weak_topics) का उपयोग करो।
+कोई weakness या strength मत गढ़ो। जिस चीज़ का data नहीं है, वहाँ साफ़ लिखो "पर्याप्त data नहीं"।
+कोई generic सलाह नहीं — हर सुझाव किसी असली Topic/Chapter और उसकी असली गलतियों से जुड़ा हो।
+
+For each wrong/skipped question, assign 1–2 root-cause categories from this fixed list (keys stay English):
 ${MISTAKE_CATEGORIES.join(", ")}.
 Use "easy" wrong answers to identify careless/reading mistakes; use "hard" wrong answers to identify knowledge gaps.
-Coach summary must be specific to this student's data — reference actual chapters, mistake patterns, and mark deltas. Never generic.`;
+हर wrong/skipped question के लिए उसका Subject, Chapter, Topic और (अगर मिले) Subtopic ज़रूर भरो — payload में दिए गए मानों का ही उपयोग करो।
+hindi_report में पूरी रिपोर्ट दो और repeated_weakness_alerts में payload के repeated_weak_topics को ही हिंदी वाक्यों में दोहराओ (कुछ नया मत जोड़ो)।`;
 
     const userPayload = {
       test: { id: attempt.test_id, title: (attempt.tests as any)?.title, subject: (attempt.tests as any)?.subjects?.name },
@@ -148,12 +232,14 @@ Coach summary must be specific to this student's data — reference actual chapt
         avg_time_per_question_seconds: avgTimePerQ,
       },
       questions: perQ,
+      topic_breakdown: topicBreakdown,
       history: historySummary,
       related_resources: {
         tests: (relatedTests ?? []).map((t: any) => ({ id: t.id, title: t.title })),
         pdfs: (relatedPdfs ?? []).map((p: any) => ({ id: p.id, title: p.title })),
       },
     };
+
 
     const schema = {
       type: "object",
@@ -188,8 +274,10 @@ Coach summary must be specific to this student's data — reference actual chapt
               question_id: { type: "string" },
               index: { type: "number" },
               difficulty: { type: "string" },
+              subject: { type: "string" },
               topic: { type: "string" },
               chapter: { type: "string" },
+              subtopic: { type: "string" },
               concept: { type: "string" },
               expected_skill: { type: "string" },
               root_causes: { type: "array", items: { type: "string" } },
@@ -267,9 +355,33 @@ Coach summary must be specific to this student's data — reference actual chapt
             },
           },
         },
+        repeated_weakness_alerts: {
+          type: "array",
+          description: "हिंदी वाक्य, हर बार-बार कमजोर Topic के लिए एक।",
+          items: { type: "string" },
+        },
+        hindi_report: {
+          type: "object",
+          description: "पूरी रिपोर्ट, सब कुछ हिंदी में।",
+          properties: {
+            overall_performance: { type: "string" },
+            strong_subjects: { type: "array", items: { type: "string" } },
+            weak_subjects: { type: "array", items: { type: "string" } },
+            strong_chapters: { type: "array", items: { type: "string" } },
+            weak_chapters: { type: "array", items: { type: "string" } },
+            strong_topics: { type: "array", items: { type: "string" } },
+            weak_topics: { type: "array", items: { type: "string" } },
+            repeated_mistakes: { type: "array", items: { type: "string" } },
+            topics_to_revise_first: { type: "array", items: { type: "string" } },
+            revise_before_next_test: { type: "array", items: { type: "string" } },
+            final_conclusion: { type: "string" },
+          },
+          required: ["overall_performance", "final_conclusion"],
+        },
         coach_summary: { type: "string" },
       },
-      required: ["overall", "mistake_distribution", "question_analyses", "coach_summary"],
+      required: ["overall", "mistake_distribution", "question_analyses", "coach_summary", "hindi_report"],
+
     };
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
@@ -316,6 +428,12 @@ Coach summary must be specific to this student's data — reference actual chapt
       action_plan: parsed.action_plan ?? {},
       related_learning: parsed.related_learning ?? [],
       coach_summary: parsed.coach_summary ?? null,
+      topic_breakdown: topicBreakdown,
+      repeated_weaknesses: repeatedWeaknesses.map((r, i) => ({
+        ...r,
+        alert: (parsed.repeated_weakness_alerts ?? [])[i] ?? r.alert,
+      })),
+      hindi_report: parsed.hindi_report ?? {},
       model: MODEL,
     };
 
