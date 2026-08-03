@@ -202,11 +202,20 @@ Deno.serve(async (req) => {
 
     const sys = `You are AJIT AI — a senior competitive-exam mentor.
 Analyse a completed practice test and produce STRICT JSON only (no markdown fences).
-Ground every insight in the provided data — never invent facts.
-For each wrong/skipped question, assign 1–2 root-cause categories from this fixed list:
+
+भाषा नियम (सबसे ज़रूरी): हर एक text value हिंदी (देवनागरी) में लिखो — headline, coach_summary, why_wrong, suggestions, action plan, hindi_report, सब कुछ।
+सिर्फ़ Question/Topic/Chapter/Subject के नाम, formula नाम और तकनीकी exam शब्द अंग्रेज़ी में रह सकते हैं। बाकी सब आसान, स्वाभाविक हिंदी में।
+अंग्रेज़ी में पूरा वाक्य कभी मत लिखो।
+
+Evidence नियम: सिर्फ़ दिए गए data (यह test + पिछली history + दी गई topic_breakdown और repeated_weak_topics) का उपयोग करो।
+कोई weakness या strength मत गढ़ो। जिस चीज़ का data नहीं है, वहाँ साफ़ लिखो "पर्याप्त data नहीं"।
+कोई generic सलाह नहीं — हर सुझाव किसी असली Topic/Chapter और उसकी असली गलतियों से जुड़ा हो।
+
+For each wrong/skipped question, assign 1–2 root-cause categories from this fixed list (keys stay English):
 ${MISTAKE_CATEGORIES.join(", ")}.
 Use "easy" wrong answers to identify careless/reading mistakes; use "hard" wrong answers to identify knowledge gaps.
-Coach summary must be specific to this student's data — reference actual chapters, mistake patterns, and mark deltas. Never generic.`;
+हर wrong/skipped question के लिए उसका Subject, Chapter, Topic और (अगर मिले) Subtopic ज़रूर भरो — payload में दिए गए मानों का ही उपयोग करो।
+hindi_report में पूरी रिपोर्ट दो और repeated_weakness_alerts में payload के repeated_weak_topics को ही हिंदी वाक्यों में दोहराओ (कुछ नया मत जोड़ो)।`;
 
     const userPayload = {
       test: { id: attempt.test_id, title: (attempt.tests as any)?.title, subject: (attempt.tests as any)?.subjects?.name },
@@ -223,12 +232,14 @@ Coach summary must be specific to this student's data — reference actual chapt
         avg_time_per_question_seconds: avgTimePerQ,
       },
       questions: perQ,
+      topic_breakdown: topicBreakdown,
       history: historySummary,
       related_resources: {
         tests: (relatedTests ?? []).map((t: any) => ({ id: t.id, title: t.title })),
         pdfs: (relatedPdfs ?? []).map((p: any) => ({ id: p.id, title: p.title })),
       },
     };
+
 
     const schema = {
       type: "object",
