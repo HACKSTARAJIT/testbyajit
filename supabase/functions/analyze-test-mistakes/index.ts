@@ -115,6 +115,11 @@ Deno.serve(async (req) => {
         marks: q.marks ?? 1,
         explanation: q.explanation?.slice(0, 400) ?? null,
         difficulty: qDifficulty(q.id),
+        subject: subjectName,
+        chapter: q.chapter_id ? (chapterName.get(q.chapter_id) ?? "अन्य") : "अन्य",
+        topic: (q.topic ?? "").trim() || null,
+        subtopic: (q.subtopic ?? "").trim() || null,
+        concept: (q.concept ?? "").trim() || null,
         status: isCorrect ? "correct" : isWrong ? "wrong" : "skipped",
         marked_for_review: isMarked,
         peer_accuracy: qStats[q.id]?.attempts ? Math.round((qStats[q.id].correct / qStats[q.id].attempts) * 100) : null,
@@ -127,11 +132,73 @@ Deno.serve(async (req) => {
     const lostMarks = wrongQs.reduce((s, q) => s + q.marks, 0) + skippedQs.reduce((s, q) => s + q.marks, 0);
     const avgTimePerQ = attempt.total_questions ? Math.round((attempt.time_taken_seconds ?? 0) / attempt.total_questions) : 0;
 
+    // ---- Deterministic Subject → Chapter → Topic → Subtopic grouping of mistakes ----
+    type Node = {
+      subject: string; chapter: string; topic: string; subtopic: string | null;
+      wrong: number; skipped: number; total: number; lost_marks: number; question_indexes: number[];
+    };
+    const nodeMap = new Map<string, Node>();
+    for (const q of perQ) {
+      const topic = q.topic ?? q.concept ?? q.chapter ?? "अवर्गीकृत";
+      const key = `${q.subject}||${q.chapter}||${topic}||${q.subtopic ?? ""}`;
+      const n = nodeMap.get(key) ?? {
+        subject: q.subject, chapter: q.chapter, topic, subtopic: q.subtopic,
+        wrong: 0, skipped: 0, total: 0, lost_marks: 0, question_indexes: [],
+      };
+      n.total++;
+      if (q.status === "wrong") { n.wrong++; n.lost_marks += q.marks; n.question_indexes.push(q.index); }
+      if (q.status === "skipped") { n.skipped++; n.lost_marks += q.marks; n.question_indexes.push(q.index); }
+      nodeMap.set(key, n);
+    }
+    const topicBreakdown = [...nodeMap.values()]
+      .filter((n) => n.wrong + n.skipped > 0)
+      .map((n) => ({ ...n, accuracy: n.total ? Math.round(((n.total - n.wrong - n.skipped) / n.total) * 100) : 0 }))
+      .sort((a, b) => (b.wrong + b.skipped) - (a.wrong + a.skipped));
+
+    // ---- Repeated weakness detection across previous analysed tests ----
+    const repeatCount = new Map<string, { subject: string; topic: string; tests: number; wrong: number; last_seen: string }>();
+    for (const r of (pastReports ?? [])) {
+      if ((r as any).attempt_id === attemptId) continue;
+      const tb = ((r as any).topic_breakdown ?? []) as any[];
+      const seen = new Set<string>();
+      for (const t of tb) {
+        const bad = Number(t?.wrong ?? 0) + Number(t?.skipped ?? 0);
+        if (!t?.topic || bad <= 0) continue;
+        const k = `${t.subject ?? ""}||${t.topic}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const cur = repeatCount.get(k) ?? { subject: t.subject ?? "", topic: t.topic, tests: 0, wrong: 0, last_seen: (r as any).created_at };
+        cur.tests++; cur.wrong += bad;
+        repeatCount.set(k, cur);
+      }
+    }
+    // include the current test
+    for (const n of topicBreakdown) {
+      const k = `${n.subject}||${n.topic}`;
+      const cur = repeatCount.get(k) ?? { subject: n.subject, topic: n.topic, tests: 0, wrong: 0, last_seen: new Date().toISOString() };
+      cur.tests++; cur.wrong += n.wrong + n.skipped;
+      repeatCount.set(k, cur);
+    }
+    const repeatedWeaknesses = [...repeatCount.values()]
+      .filter((r) => r.tests >= 2)
+      .sort((a, b) => b.tests - a.tests || b.wrong - a.wrong)
+      .slice(0, 12)
+      .map((r) => ({
+        ...r,
+        alert: `⚠️ ${r.topic} पिछले ${r.tests} tests में weak Topic रहा है (कुल ${r.wrong} गलत/छूटे)।`,
+      }));
+
     const historySummary = {
       recent_accuracy_trend: (pastAttempts ?? []).slice(0, 8).map((a: any) => a.accuracy).reverse(),
       previous_mistake_dna: dnaRow?.distribution ?? null,
       recent_coach_notes: (pastReports ?? []).slice(0, 3).map((r: any) => r.coach_summary).filter(Boolean),
+      repeated_weak_topics: repeatedWeaknesses,
+      previous_topic_breakdowns: (pastReports ?? []).slice(0, 5).map((r: any) => ({
+        at: r.created_at,
+        topics: ((r.topic_breakdown ?? []) as any[]).slice(0, 10).map((t) => ({ subject: t.subject, chapter: t.chapter, topic: t.topic, wrong: t.wrong, skipped: t.skipped })),
+      })),
     };
+
 
     const sys = `You are AJIT AI — a senior competitive-exam mentor.
 Analyse a completed practice test and produce STRICT JSON only (no markdown fences).
