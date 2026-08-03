@@ -2197,6 +2197,7 @@ export type Database = {
           attempt_id: string
           coach_summary: string | null
           created_at: string
+          hindi_report: Json
           id: string
           improvements: Json
           memory_analysis: Json
@@ -2205,10 +2206,12 @@ export type Database = {
           overall: Json
           question_analyses: Json
           related_learning: Json
+          repeated_weaknesses: Json
           subject_id: string | null
           test_id: string | null
           thinking_profile: Json
           time_analysis: Json
+          topic_breakdown: Json
           updated_at: string
           user_id: string
         }
@@ -2217,6 +2220,7 @@ export type Database = {
           attempt_id: string
           coach_summary?: string | null
           created_at?: string
+          hindi_report?: Json
           id?: string
           improvements?: Json
           memory_analysis?: Json
@@ -2225,10 +2229,12 @@ export type Database = {
           overall?: Json
           question_analyses?: Json
           related_learning?: Json
+          repeated_weaknesses?: Json
           subject_id?: string | null
           test_id?: string | null
           thinking_profile?: Json
           time_analysis?: Json
+          topic_breakdown?: Json
           updated_at?: string
           user_id: string
         }
@@ -2237,6 +2243,7 @@ export type Database = {
           attempt_id?: string
           coach_summary?: string | null
           created_at?: string
+          hindi_report?: Json
           id?: string
           improvements?: Json
           memory_analysis?: Json
@@ -2245,10 +2252,12 @@ export type Database = {
           overall?: Json
           question_analyses?: Json
           related_learning?: Json
+          repeated_weaknesses?: Json
           subject_id?: string | null
           test_id?: string | null
           thinking_profile?: Json
           time_analysis?: Json
+          topic_breakdown?: Json
           updated_at?: string
           user_id?: string
         }
