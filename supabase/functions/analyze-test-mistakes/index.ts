@@ -353,9 +353,33 @@ hindi_report में पूरी रिपोर्ट दो और repeated
             },
           },
         },
+        repeated_weakness_alerts: {
+          type: "array",
+          description: "हिंदी वाक्य, हर बार-बार कमजोर Topic के लिए एक।",
+          items: { type: "string" },
+        },
+        hindi_report: {
+          type: "object",
+          description: "पूरी रिपोर्ट, सब कुछ हिंदी में।",
+          properties: {
+            overall_performance: { type: "string" },
+            strong_subjects: { type: "array", items: { type: "string" } },
+            weak_subjects: { type: "array", items: { type: "string" } },
+            strong_chapters: { type: "array", items: { type: "string" } },
+            weak_chapters: { type: "array", items: { type: "string" } },
+            strong_topics: { type: "array", items: { type: "string" } },
+            weak_topics: { type: "array", items: { type: "string" } },
+            repeated_mistakes: { type: "array", items: { type: "string" } },
+            topics_to_revise_first: { type: "array", items: { type: "string" } },
+            revise_before_next_test: { type: "array", items: { type: "string" } },
+            final_conclusion: { type: "string" },
+          },
+          required: ["overall_performance", "final_conclusion"],
+        },
         coach_summary: { type: "string" },
       },
-      required: ["overall", "mistake_distribution", "question_analyses", "coach_summary"],
+      required: ["overall", "mistake_distribution", "question_analyses", "coach_summary", "hindi_report"],
+
     };
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
