@@ -200,6 +200,9 @@ export default function TestMistakeAnalysis() {
 
             {/* OVERVIEW */}
             <TabsContent value="overview" className="space-y-4">
+              <RepeatedWeaknessAlerts items={analysis.repeated_weaknesses ?? []} />
+              <TopicMistakeGroups items={analysis.topic_breakdown ?? []} />
+              <HindiReport report={analysis.hindi_report ?? {}} attempt={attempt} />
               <StrengthWeakness overall={analysis.overall ?? {}} />
               <TimeAndThinking time={analysis.time_analysis ?? {}} thinking={analysis.thinking_profile ?? {}} attempt={attempt} />
               <MemorySection memory={analysis.memory_analysis ?? {}} />
