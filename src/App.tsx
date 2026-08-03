@@ -97,6 +97,9 @@ const App = () => (
             <Route path="/my-dashboard" element={withLayout(<StudentDashboard />)} />
             <Route path="/subjects" element={withLayout(<Subjects />)} />
             <Route path="/subjects/:id" element={withLayout(<SubjectDetail />)} />
+            <Route path="/subjects/:id/chapter/:chapterId" element={withLayout(<ChapterHub />)} />
+            <Route path="/subjects/:id/chapter/:chapterId/tests" element={withLayout(<ChapterTests />)} />
+            <Route path="/subjects/:id/chapter/:chapterId/pdfs" element={withLayout(<ChapterPdfs />)} />
             <Route path="/tests" element={withLayout(<Tests />)} />
             <Route path="/test/:id" element={withLayout(<TestRunner />)} />
             <Route path="/analysis" element={withLayout(<TestAnalysis />)} />
