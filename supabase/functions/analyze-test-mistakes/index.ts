@@ -90,6 +90,14 @@ Deno.serve(async (req) => {
       admin.from("pdfs").select("id,title,subject_id,chapter_id").eq("subject_id", (attempt.tests as any)?.subject_id ?? "").limit(6),
     ]);
 
+    // Chapter names for every question
+    const chapterIds = [...new Set((questions ?? []).map((q: any) => q.chapter_id).filter(Boolean))] as string[];
+    const { data: chapterRows } = chapterIds.length
+      ? await admin.from("chapters").select("id,name").in("id", chapterIds)
+      : { data: [] as any[] };
+    const chapterName = new Map((chapterRows ?? []).map((c: any) => [c.id, c.name]));
+    const subjectName = (attempt.tests as any)?.subjects?.name ?? "General";
+
     // Per-question quick facts
     const perQ = (questions ?? []).map((q: any, i: number) => {
       const selected = answers[q.id] ?? null;
