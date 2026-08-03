@@ -81,8 +81,8 @@ Deno.serve(async (req) => {
 
     // Historical context
     const [{ data: pastReports }, { data: pastAttempts }, { data: dnaRow }, { data: relatedTests }, { data: relatedPdfs }] = await Promise.all([
-      admin.from("test_mistake_analyses").select("mistake_distribution,coach_summary,created_at,overall")
-        .eq("user_id", userId).order("created_at", { ascending: false }).limit(6),
+      admin.from("test_mistake_analyses").select("attempt_id,mistake_distribution,coach_summary,created_at,overall,topic_breakdown")
+        .eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
       admin.from("test_attempts").select("accuracy,marks_obtained,time_taken_seconds,total_questions,test_id,tests(subject_id)")
         .eq("user_id", userId).eq("status", "completed").order("created_at", { ascending: false }).limit(30),
       admin.from("mistake_dna").select("*").eq("user_id", userId).maybeSingle(),
