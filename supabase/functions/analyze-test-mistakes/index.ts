@@ -428,6 +428,12 @@ hindi_report में पूरी रिपोर्ट दो और repeated
       action_plan: parsed.action_plan ?? {},
       related_learning: parsed.related_learning ?? [],
       coach_summary: parsed.coach_summary ?? null,
+      topic_breakdown: topicBreakdown,
+      repeated_weaknesses: repeatedWeaknesses.map((r, i) => ({
+        ...r,
+        alert: (parsed.repeated_weakness_alerts ?? [])[i] ?? r.alert,
+      })),
+      hindi_report: parsed.hindi_report ?? {},
       model: MODEL,
     };
 
