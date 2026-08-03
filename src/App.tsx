@@ -19,6 +19,9 @@ import NotFound from "./pages/NotFound.tsx";
 // Lazy-loaded (heavy or secondary routes) — cuts initial JS significantly
 const Subjects = lazy(() => import("./pages/Subjects.tsx"));
 const SubjectDetail = lazy(() => import("./pages/SubjectDetail.tsx"));
+const ChapterHub = lazy(() => import("./pages/ChapterHub.tsx"));
+const ChapterTests = lazy(() => import("./pages/ChapterTests.tsx"));
+const ChapterPdfs = lazy(() => import("./pages/ChapterPdfs.tsx"));
 const Tests = lazy(() => import("./pages/Tests.tsx"));
 const TestRunner = lazy(() => import("./pages/TestRunner.tsx"));
 const TestAnalysis = lazy(() => import("./pages/TestAnalysis.tsx"));
