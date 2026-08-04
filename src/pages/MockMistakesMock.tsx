@@ -48,8 +48,23 @@ export default function MockMistakesMock() {
       return;
     }
     setImporting(true);
-    const rows = parsed.map((q, i) => ({ ...q, mock_id: mockId, user_id: user.id, sort_order: total + i }));
+    const rows = parsed.map((q, i) => ({
+      ...q,
+      mock_id: mockId,
+      user_id: user.id,
+      sort_order: total + i,
+      source_status: q.user_answer?.trim() ? "wrong" : "skipped",
+    }));
     const { error } = await supabase.from("mock_mistake_questions").insert(rows);
+    if (!error) {
+      // New questions arrived → mark mock as needing a fresh AI Organize pass.
+      await supabase
+        .from("mock_mistake_mocks")
+        .update({ organize_status: "updated" })
+        .eq("id", mockId)
+        .eq("organize_status", "organized");
+    }
+
     setImporting(false);
     if (error) { toast({ title: "Import failed", description: error.message, variant: "destructive" }); return; }
     toast({ title: `Successfully Imported: ${parsed.length} Questions` });
