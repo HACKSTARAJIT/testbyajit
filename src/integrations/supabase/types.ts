@@ -1044,6 +1044,12 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          organize_error: string | null
+          organize_message: string | null
+          organize_progress: number
+          organize_status: string
+          organize_total: number
+          organized_at: string | null
           subject: string
           updated_at: string
           user_id: string
@@ -1052,6 +1058,12 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          organize_error?: string | null
+          organize_message?: string | null
+          organize_progress?: number
+          organize_status?: string
+          organize_total?: number
+          organized_at?: string | null
           subject: string
           updated_at?: string
           user_id: string
@@ -1060,6 +1072,12 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          organize_error?: string | null
+          organize_message?: string | null
+          organize_progress?: number
+          organize_status?: string
+          organize_total?: number
+          organized_at?: string | null
           subject?: string
           updated_at?: string
           user_id?: string
@@ -1068,58 +1086,97 @@ export type Database = {
       }
       mock_mistake_questions: {
         Row: {
+          ai_chapter: string | null
+          ai_subject: string | null
+          ai_subtopic: string | null
+          ai_topic: string | null
           chapter: string | null
+          classification_id: string | null
+          classification_status: string
+          classified_at: string | null
           correct_answer: string | null
+          correct_count: number
           created_at: string
           explanation: string | null
           id: string
+          last_practice_at: string | null
+          mastered: boolean
           mock_id: string
           option_a: string | null
           option_b: string | null
           option_c: string | null
           option_d: string | null
+          practice_count: number
           question_text: string
           sort_order: number
+          source_status: string
           topic: string | null
           updated_at: string
           user_answer: string | null
           user_id: string
+          wrong_count: number
         }
         Insert: {
+          ai_chapter?: string | null
+          ai_subject?: string | null
+          ai_subtopic?: string | null
+          ai_topic?: string | null
           chapter?: string | null
+          classification_id?: string | null
+          classification_status?: string
+          classified_at?: string | null
           correct_answer?: string | null
+          correct_count?: number
           created_at?: string
           explanation?: string | null
           id?: string
+          last_practice_at?: string | null
+          mastered?: boolean
           mock_id: string
           option_a?: string | null
           option_b?: string | null
           option_c?: string | null
           option_d?: string | null
+          practice_count?: number
           question_text: string
           sort_order?: number
+          source_status?: string
           topic?: string | null
           updated_at?: string
           user_answer?: string | null
           user_id: string
+          wrong_count?: number
         }
         Update: {
+          ai_chapter?: string | null
+          ai_subject?: string | null
+          ai_subtopic?: string | null
+          ai_topic?: string | null
           chapter?: string | null
+          classification_id?: string | null
+          classification_status?: string
+          classified_at?: string | null
           correct_answer?: string | null
+          correct_count?: number
           created_at?: string
           explanation?: string | null
           id?: string
+          last_practice_at?: string | null
+          mastered?: boolean
           mock_id?: string
           option_a?: string | null
           option_b?: string | null
           option_c?: string | null
           option_d?: string | null
+          practice_count?: number
           question_text?: string
           sort_order?: number
+          source_status?: string
           topic?: string | null
           updated_at?: string
           user_answer?: string | null
           user_id?: string
+          wrong_count?: number
         }
         Relationships: [
           {
