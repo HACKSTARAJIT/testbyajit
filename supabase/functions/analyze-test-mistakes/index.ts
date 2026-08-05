@@ -2,7 +2,21 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 import { unifiedFetch } from "../_shared/unifiedAI.ts";
-const MODEL = "google/gemini-3-flash-preview";
+// Deep-reasoning model: accuracy over speed for post-test analysis.
+const MODEL = "google/gemini-2.5-pro";
+
+/** Pull a JSON object out of a model reply (handles fences / stray prose). */
+function extractJson(raw: string): any {
+  if (!raw) throw new Error("AI ने खाली उत्तर दिया");
+  let s = raw.trim();
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) s = fence[1].trim();
+  const start = s.indexOf("{");
+  const end = s.lastIndexOf("}");
+  if (start === -1 || end <= start) throw new Error("AI उत्तर में JSON नहीं मिला");
+  s = s.slice(start, end + 1);
+  return JSON.parse(s);
+}
 
 const MISTAKE_CATEGORIES = [
   "knowledge_gap", "concept_confusion", "memory_failure", "calculation_error",
@@ -57,6 +71,8 @@ Deno.serve(async (req) => {
       .from("questions").select("*").eq("test_id", attempt.test_id).order("sort_order");
     const answers: Record<string, string> = (attempt.answers as any) ?? {};
     const marked: any = (attempt.marked as any) ?? [];
+    const guesses: any = (attempt.guesses as any) ?? [];
+    const guessSet = new Set<string>(Array.isArray(guesses) ? guesses : Object.keys(guesses ?? {}));
 
     // Peer benchmarks for difficulty estimation
     const { data: peerAttempts } = await admin
@@ -122,6 +138,7 @@ Deno.serve(async (req) => {
         concept: (q.concept ?? "").trim() || null,
         status: isCorrect ? "correct" : isWrong ? "wrong" : "skipped",
         marked_for_review: isMarked,
+        was_guess: guessSet.has(q.id),
         peer_accuracy: qStats[q.id]?.attempts ? Math.round((qStats[q.id].correct / qStats[q.id].attempts) * 100) : null,
       };
     });
@@ -197,28 +214,91 @@ Deno.serve(async (req) => {
         at: r.created_at,
         topics: ((r.topic_breakdown ?? []) as any[]).slice(0, 10).map((t) => ({ subject: t.subject, chapter: t.chapter, topic: t.topic, wrong: t.wrong, skipped: t.skipped })),
       })),
+      previous_overalls: (pastReports ?? []).slice(0, 5).map((r: any) => ({
+        at: r.created_at,
+        headline: (r.overall ?? {})?.headline ?? null,
+        weak_topics: (r.overall ?? {})?.weak_topics ?? [],
+        strong_topics: (r.overall ?? {})?.strong_topics ?? [],
+      })),
     };
 
+    // AJIT AI लंबी अवधि की memory (append-only timeline)
+    const aiMemory = {
+      tests_analysed: (dnaRow?.totals as any)?.tests_analysed ?? 0,
+      mistake_dna: dnaRow?.distribution ?? null,
+      timeline: ((dnaRow?.timeline as any[]) ?? []).slice(-12),
+    };
+
+    // Same-test previous attempts (क्या सुधार हुआ?)
+    const sameTestHistory = (pastAttempts ?? [])
+      .filter((a: any) => a.test_id === attempt.test_id)
+      .slice(0, 5)
+      .map((a: any) => ({ accuracy: a.accuracy, marks: a.marks_obtained, time_seconds: a.time_taken_seconds }));
+
+    const guessStats = {
+      guessed_total: perQ.filter((q) => q.was_guess).length,
+      guessed_correct: perQ.filter((q) => q.was_guess && q.status === "correct").length,
+      guessed_wrong: perQ.filter((q) => q.was_guess && q.status === "wrong").length,
+    };
 
     const sys = `You are AJIT AI — a senior competitive-exam mentor.
-Analyse a completed practice test and produce STRICT JSON only (no markdown fences).
 
-भाषा नियम (सबसे ज़रूरी): हर एक text value हिंदी (देवनागरी) में लिखो — headline, coach_summary, why_wrong, suggestions, action plan, hindi_report, सब कुछ।
-सिर्फ़ Question/Topic/Chapter/Subject के नाम, formula नाम और तकनीकी exam शब्द अंग्रेज़ी में रह सकते हैं। बाकी सब आसान, स्वाभाविक हिंदी में।
+STEP 1 — DEEP THINKING (चुपचाप, output में मत लिखो):
+पहले हर correct, wrong और skipped question को अलग-अलग पढ़ो। फिर सोचो: time, accuracy, difficulty mix,
+subject/chapter/topic distribution, repeated mistakes, पिछले attempts से improvement या गिरावट,
+guessing behaviour, careless बनाम conceptual गलतियाँ। पूरी reasoning ख़त्म करने के बाद ही report बनाओ।
+Speed से ज़्यादा ज़रूरी accuracy है।
+
+STEP 2 — OUTPUT: सिर्फ़ एक valid JSON object लौटाओ (कोई markdown fence नहीं, कोई अतिरिक्त text नहीं)।
+
+भाषा नियम: हर text value हिंदी (देवनागरी) में। सिर्फ़ Subject/Chapter/Topic/formula/तकनीकी exam शब्द अंग्रेज़ी में रह सकते हैं।
 अंग्रेज़ी में पूरा वाक्य कभी मत लिखो।
 
-Evidence नियम: सिर्फ़ दिए गए data (यह test + पिछली history + दी गई topic_breakdown और repeated_weak_topics) का उपयोग करो।
-कोई weakness या strength मत गढ़ो। जिस चीज़ का data नहीं है, वहाँ साफ़ लिखो "पर्याप्त data नहीं"।
-कोई generic सलाह नहीं — हर सुझाव किसी असली Topic/Chapter और उसकी असली गलतियों से जुड़ा हो।
+Evidence नियम (सबसे सख़्त): सिर्फ़ payload में दिए गए data — current test result, question-level data,
+previous test history और ai_memory — का उपयोग करो। कोई भी बात मत गढ़ो। कोई fixed/template paragraph मत दोहराओ।
+हर test के लिए बिल्कुल नई, उसी test के आँकड़ों पर आधारित भाषा लिखो।
+जिस section का evidence नहीं है वहाँ साफ़ लिखो: "पर्याप्त data नहीं"। किसी section को ज़बरदस्ती मत भरो।
 
 For each wrong/skipped question, assign 1–2 root-cause categories from this fixed list (keys stay English):
 ${MISTAKE_CATEGORIES.join(", ")}.
-Use "easy" wrong answers to identify careless/reading mistakes; use "hard" wrong answers to identify knowledge gaps.
-हर wrong/skipped question के लिए उसका Subject, Chapter, Topic और (अगर मिले) Subtopic ज़रूर भरो — payload में दिए गए मानों का ही उपयोग करो।
-hindi_report में पूरी रिपोर्ट दो और repeated_weakness_alerts में payload के repeated_weak_topics को ही हिंदी वाक्यों में दोहराओ (कुछ नया मत जोड़ो)।`;
+"easy" wrong = careless/reading; "hard" wrong = knowledge gap; was_guess=true = guessing behaviour.
+हर wrong/skipped question का Subject, Chapter, Topic और (अगर मिले) Subtopic payload से ही भरो।
+
+hindi_report में ये 20 sections भरो (जहाँ evidence नहीं वहाँ "पर्याप्त data नहीं"):
+1 overall_performance, 2 subject_analysis, 3 chapter_analysis, 4 topic_analysis, 5 strong_areas,
+6 weak_areas, 7 repeated_mistakes, 8 careless_mistakes, 9 conceptual_mistakes, 10 guessing_pattern,
+11 time_management, 12 improvement_vs_previous, 13 performance_trend, 14 what_improved,
+15 what_got_worse, 16 highest_priority_topics, 17 next_revision_plan, 18 next_practice_recommendation,
+19 marks_improvement_strategy, 20 final_conclusion.
+repeated_weakness_alerts में payload के repeated_weak_topics को ही हिंदी वाक्यों में लिखो (कुछ नया मत जोड़ो)।
+
+JSON की अपेक्षित संरचना (सभी keys अंग्रेज़ी, values हिंदी):
+${JSON.stringify({
+      overall: { performance_grade: "", headline: "", strong_subjects: [], weak_subjects: [], strong_chapters: [], weak_chapters: [], strong_topics: [], weak_topics: [], most_repeated_mistake: "", most_expensive_mistake: "", most_common_weakness: "" },
+      mistake_distribution: { knowledge_gap: 0 },
+      question_analyses: [{ question_id: "", index: 0, difficulty: "", subject: "", chapter: "", topic: "", subtopic: "", concept: "", expected_skill: "", root_causes: [], why_wrong: "", confidence: 0, suggested_improvement: "", suggested_revision: "" }],
+      time_analysis: { too_fast_count: 0, too_slow_count: 0, skipped_count: 0, late_attempts_count: 0, time_wasted_on_hard_seconds: 0, summary: "" },
+      thinking_profile: { style: "", traits: [], summary: "" },
+      memory_analysis: { memory_strength: 0, revision_quality: 0, retention: 0, forgotten_concepts: [], revision_due: [] },
+      improvements: [{ action: "", expected_marks: 0, why: "" }],
+      action_plan: { today: [], tomorrow: [], this_week: [], this_month: [] },
+      related_learning: [{ question_index: 0, pdf_id: "", test_id: "", chapter: "", topic: "" }],
+      repeated_weakness_alerts: [],
+      hindi_report: {
+        overall_performance: "", subject_analysis: [], chapter_analysis: [], topic_analysis: [],
+        strong_areas: [], weak_areas: [], repeated_mistakes: [], careless_mistakes: [], conceptual_mistakes: [],
+        guessing_pattern: "", time_management: "", improvement_vs_previous: "", performance_trend: "",
+        what_improved: [], what_got_worse: [], highest_priority_topics: [], next_revision_plan: [],
+        next_practice_recommendation: [], marks_improvement_strategy: [],
+        strong_subjects: [], weak_subjects: [], strong_chapters: [], weak_chapters: [],
+        strong_topics: [], weak_topics: [], topics_to_revise_first: [], revise_before_next_test: [],
+        final_conclusion: "",
+      },
+      coach_summary: "",
+    })}`;
 
     const userPayload = {
-      test: { id: attempt.test_id, title: (attempt.tests as any)?.title, subject: (attempt.tests as any)?.subjects?.name },
+      test: { id: attempt.test_id, title: (attempt.tests as any)?.title, subject: (attempt.tests as any)?.subjects?.name, attempted_at: attempt.created_at },
       score: {
         marks_obtained: attempt.marks_obtained,
         total_marks: totalMarks,
@@ -231,9 +311,12 @@ hindi_report में पूरी रिपोर्ट दो और repeated
         time_taken_seconds: attempt.time_taken_seconds,
         avg_time_per_question_seconds: avgTimePerQ,
       },
+      guess_behaviour: guessStats,
       questions: perQ,
       topic_breakdown: topicBreakdown,
       history: historySummary,
+      same_test_previous_attempts: sameTestHistory,
+      ai_memory: aiMemory,
       related_resources: {
         tests: (relatedTests ?? []).map((t: any) => ({ id: t.id, title: t.title })),
         pdfs: (relatedPdfs ?? []).map((p: any) => ({ id: p.id, title: p.title })),
@@ -241,177 +324,53 @@ hindi_report में पूरी रिपोर्ट दो और repeated
     };
 
 
-    const schema = {
-      type: "object",
-      properties: {
-        overall: {
-          type: "object",
-          properties: {
-            performance_grade: { type: "string" },
-            headline: { type: "string" },
-            strong_subjects: { type: "array", items: { type: "string" } },
-            weak_subjects: { type: "array", items: { type: "string" } },
-            strong_chapters: { type: "array", items: { type: "string" } },
-            weak_chapters: { type: "array", items: { type: "string" } },
-            strong_topics: { type: "array", items: { type: "string" } },
-            weak_topics: { type: "array", items: { type: "string" } },
-            most_repeated_mistake: { type: "string" },
-            most_expensive_mistake: { type: "string" },
-            most_common_weakness: { type: "string" },
-          },
-          required: ["headline", "most_repeated_mistake"],
-        },
-        mistake_distribution: {
-          type: "object",
-          description: "Category → percentage (0-100). Only include categories that occurred.",
-          additionalProperties: { type: "number" },
-        },
-        question_analyses: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              question_id: { type: "string" },
-              index: { type: "number" },
-              difficulty: { type: "string" },
-              subject: { type: "string" },
-              topic: { type: "string" },
-              chapter: { type: "string" },
-              subtopic: { type: "string" },
-              concept: { type: "string" },
-              expected_skill: { type: "string" },
-              root_causes: { type: "array", items: { type: "string" } },
-              why_wrong: { type: "string" },
-              confidence: { type: "number" },
-              suggested_improvement: { type: "string" },
-              suggested_revision: { type: "string" },
-              related_tests: { type: "array", items: { type: "string" } },
-              related_pdfs: { type: "array", items: { type: "string" } },
-              related_smart_revision: { type: "string" },
-            },
-            required: ["question_id", "root_causes", "why_wrong"],
-          },
-        },
-        time_analysis: {
-          type: "object",
-          properties: {
-            too_fast_count: { type: "number" },
-            too_slow_count: { type: "number" },
-            skipped_count: { type: "number" },
-            late_attempts_count: { type: "number" },
-            time_wasted_on_hard_seconds: { type: "number" },
-            summary: { type: "string" },
-          },
-        },
-        thinking_profile: {
-          type: "object",
-          properties: {
-            style: { type: "string" },
-            traits: { type: "array", items: { type: "string" } },
-            summary: { type: "string" },
-          },
-        },
-        memory_analysis: {
-          type: "object",
-          properties: {
-            memory_strength: { type: "number" },
-            revision_quality: { type: "number" },
-            retention: { type: "number" },
-            forgotten_concepts: { type: "array", items: { type: "string" } },
-            revision_due: { type: "array", items: { type: "string" } },
-          },
-        },
-        improvements: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              action: { type: "string" },
-              expected_marks: { type: "number" },
-              why: { type: "string" },
-            },
-            required: ["action", "expected_marks"],
-          },
-        },
-        action_plan: {
-          type: "object",
-          properties: {
-            today: { type: "array", items: { type: "string" } },
-            tomorrow: { type: "array", items: { type: "string" } },
-            this_week: { type: "array", items: { type: "string" } },
-            this_month: { type: "array", items: { type: "string" } },
-          },
-        },
-        related_learning: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              question_index: { type: "number" },
-              pdf_id: { type: "string" },
-              test_id: { type: "string" },
-              chapter: { type: "string" },
-              topic: { type: "string" },
-            },
-          },
-        },
-        repeated_weakness_alerts: {
-          type: "array",
-          description: "हिंदी वाक्य, हर बार-बार कमजोर Topic के लिए एक।",
-          items: { type: "string" },
-        },
-        hindi_report: {
-          type: "object",
-          description: "पूरी रिपोर्ट, सब कुछ हिंदी में।",
-          properties: {
-            overall_performance: { type: "string" },
-            strong_subjects: { type: "array", items: { type: "string" } },
-            weak_subjects: { type: "array", items: { type: "string" } },
-            strong_chapters: { type: "array", items: { type: "string" } },
-            weak_chapters: { type: "array", items: { type: "string" } },
-            strong_topics: { type: "array", items: { type: "string" } },
-            weak_topics: { type: "array", items: { type: "string" } },
-            repeated_mistakes: { type: "array", items: { type: "string" } },
-            topics_to_revise_first: { type: "array", items: { type: "string" } },
-            revise_before_next_test: { type: "array", items: { type: "string" } },
-            final_conclusion: { type: "string" },
-          },
-          required: ["overall_performance", "final_conclusion"],
-        },
-        coach_summary: { type: "string" },
-      },
-      required: ["overall", "mistake_distribution", "question_analyses", "coach_summary", "hindi_report"],
 
-    };
-
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) return json({ error: "LOVABLE_API_KEY missing" }, 500);
-
-    const aiResp = await unifiedFetch({ body: {
-        model: MODEL,
-        messages: [
-          { role: "system", content: sys },
-          { role: "user", content: JSON.stringify(userPayload) },
-        ],
-        tools: [{
-          type: "function",
-          function: { name: "emit_analysis", description: "Return the mistake intelligence report", parameters: schema },
-        }],
-        tool_choice: { type: "function", function: { name: "emit_analysis" } },
-      }, feature: "analyze-test-mistakes" });
-
-    if (aiResp.status === 429) return json({ error: "Rate limited. Try again shortly." }, 429);
-    if (aiResp.status === 402) return json({ error: "AI credits exhausted. Add credits to continue." }, 402);
-    if (!aiResp.ok) {
-      const txt = await aiResp.text();
-      return json({ error: `AI error: ${txt.slice(0, 300)}` }, 500);
+    // JSON mode (हर provider इसे support करता है; tools को primary provider drop कर देता था)
+    async function askAI(extra?: string) {
+      return await unifiedFetch({
+        body: {
+          model: MODEL,
+          temperature: 0.4,
+          max_tokens: 12000,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: sys + (extra ? `\n\n${extra}` : "") },
+            { role: "user", content: JSON.stringify(userPayload) },
+          ],
+        },
+        feature: "analyze-test-mistakes",
+        timeoutMs: 180_000,
+      });
     }
-    const aiJson = await aiResp.json();
-    const raw = aiJson.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments
-      ?? aiJson.choices?.[0]?.message?.content ?? "{}";
-    let parsed: any;
-    try { parsed = typeof raw === "string" ? JSON.parse(raw) : raw; }
-    catch { return json({ error: "Failed to parse AI output" }, 500); }
+
+    function isUsable(p: any) {
+      return !!p && typeof p === "object"
+        && (p.coach_summary || p.overall?.headline)
+        && p.hindi_report && Object.keys(p.hindi_report).length > 0;
+    }
+
+    let parsed: any = null;
+    let lastErr = "";
+    for (let attemptNo = 0; attemptNo < 2 && !isUsable(parsed); attemptNo++) {
+      const aiResp = await askAI(attemptNo === 0
+        ? undefined
+        : "पिछली कोशिश में output अधूरा/अमान्य था। अब सिर्फ़ पूरा valid JSON object लौटाओ — कोई text, कोई fence नहीं।");
+      if (aiResp.status === 429) return json({ error: "Rate limited. Try again shortly." }, 429);
+      if (aiResp.status === 402) return json({ error: "AI credits exhausted. Add credits to continue." }, 402);
+      if (!aiResp.ok) {
+        lastErr = (await aiResp.text().catch(() => "")).slice(0, 300);
+        continue;
+      }
+      const aiJson = await aiResp.json();
+      const raw = aiJson.choices?.[0]?.message?.content ?? "";
+      try { parsed = extractJson(typeof raw === "string" ? raw : JSON.stringify(raw)); }
+      catch (e) { lastErr = (e as Error).message; parsed = null; }
+    }
+
+    if (!isUsable(parsed)) {
+      return json({ error: `AI विश्लेषण नहीं बन पाया${lastErr ? `: ${lastErr}` : ""}` }, 500);
+    }
+
 
     const analysisRow = {
       attempt_id: attemptId,
@@ -458,8 +417,33 @@ hindi_report में पूरी रिपोर्ट दो और repeated
     const dnaDist: Record<string, number> = {};
     if (denom > 0) Object.entries(totals).forEach(([k, v]) => { dnaDist[k] = Math.round(v / denom); });
 
-    const timeline = ((dnaRow?.timeline as any[]) ?? []).slice(-19);
-    timeline.push({ at: new Date().toISOString(), accuracy: attempt.accuracy, dist: parsed.mistake_distribution ?? {} });
+    // AJIT AI Memory — append-only (पुरानी entries कभी overwrite नहीं होतीं)
+    const timeline = ((dnaRow?.timeline as any[]) ?? []).slice(-49);
+    const hr = parsed.hindi_report ?? {};
+    timeline.push({
+      at: new Date().toISOString(),
+      attempt_id: attemptId,
+      test_id: attempt.test_id,
+      test_title: (attempt.tests as any)?.title ?? null,
+      subject: subjectName,
+      accuracy: attempt.accuracy,
+      marks_obtained: attempt.marks_obtained,
+      total_marks: totalMarks,
+      correct: attempt.correct_count,
+      wrong: attempt.incorrect_count,
+      skipped: attempt.unattempted_count,
+      time_taken_seconds: attempt.time_taken_seconds,
+      dist: parsed.mistake_distribution ?? {},
+      topic_breakdown: topicBreakdown.slice(0, 15),
+      weak_topics: (parsed.overall?.weak_topics ?? hr.weak_topics ?? []).slice(0, 10),
+      strong_topics: (parsed.overall?.strong_topics ?? hr.strong_topics ?? []).slice(0, 10),
+      repeated_mistakes: (hr.repeated_mistakes ?? []).slice(0, 10),
+      careless_mistakes: (hr.careless_mistakes ?? []).slice(0, 10),
+      conceptual_mistakes: (hr.conceptual_mistakes ?? []).slice(0, 10),
+      guess_behaviour: guessStats,
+      revision_recommendations: (hr.next_revision_plan ?? hr.topics_to_revise_first ?? []).slice(0, 10),
+      ai_observation: parsed.coach_summary ?? null,
+    });
 
     await admin.from("mistake_dna").upsert({
       user_id: userId,
