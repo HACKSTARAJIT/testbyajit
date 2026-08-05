@@ -138,6 +138,7 @@ Deno.serve(async (req) => {
         concept: (q.concept ?? "").trim() || null,
         status: isCorrect ? "correct" : isWrong ? "wrong" : "skipped",
         marked_for_review: isMarked,
+        was_guess: guessSet.has(q.id),
         peer_accuracy: qStats[q.id]?.attempts ? Math.round((qStats[q.id].correct / qStats[q.id].attempts) * 100) : null,
       };
     });
