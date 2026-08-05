@@ -71,6 +71,8 @@ Deno.serve(async (req) => {
       .from("questions").select("*").eq("test_id", attempt.test_id).order("sort_order");
     const answers: Record<string, string> = (attempt.answers as any) ?? {};
     const marked: any = (attempt.marked as any) ?? [];
+    const guesses: any = (attempt.guesses as any) ?? [];
+    const guessSet = new Set<string>(Array.isArray(guesses) ? guesses : Object.keys(guesses ?? {}));
 
     // Peer benchmarks for difficulty estimation
     const { data: peerAttempts } = await admin
