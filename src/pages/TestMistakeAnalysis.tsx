@@ -421,32 +421,50 @@ function HindiReport({ report, attempt }: { report: any; attempt: any }) {
           {listBlock("कमजोर Topics", report.weak_topics, "bad")}
         </div>
 
-        {Array.isArray(report.repeated_mistakes) && report.repeated_mistakes.length > 0 && (
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">दोहराई जा रही गलतियाँ</p>
-            <ul className="mt-1 space-y-1 text-sm">
-              {report.repeated_mistakes.map((x: string, i: number) => <li key={i}>🔁 {x}</li>)}
-            </ul>
-          </div>
-        )}
+        {([
+          ["दोहराई जा रही गलतियाँ", report.repeated_mistakes, "🔁"],
+          ["Careless गलतियाँ", report.careless_mistakes, "⚡"],
+          ["Conceptual गलतियाँ", report.conceptual_mistakes, "🧩"],
+          ["Subject-wise विश्लेषण", report.subject_analysis, "📚"],
+          ["Chapter-wise विश्लेषण", report.chapter_analysis, "📗"],
+          ["Topic-wise विश्लेषण", report.topic_analysis, "🔍"],
+          ["मजबूत क्षेत्र", report.strong_areas, "💪"],
+          ["कमजोर क्षेत्र", report.weak_areas, "⚠️"],
+          ["क्या सुधरा", report.what_improved, "📈"],
+          ["क्या बिगड़ा", report.what_got_worse, "📉"],
+          ["सबसे ज़्यादा प्राथमिकता वाले Topics", report.highest_priority_topics, "🚨"],
+          ["सबसे पहले Revise करने वाले Topics", report.topics_to_revise_first, "📖"],
+          ["अगला Revision Plan", report.next_revision_plan, "🗓️"],
+          ["अगली Practice सलाह", report.next_practice_recommendation, "✍️"],
+          ["Marks बढ़ाने की रणनीति", report.marks_improvement_strategy, "🎯"],
+          ["अगले Test से पहले", report.revise_before_next_test, "🎯"],
+        ] as [string, any, string][])
+          .filter(([, arr]) => Array.isArray(arr) && arr.length > 0)
+          .map(([title, arr, icon]) => (
+            <div key={title}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+              <ul className="mt-1 space-y-1 text-sm">
+                {arr.map((x: any, i: number) => (
+                  <li key={i}>{icon} {typeof x === "string" ? x : JSON.stringify(x)}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
 
-        {Array.isArray(report.topics_to_revise_first) && report.topics_to_revise_first.length > 0 && (
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">सबसे पहले Revise करने वाले Topics</p>
-            <ul className="mt-1 space-y-1 text-sm">
-              {report.topics_to_revise_first.map((x: string, i: number) => <li key={i}>📖 {x}</li>)}
-            </ul>
-          </div>
-        )}
+        {([
+          ["Guessing Pattern", report.guessing_pattern],
+          ["Time Management", report.time_management],
+          ["पिछले Tests से तुलना", report.improvement_vs_previous],
+          ["Performance Trend", report.performance_trend],
+        ] as [string, any][])
+          .filter(([, v]) => typeof v === "string" && v.trim())
+          .map(([title, v]) => (
+            <div key={title} className="rounded-xl border bg-muted/20 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+              <p className="mt-1 leading-relaxed">{v}</p>
+            </div>
+          ))}
 
-        {Array.isArray(report.revise_before_next_test) && report.revise_before_next_test.length > 0 && (
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">अगले Test से पहले</p>
-            <ul className="mt-1 space-y-1 text-sm">
-              {report.revise_before_next_test.map((x: string, i: number) => <li key={i}>🎯 {x}</li>)}
-            </ul>
-          </div>
-        )}
 
         {report.final_conclusion && (
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
