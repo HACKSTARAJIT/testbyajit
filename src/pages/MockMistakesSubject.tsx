@@ -13,10 +13,11 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Brain, ChevronRight, FileText, FolderTree, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Brain, ChevronRight, FileText, FolderTree, History as HistoryIcon, Play, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
-  loadAIChapters, STATUS_META, type ChapterNode, type OrganizeStatus,
+  loadAIChapters, loadTopicStats, topicRouteKey, topicSourceKey, STATUS_META,
+  type ChapterNode, type OrganizeStatus, type TopicTestStats,
 } from "@/lib/aiChapters";
 
 type MockRow = {
@@ -44,6 +45,7 @@ export default function MockMistakesSubject() {
   const [saving, setSaving] = useState(false);
   const [chapters, setChapters] = useState<ChapterNode[]>([]);
   const [chaptersLoading, setChaptersLoading] = useState(false);
+  const [topicStats, setTopicStats] = useState<Record<string, TopicTestStats>>({});
   const pollRef = useRef<number | null>(null);
 
   const load = async () => {
@@ -76,8 +78,12 @@ export default function MockMistakesSubject() {
   const loadChapters = async () => {
     if (!user) return;
     setChaptersLoading(true);
-    const { chapters } = await loadAIChapters(user.id, subjectName);
+    const [{ chapters }, stats] = await Promise.all([
+      loadAIChapters(user.id, subjectName),
+      loadTopicStats(user.id, subjectName),
+    ]);
     setChapters(chapters);
+    setTopicStats(stats);
     setChaptersLoading(false);
   };
 
@@ -299,7 +305,7 @@ export default function MockMistakesSubject() {
                               className="flex-1 rounded-xl"
                               onClick={() => navigate(route)}
                             >
-                              <History className="mr-1 h-3.5 w-3.5" /> View History
+                              <HistoryIcon className="mr-1 h-3.5 w-3.5" /> View History
                             </Button>
                           </div>
                         </div>
