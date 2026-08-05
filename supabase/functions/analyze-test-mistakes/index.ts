@@ -325,177 +325,52 @@ ${JSON.stringify({
 
 
 
-    const schema = {
-      type: "object",
-      properties: {
-        overall: {
-          type: "object",
-          properties: {
-            performance_grade: { type: "string" },
-            headline: { type: "string" },
-            strong_subjects: { type: "array", items: { type: "string" } },
-            weak_subjects: { type: "array", items: { type: "string" } },
-            strong_chapters: { type: "array", items: { type: "string" } },
-            weak_chapters: { type: "array", items: { type: "string" } },
-            strong_topics: { type: "array", items: { type: "string" } },
-            weak_topics: { type: "array", items: { type: "string" } },
-            most_repeated_mistake: { type: "string" },
-            most_expensive_mistake: { type: "string" },
-            most_common_weakness: { type: "string" },
-          },
-          required: ["headline", "most_repeated_mistake"],
+    // JSON mode (हर provider इसे support करता है; tools को primary provider drop कर देता था)
+    async function askAI(extra?: string) {
+      return await unifiedFetch({
+        body: {
+          model: MODEL,
+          temperature: 0.4,
+          max_tokens: 12000,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: sys + (extra ? `\n\n${extra}` : "") },
+            { role: "user", content: JSON.stringify(userPayload) },
+          ],
         },
-        mistake_distribution: {
-          type: "object",
-          description: "Category → percentage (0-100). Only include categories that occurred.",
-          additionalProperties: { type: "number" },
-        },
-        question_analyses: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              question_id: { type: "string" },
-              index: { type: "number" },
-              difficulty: { type: "string" },
-              subject: { type: "string" },
-              topic: { type: "string" },
-              chapter: { type: "string" },
-              subtopic: { type: "string" },
-              concept: { type: "string" },
-              expected_skill: { type: "string" },
-              root_causes: { type: "array", items: { type: "string" } },
-              why_wrong: { type: "string" },
-              confidence: { type: "number" },
-              suggested_improvement: { type: "string" },
-              suggested_revision: { type: "string" },
-              related_tests: { type: "array", items: { type: "string" } },
-              related_pdfs: { type: "array", items: { type: "string" } },
-              related_smart_revision: { type: "string" },
-            },
-            required: ["question_id", "root_causes", "why_wrong"],
-          },
-        },
-        time_analysis: {
-          type: "object",
-          properties: {
-            too_fast_count: { type: "number" },
-            too_slow_count: { type: "number" },
-            skipped_count: { type: "number" },
-            late_attempts_count: { type: "number" },
-            time_wasted_on_hard_seconds: { type: "number" },
-            summary: { type: "string" },
-          },
-        },
-        thinking_profile: {
-          type: "object",
-          properties: {
-            style: { type: "string" },
-            traits: { type: "array", items: { type: "string" } },
-            summary: { type: "string" },
-          },
-        },
-        memory_analysis: {
-          type: "object",
-          properties: {
-            memory_strength: { type: "number" },
-            revision_quality: { type: "number" },
-            retention: { type: "number" },
-            forgotten_concepts: { type: "array", items: { type: "string" } },
-            revision_due: { type: "array", items: { type: "string" } },
-          },
-        },
-        improvements: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              action: { type: "string" },
-              expected_marks: { type: "number" },
-              why: { type: "string" },
-            },
-            required: ["action", "expected_marks"],
-          },
-        },
-        action_plan: {
-          type: "object",
-          properties: {
-            today: { type: "array", items: { type: "string" } },
-            tomorrow: { type: "array", items: { type: "string" } },
-            this_week: { type: "array", items: { type: "string" } },
-            this_month: { type: "array", items: { type: "string" } },
-          },
-        },
-        related_learning: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              question_index: { type: "number" },
-              pdf_id: { type: "string" },
-              test_id: { type: "string" },
-              chapter: { type: "string" },
-              topic: { type: "string" },
-            },
-          },
-        },
-        repeated_weakness_alerts: {
-          type: "array",
-          description: "हिंदी वाक्य, हर बार-बार कमजोर Topic के लिए एक।",
-          items: { type: "string" },
-        },
-        hindi_report: {
-          type: "object",
-          description: "पूरी रिपोर्ट, सब कुछ हिंदी में।",
-          properties: {
-            overall_performance: { type: "string" },
-            strong_subjects: { type: "array", items: { type: "string" } },
-            weak_subjects: { type: "array", items: { type: "string" } },
-            strong_chapters: { type: "array", items: { type: "string" } },
-            weak_chapters: { type: "array", items: { type: "string" } },
-            strong_topics: { type: "array", items: { type: "string" } },
-            weak_topics: { type: "array", items: { type: "string" } },
-            repeated_mistakes: { type: "array", items: { type: "string" } },
-            topics_to_revise_first: { type: "array", items: { type: "string" } },
-            revise_before_next_test: { type: "array", items: { type: "string" } },
-            final_conclusion: { type: "string" },
-          },
-          required: ["overall_performance", "final_conclusion"],
-        },
-        coach_summary: { type: "string" },
-      },
-      required: ["overall", "mistake_distribution", "question_analyses", "coach_summary", "hindi_report"],
-
-    };
-
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) return json({ error: "LOVABLE_API_KEY missing" }, 500);
-
-    const aiResp = await unifiedFetch({ body: {
-        model: MODEL,
-        messages: [
-          { role: "system", content: sys },
-          { role: "user", content: JSON.stringify(userPayload) },
-        ],
-        tools: [{
-          type: "function",
-          function: { name: "emit_analysis", description: "Return the mistake intelligence report", parameters: schema },
-        }],
-        tool_choice: { type: "function", function: { name: "emit_analysis" } },
-      }, feature: "analyze-test-mistakes" });
-
-    if (aiResp.status === 429) return json({ error: "Rate limited. Try again shortly." }, 429);
-    if (aiResp.status === 402) return json({ error: "AI credits exhausted. Add credits to continue." }, 402);
-    if (!aiResp.ok) {
-      const txt = await aiResp.text();
-      return json({ error: `AI error: ${txt.slice(0, 300)}` }, 500);
+        feature: "analyze-test-mistakes",
+        timeoutMs: 180_000,
+      });
     }
-    const aiJson = await aiResp.json();
-    const raw = aiJson.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments
-      ?? aiJson.choices?.[0]?.message?.content ?? "{}";
-    let parsed: any;
-    try { parsed = typeof raw === "string" ? JSON.parse(raw) : raw; }
-    catch { return json({ error: "Failed to parse AI output" }, 500); }
+
+    function isUsable(p: any) {
+      return !!p && typeof p === "object"
+        && (p.coach_summary || p.overall?.headline)
+        && p.hindi_report && Object.keys(p.hindi_report).length > 0;
+    }
+
+    let parsed: any = null;
+    let lastErr = "";
+    for (let attemptNo = 0; attemptNo < 2 && !isUsable(parsed); attemptNo++) {
+      const aiResp = await askAI(attemptNo === 0
+        ? undefined
+        : "पिछली कोशिश में output अधूरा/अमान्य था। अब सिर्फ़ पूरा valid JSON object लौटाओ — कोई text, कोई fence नहीं।");
+      if (aiResp.status === 429) return json({ error: "Rate limited. Try again shortly." }, 429);
+      if (aiResp.status === 402) return json({ error: "AI credits exhausted. Add credits to continue." }, 402);
+      if (!aiResp.ok) {
+        lastErr = (await aiResp.text().catch(() => "")).slice(0, 300);
+        continue;
+      }
+      const aiJson = await aiResp.json();
+      const raw = aiJson.choices?.[0]?.message?.content ?? "";
+      try { parsed = extractJson(typeof raw === "string" ? raw : JSON.stringify(raw)); }
+      catch (e) { lastErr = (e as Error).message; parsed = null; }
+    }
+
+    if (!isUsable(parsed)) {
+      return json({ error: `AI विश्लेषण नहीं बन पाया${lastErr ? `: ${lastErr}` : ""}` }, 500);
+    }
+
 
     const analysisRow = {
       attempt_id: attemptId,
