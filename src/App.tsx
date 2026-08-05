@@ -121,6 +121,8 @@ const App = () => (
             <Route path="/mock-mistakes/:subject" element={withLayout(<MockMistakesSubject />)} />
             <Route path="/mock-mistakes/:subject/:mockId" element={withLayout(<MockMistakesMock />)} />
             <Route path="/mock-mistakes/:subject/:mockId/test" element={withLayout(<MockMistakesTest />)} />
+            <Route path="/mock-mistakes/:subject/topic/:topicKey" element={withLayout(<MockMistakesTopicTest />)} />
+
             <Route path="/mock-auto-test/:reportId" element={withLayout(<MockAutoTest />)} />
             <Route path="/about" element={withLayout(<About />)} />
             <Route path="/profile" element={withLayout(<Profile />)} />
