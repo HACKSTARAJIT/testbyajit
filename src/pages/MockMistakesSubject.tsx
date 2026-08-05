@@ -267,35 +267,51 @@ export default function MockMistakesSubject() {
                   <AccordionTrigger className="hover:no-underline">
                     <div className="min-w-0 text-left">
                       <p className="truncate font-semibold">{c.chapter}</p>
-                      <p className="text-xs text-muted-foreground">{c.total} questions · {c.topics.length} topics</p>
+                      <p className="text-xs text-muted-foreground">{c.topics.length} topic tests · {c.total} questions</p>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-3 pb-4">
-                    {c.topics.map((t) => (
-                      <div key={t.topic} className="rounded-xl bg-muted/40 p-3">
-                        <p className="text-sm font-semibold">{t.topic} <span className="text-xs font-normal text-muted-foreground">({t.questions.length})</span></p>
-                        <div className="mt-2 space-y-2">
-                          {t.questions.map((q) => (
-                            <div key={q.id} className="rounded-lg bg-background/60 p-3">
-                              <p className="text-sm">{q.question_text}</p>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {q.ai_subtopic ? `${q.ai_subtopic} · ` : ""}
-                                Correct: {q.correct_answer || "—"} · Your answer: {q.user_answer || "Skipped"}
-                              </p>
-                              {q.explanation && (
-                                <p className="mt-1 text-xs text-muted-foreground">{q.explanation}</p>
-                              )}
-                            </div>
-                          ))}
+                    {c.topics.map((t) => {
+                      const key = topicSourceKey(subjectName, c.chapter, t.topic);
+                      const s = topicStats[key];
+                      const route = `/mock-mistakes/${encodeURIComponent(subjectName)}/topic/${topicRouteKey(c.chapter, t.topic)}`;
+                      return (
+                        <div key={t.topic} className="rounded-2xl bg-muted/40 p-4">
+                          <p className="font-semibold">{t.topic}</p>
+                          <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                            <span>📄 Questions: <b className="text-foreground">{t.questions.length}</b></span>
+                            <span>🔁 Practices: <b className="text-foreground">{s?.attempts ?? 0}</b></span>
+                            <span>🎯 Best Accuracy: <b className="text-foreground">{s ? `${s.bestAccuracy}%` : "—"}</b></span>
+                            <span>🕒 Last: <b className="text-foreground">{s?.lastAt ? new Date(s.lastAt).toLocaleDateString() : "—"}</b></span>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              className="flex-1 rounded-xl"
+                              onClick={() => navigate(route, { state: { autostart: true } })}
+                            >
+                              <Play className="mr-1 h-3.5 w-3.5" />
+                              {s?.attempts ? "Retake" : "Start Practice"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="flex-1 rounded-xl"
+                              onClick={() => navigate(route)}
+                            >
+                              <History className="mr-1 h-3.5 w-3.5" /> View History
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </AccordionContent>
                 </AccordionItem>
               ))}
             </Accordion>
           )}
         </TabsContent>
+
       </Tabs>
     </div>
   );
