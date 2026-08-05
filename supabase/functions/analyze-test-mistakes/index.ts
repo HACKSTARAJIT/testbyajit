@@ -417,8 +417,33 @@ ${JSON.stringify({
     const dnaDist: Record<string, number> = {};
     if (denom > 0) Object.entries(totals).forEach(([k, v]) => { dnaDist[k] = Math.round(v / denom); });
 
-    const timeline = ((dnaRow?.timeline as any[]) ?? []).slice(-19);
-    timeline.push({ at: new Date().toISOString(), accuracy: attempt.accuracy, dist: parsed.mistake_distribution ?? {} });
+    // AJIT AI Memory — append-only (पुरानी entries कभी overwrite नहीं होतीं)
+    const timeline = ((dnaRow?.timeline as any[]) ?? []).slice(-49);
+    const hr = parsed.hindi_report ?? {};
+    timeline.push({
+      at: new Date().toISOString(),
+      attempt_id: attemptId,
+      test_id: attempt.test_id,
+      test_title: (attempt.tests as any)?.title ?? null,
+      subject: subjectName,
+      accuracy: attempt.accuracy,
+      marks_obtained: attempt.marks_obtained,
+      total_marks: totalMarks,
+      correct: attempt.correct_count,
+      wrong: attempt.incorrect_count,
+      skipped: attempt.unattempted_count,
+      time_taken_seconds: attempt.time_taken_seconds,
+      dist: parsed.mistake_distribution ?? {},
+      topic_breakdown: topicBreakdown.slice(0, 15),
+      weak_topics: (parsed.overall?.weak_topics ?? hr.weak_topics ?? []).slice(0, 10),
+      strong_topics: (parsed.overall?.strong_topics ?? hr.strong_topics ?? []).slice(0, 10),
+      repeated_mistakes: (hr.repeated_mistakes ?? []).slice(0, 10),
+      careless_mistakes: (hr.careless_mistakes ?? []).slice(0, 10),
+      conceptual_mistakes: (hr.conceptual_mistakes ?? []).slice(0, 10),
+      guess_behaviour: guessStats,
+      revision_recommendations: (hr.next_revision_plan ?? hr.topics_to_revise_first ?? []).slice(0, 10),
+      ai_observation: parsed.coach_summary ?? null,
+    });
 
     await admin.from("mistake_dna").upsert({
       user_id: userId,
