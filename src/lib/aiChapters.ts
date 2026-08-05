@@ -86,3 +86,75 @@ export async function loadAIChapters(userId: string, subject: string): Promise<{
 
   return { chapters, mockNames };
 }
+
+/** Stable practice-test key for one AI Chapter topic. */
+export function topicSourceKey(subject: string, chapter: string, topic: string) {
+  return `topic:${subject}|${chapter}|${topic}`;
+}
+
+/** URL param for the topic practice route. */
+export function topicRouteKey(chapter: string, topic: string) {
+  return encodeURIComponent(`${chapter}|||${topic}`);
+}
+
+export function parseTopicRouteKey(param: string): { chapter: string; topic: string } {
+  const [chapter = "", topic = ""] = decodeURIComponent(param).split("|||");
+  return { chapter, topic };
+}
+
+export type TopicTestStats = {
+  attempts: number;
+  bestAccuracy: number;
+  lastAccuracy: number;
+  lastAt: string | null;
+};
+
+/** Attempt stats for every topic test of one subject, keyed by source_key. */
+export async function loadTopicStats(
+  userId: string,
+  subject: string,
+): Promise<Record<string, TopicTestStats>> {
+  const { data } = await supabase
+    .from("revision_practice_attempts")
+    .select("source_key, accuracy, created_at")
+    .eq("user_id", userId)
+    .eq("source", "mock_mistakes")
+    .like("source_key", `topic:${subject}|%`)
+    .order("created_at", { ascending: true });
+
+  const out: Record<string, TopicTestStats> = {};
+  for (const r of (data ?? []) as any[]) {
+    const s = out[r.source_key] ?? { attempts: 0, bestAccuracy: 0, lastAccuracy: 0, lastAt: null };
+    s.attempts += 1;
+    s.bestAccuracy = Math.max(s.bestAccuracy, r.accuracy ?? 0);
+    s.lastAccuracy = r.accuracy ?? 0;
+    s.lastAt = r.created_at;
+    out[r.source_key] = s;
+  }
+  return out;
+}
+
+/** All classified questions of one Chapter → Topic, as Practice Mode questions. */
+export async function loadTopicPracticeQuestions(
+  userId: string,
+  subject: string,
+  chapter: string,
+  topic: string,
+) {
+  const { chapters } = await loadAIChapters(userId, subject);
+  const ch = chapters.find((c) => c.chapter === chapter);
+  const t = ch?.topics.find((x) => x.topic === topic);
+  return (t?.questions ?? []).map((q) => ({
+    id: q.id,
+    question_text: q.question_text,
+    option_a: q.option_a,
+    option_b: q.option_b,
+    option_c: q.option_c,
+    option_d: q.option_d,
+    correct_answer: q.correct_answer,
+    explanation: q.explanation,
+    chapter,
+    topic,
+    previous_answer: q.user_answer,
+  }));
+}
