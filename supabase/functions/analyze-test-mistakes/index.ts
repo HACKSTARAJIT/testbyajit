@@ -214,28 +214,91 @@ Deno.serve(async (req) => {
         at: r.created_at,
         topics: ((r.topic_breakdown ?? []) as any[]).slice(0, 10).map((t) => ({ subject: t.subject, chapter: t.chapter, topic: t.topic, wrong: t.wrong, skipped: t.skipped })),
       })),
+      previous_overalls: (pastReports ?? []).slice(0, 5).map((r: any) => ({
+        at: r.created_at,
+        headline: (r.overall ?? {})?.headline ?? null,
+        weak_topics: (r.overall ?? {})?.weak_topics ?? [],
+        strong_topics: (r.overall ?? {})?.strong_topics ?? [],
+      })),
     };
 
+    // AJIT AI लंबी अवधि की memory (append-only timeline)
+    const aiMemory = {
+      tests_analysed: (dnaRow?.totals as any)?.tests_analysed ?? 0,
+      mistake_dna: dnaRow?.distribution ?? null,
+      timeline: ((dnaRow?.timeline as any[]) ?? []).slice(-12),
+    };
+
+    // Same-test previous attempts (क्या सुधार हुआ?)
+    const sameTestHistory = (pastAttempts ?? [])
+      .filter((a: any) => a.test_id === attempt.test_id)
+      .slice(0, 5)
+      .map((a: any) => ({ accuracy: a.accuracy, marks: a.marks_obtained, time_seconds: a.time_taken_seconds }));
+
+    const guessStats = {
+      guessed_total: perQ.filter((q) => q.was_guess).length,
+      guessed_correct: perQ.filter((q) => q.was_guess && q.status === "correct").length,
+      guessed_wrong: perQ.filter((q) => q.was_guess && q.status === "wrong").length,
+    };
 
     const sys = `You are AJIT AI — a senior competitive-exam mentor.
-Analyse a completed practice test and produce STRICT JSON only (no markdown fences).
 
-भाषा नियम (सबसे ज़रूरी): हर एक text value हिंदी (देवनागरी) में लिखो — headline, coach_summary, why_wrong, suggestions, action plan, hindi_report, सब कुछ।
-सिर्फ़ Question/Topic/Chapter/Subject के नाम, formula नाम और तकनीकी exam शब्द अंग्रेज़ी में रह सकते हैं। बाकी सब आसान, स्वाभाविक हिंदी में।
+STEP 1 — DEEP THINKING (चुपचाप, output में मत लिखो):
+पहले हर correct, wrong और skipped question को अलग-अलग पढ़ो। फिर सोचो: time, accuracy, difficulty mix,
+subject/chapter/topic distribution, repeated mistakes, पिछले attempts से improvement या गिरावट,
+guessing behaviour, careless बनाम conceptual गलतियाँ। पूरी reasoning ख़त्म करने के बाद ही report बनाओ।
+Speed से ज़्यादा ज़रूरी accuracy है।
+
+STEP 2 — OUTPUT: सिर्फ़ एक valid JSON object लौटाओ (कोई markdown fence नहीं, कोई अतिरिक्त text नहीं)।
+
+भाषा नियम: हर text value हिंदी (देवनागरी) में। सिर्फ़ Subject/Chapter/Topic/formula/तकनीकी exam शब्द अंग्रेज़ी में रह सकते हैं।
 अंग्रेज़ी में पूरा वाक्य कभी मत लिखो।
 
-Evidence नियम: सिर्फ़ दिए गए data (यह test + पिछली history + दी गई topic_breakdown और repeated_weak_topics) का उपयोग करो।
-कोई weakness या strength मत गढ़ो। जिस चीज़ का data नहीं है, वहाँ साफ़ लिखो "पर्याप्त data नहीं"।
-कोई generic सलाह नहीं — हर सुझाव किसी असली Topic/Chapter और उसकी असली गलतियों से जुड़ा हो।
+Evidence नियम (सबसे सख़्त): सिर्फ़ payload में दिए गए data — current test result, question-level data,
+previous test history और ai_memory — का उपयोग करो। कोई भी बात मत गढ़ो। कोई fixed/template paragraph मत दोहराओ।
+हर test के लिए बिल्कुल नई, उसी test के आँकड़ों पर आधारित भाषा लिखो।
+जिस section का evidence नहीं है वहाँ साफ़ लिखो: "पर्याप्त data नहीं"। किसी section को ज़बरदस्ती मत भरो।
 
 For each wrong/skipped question, assign 1–2 root-cause categories from this fixed list (keys stay English):
 ${MISTAKE_CATEGORIES.join(", ")}.
-Use "easy" wrong answers to identify careless/reading mistakes; use "hard" wrong answers to identify knowledge gaps.
-हर wrong/skipped question के लिए उसका Subject, Chapter, Topic और (अगर मिले) Subtopic ज़रूर भरो — payload में दिए गए मानों का ही उपयोग करो।
-hindi_report में पूरी रिपोर्ट दो और repeated_weakness_alerts में payload के repeated_weak_topics को ही हिंदी वाक्यों में दोहराओ (कुछ नया मत जोड़ो)।`;
+"easy" wrong = careless/reading; "hard" wrong = knowledge gap; was_guess=true = guessing behaviour.
+हर wrong/skipped question का Subject, Chapter, Topic और (अगर मिले) Subtopic payload से ही भरो।
+
+hindi_report में ये 20 sections भरो (जहाँ evidence नहीं वहाँ "पर्याप्त data नहीं"):
+1 overall_performance, 2 subject_analysis, 3 chapter_analysis, 4 topic_analysis, 5 strong_areas,
+6 weak_areas, 7 repeated_mistakes, 8 careless_mistakes, 9 conceptual_mistakes, 10 guessing_pattern,
+11 time_management, 12 improvement_vs_previous, 13 performance_trend, 14 what_improved,
+15 what_got_worse, 16 highest_priority_topics, 17 next_revision_plan, 18 next_practice_recommendation,
+19 marks_improvement_strategy, 20 final_conclusion.
+repeated_weakness_alerts में payload के repeated_weak_topics को ही हिंदी वाक्यों में लिखो (कुछ नया मत जोड़ो)।
+
+JSON की अपेक्षित संरचना (सभी keys अंग्रेज़ी, values हिंदी):
+${JSON.stringify({
+      overall: { performance_grade: "", headline: "", strong_subjects: [], weak_subjects: [], strong_chapters: [], weak_chapters: [], strong_topics: [], weak_topics: [], most_repeated_mistake: "", most_expensive_mistake: "", most_common_weakness: "" },
+      mistake_distribution: { knowledge_gap: 0 },
+      question_analyses: [{ question_id: "", index: 0, difficulty: "", subject: "", chapter: "", topic: "", subtopic: "", concept: "", expected_skill: "", root_causes: [], why_wrong: "", confidence: 0, suggested_improvement: "", suggested_revision: "" }],
+      time_analysis: { too_fast_count: 0, too_slow_count: 0, skipped_count: 0, late_attempts_count: 0, time_wasted_on_hard_seconds: 0, summary: "" },
+      thinking_profile: { style: "", traits: [], summary: "" },
+      memory_analysis: { memory_strength: 0, revision_quality: 0, retention: 0, forgotten_concepts: [], revision_due: [] },
+      improvements: [{ action: "", expected_marks: 0, why: "" }],
+      action_plan: { today: [], tomorrow: [], this_week: [], this_month: [] },
+      related_learning: [{ question_index: 0, pdf_id: "", test_id: "", chapter: "", topic: "" }],
+      repeated_weakness_alerts: [],
+      hindi_report: {
+        overall_performance: "", subject_analysis: [], chapter_analysis: [], topic_analysis: [],
+        strong_areas: [], weak_areas: [], repeated_mistakes: [], careless_mistakes: [], conceptual_mistakes: [],
+        guessing_pattern: "", time_management: "", improvement_vs_previous: "", performance_trend: "",
+        what_improved: [], what_got_worse: [], highest_priority_topics: [], next_revision_plan: [],
+        next_practice_recommendation: [], marks_improvement_strategy: [],
+        strong_subjects: [], weak_subjects: [], strong_chapters: [], weak_chapters: [],
+        strong_topics: [], weak_topics: [], topics_to_revise_first: [], revise_before_next_test: [],
+        final_conclusion: "",
+      },
+      coach_summary: "",
+    })}`;
 
     const userPayload = {
-      test: { id: attempt.test_id, title: (attempt.tests as any)?.title, subject: (attempt.tests as any)?.subjects?.name },
+      test: { id: attempt.test_id, title: (attempt.tests as any)?.title, subject: (attempt.tests as any)?.subjects?.name, attempted_at: attempt.created_at },
       score: {
         marks_obtained: attempt.marks_obtained,
         total_marks: totalMarks,
@@ -248,14 +311,18 @@ hindi_report में पूरी रिपोर्ट दो और repeated
         time_taken_seconds: attempt.time_taken_seconds,
         avg_time_per_question_seconds: avgTimePerQ,
       },
+      guess_behaviour: guessStats,
       questions: perQ,
       topic_breakdown: topicBreakdown,
       history: historySummary,
+      same_test_previous_attempts: sameTestHistory,
+      ai_memory: aiMemory,
       related_resources: {
         tests: (relatedTests ?? []).map((t: any) => ({ id: t.id, title: t.title })),
         pdfs: (relatedPdfs ?? []).map((p: any) => ({ id: p.id, title: p.title })),
       },
     };
+
 
 
     const schema = {
