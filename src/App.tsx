@@ -41,6 +41,7 @@ const MockMistakes = lazy(() => import("./pages/MockMistakes.tsx"));
 const MockMistakesSubject = lazy(() => import("./pages/MockMistakesSubject.tsx"));
 const MockMistakesMock = lazy(() => import("./pages/MockMistakesMock.tsx"));
 const MockMistakesTest = lazy(() => import("./pages/MockMistakesTest.tsx"));
+const MockMistakesTopicTest = lazy(() => import("./pages/MockMistakesTopicTest.tsx"));
 const About = lazy(() => import("./pages/About.tsx"));
 const Admin = lazy(() => import("./pages/Admin.tsx"));
 const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics.tsx"));
