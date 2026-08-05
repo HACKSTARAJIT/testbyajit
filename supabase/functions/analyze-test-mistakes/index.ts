@@ -2,7 +2,21 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 import { unifiedFetch } from "../_shared/unifiedAI.ts";
-const MODEL = "google/gemini-3-flash-preview";
+// Deep-reasoning model: accuracy over speed for post-test analysis.
+const MODEL = "google/gemini-2.5-pro";
+
+/** Pull a JSON object out of a model reply (handles fences / stray prose). */
+function extractJson(raw: string): any {
+  if (!raw) throw new Error("AI ने खाली उत्तर दिया");
+  let s = raw.trim();
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) s = fence[1].trim();
+  const start = s.indexOf("{");
+  const end = s.lastIndexOf("}");
+  if (start === -1 || end <= start) throw new Error("AI उत्तर में JSON नहीं मिला");
+  s = s.slice(start, end + 1);
+  return JSON.parse(s);
+}
 
 const MISTAKE_CATEGORIES = [
   "knowledge_gap", "concept_confusion", "memory_failure", "calculation_error",
