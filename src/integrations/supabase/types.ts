@@ -2511,7 +2511,9 @@ export type Database = {
           is_marked: boolean
           is_skipped: boolean
           last_attempt_at: string | null
+          last_attempt_result: string | null
           mastered_at: string | null
+          mastery_score: number
           mistake_type: string | null
           note: string | null
           priority: string
@@ -2544,7 +2546,9 @@ export type Database = {
           is_marked?: boolean
           is_skipped?: boolean
           last_attempt_at?: string | null
+          last_attempt_result?: string | null
           mastered_at?: string | null
+          mastery_score?: number
           mistake_type?: string | null
           note?: string | null
           priority?: string
@@ -2577,7 +2581,9 @@ export type Database = {
           is_marked?: boolean
           is_skipped?: boolean
           last_attempt_at?: string | null
+          last_attempt_result?: string | null
           mastered_at?: string | null
+          mastery_score?: number
           mistake_type?: string | null
           note?: string | null
           priority?: string
