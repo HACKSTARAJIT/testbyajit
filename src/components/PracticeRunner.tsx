@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import {
-  CheckCircle2, XCircle, Lightbulb, RotateCcw, Brain, Loader2, TrendingUp,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { RotateCcw, Brain, Loader2, TrendingUp } from "lucide-react";
 import {
   saveAttempt, requestAI, formatDuration, loadAttempts,
   type AttemptRow, type PracticeQuestion, type PracticeSource,
 } from "@/lib/revisionPractice";
 import { useFeedbackFX } from "@/hooks/useFeedbackFX";
+import {
+  TestHeader, LivePerformancePanel, QuestionCard, OptionCard, AnswerFeedback,
+  FloatingAIStatus, TestBottomNav, AIAnalyzingLoader, ResultHero, ResultStatGrid,
+  gradeFor, xpFor, buildInsight,
+} from "@/components/test-ui/PremiumTestUI";
 
 const LETTERS = ["A", "B", "C", "D"] as const;
 
@@ -28,6 +29,7 @@ type Props = {
 /**
  * Practice Mode only — instant feedback, running score, no exam mode,
  * permanent attempt history + Hindi AJIT AI analysis after every test.
+ * UI uses the universal Premium Test UI kit; logic is unchanged.
  */
 export function PracticeRunner({
   userId, source, sourceKey, title, subject, chapter, questions, onExit, onFinished,
@@ -47,12 +49,21 @@ export function PracticeRunner({
   const stats = useMemo(() => {
     const answered = questions.filter((q) => answers[q.id]);
     const correct = answered.filter((q) => answers[q.id] === q.correct_answer).length;
+    let streak = 0, best = 0;
+    for (const q of questions) {
+      const a = answers[q.id];
+      if (!a) continue;
+      if (a === q.correct_answer) { streak += 1; best = Math.max(best, streak); }
+      else streak = 0;
+    }
     return {
       correct,
       wrong: answered.length - correct,
       attempted: answered.length,
       accuracy: answered.length ? Math.round((correct / answered.length) * 100) : 0,
       revise: questions.filter((q) => answers[q.id] && answers[q.id] !== q.correct_answer),
+      streak,
+      best,
     };
   }, [questions, answers]);
 
@@ -117,31 +128,41 @@ export function PracticeRunner({
 
   if (finished) {
     const timeTaken = attempt?.time_taken_seconds ?? 0;
+    const accuracy = questions.length ? Math.round((stats.correct / questions.length) * 100) : 0;
     return (
-      <div className="space-y-5 animate-fade-in">
-        <div className="rounded-3xl bg-gradient-royal p-6 text-white shadow-lg">
-          <h1 className="font-display text-2xl font-bold">Practice Complete 🎉</h1>
-          <p className="mt-1 text-sm text-white/85">{title}</p>
-          <div className="mt-4 grid grid-cols-4 gap-2 text-center">
-            <Stat label="Score" value={`${stats.correct}/${questions.length}`} />
-            <Stat label="Correct" value={String(stats.correct)} />
-            <Stat label="Wrong" value={String(stats.wrong)} />
-            <Stat label="Accuracy" value={`${Math.round((stats.correct / questions.length) * 100)}%`} />
-          </div>
-          <p className="mt-3 text-center text-xs text-white/80">
-            {saving ? "Saving attempt…" : `Attempt saved · ${formatDuration(timeTaken)}`}
-          </p>
-        </div>
+      <div className="test-shell animate-fade-in space-y-4 pb-10">
+        <ResultHero
+          title={title}
+          score={String(stats.correct)}
+          total={String(questions.length)}
+          grade={gradeFor(accuracy)}
+          xp={xpFor(stats.correct, accuracy)}
+        />
+
+        <ResultStatGrid
+          items={[
+            { label: "Correct", value: stats.correct },
+            { label: "Wrong", value: stats.wrong },
+            { label: "Skipped", value: questions.length - stats.attempted },
+            { label: "Accuracy", value: `${accuracy}%` },
+            { label: "Best Streak", value: stats.best },
+            { label: "Total Time", value: formatDuration(timeTaken) },
+            { label: "XP Earned", value: xpFor(stats.correct, accuracy) },
+            { label: "Grade", value: gradeFor(accuracy) },
+          ]}
+        />
+
+        {(saving || aiBusy) && <AIAnalyzingLoader />}
 
         {/* AJIT AI — integrated, no separate page */}
-        <div className="glass-card space-y-3 rounded-3xl p-5">
+        <div className="test-glass space-y-3 p-5">
           <div className="flex items-center gap-2">
-            <Brain className="h-4 w-4 text-secondary" />
+            <Brain className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-bold">AJIT AI</h3>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <Button
-              className="rounded-2xl" disabled={!attempt || aiBusy !== null}
+              className="rounded-2xl bg-gradient-neon text-white" disabled={!attempt || aiBusy !== null}
               onClick={() => runAI("analyze")}
             >
               {aiBusy === "analyze" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
@@ -157,21 +178,21 @@ export function PracticeRunner({
           </div>
           {aiError && <p className="text-xs text-destructive">{aiError}</p>}
           {analysis && (
-            <div className="whitespace-pre-wrap rounded-2xl bg-muted/50 p-4 text-sm leading-relaxed">{analysis}</div>
+            <div className="whitespace-pre-wrap rounded-2xl bg-white/5 p-4 text-sm leading-relaxed">{analysis}</div>
           )}
           {comparison && (
-            <div className="whitespace-pre-wrap rounded-2xl bg-primary/5 p-4 text-sm leading-relaxed">{comparison}</div>
+            <div className="whitespace-pre-wrap rounded-2xl bg-primary/10 p-4 text-sm leading-relaxed">{comparison}</div>
           )}
         </div>
 
-        <div className="glass-card rounded-2xl p-4">
+        <div className="test-glass p-4">
           <p className="font-semibold">🔁 Questions to Revise Again ({stats.revise.length})</p>
           {stats.revise.length === 0 ? (
             <p className="mt-2 text-sm text-muted-foreground">Nothing pending — all correct!</p>
           ) : (
             <ul className="mt-2 space-y-2">
               {stats.revise.map((q, i) => (
-                <li key={q.id} className="rounded-xl bg-muted/50 p-2 text-xs">
+                <li key={q.id} className="rounded-xl border border-white/10 bg-white/5 p-2 text-xs">
                   <span className="font-medium">{i + 1}. </span>{q.question_text}
                   {(q.chapter || q.topic) && (
                     <span className="block pt-1 text-muted-foreground">{[q.chapter, q.topic].filter(Boolean).join(" · ")}</span>
@@ -183,8 +204,8 @@ export function PracticeRunner({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Button variant="secondary" className="rounded-2xl" onClick={onExit}>Back</Button>
-          <Button className="rounded-2xl" onClick={restart}>
+          <Button variant="secondary" className="h-12 rounded-2xl" onClick={onExit}>Back</Button>
+          <Button className="h-12 rounded-2xl bg-gradient-neon text-white" onClick={restart}>
             <RotateCcw className="mr-2 h-4 w-4" /> Practice Again
           </Button>
         </div>
@@ -199,104 +220,97 @@ export function PracticeRunner({
   const isCorrect = picked === q.correct_answer;
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <div className="glass-card space-y-3 rounded-2xl p-4">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Question {idx + 1} of {questions.length}</span>
-          <span>⚡ Practice Mode</span>
-        </div>
-        <Progress value={((idx + (revealed ? 1 : 0)) / questions.length) * 100} className="h-2" />
-        <div className="grid grid-cols-3 gap-2 text-center text-xs">
-          <div className="rounded-xl bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400">
-            <b className="block text-base">{stats.correct}</b>Correct
-          </div>
-          <div className="rounded-xl bg-destructive/10 p-2 text-destructive">
-            <b className="block text-base">{stats.wrong}</b>Wrong
-          </div>
-          <div className="rounded-xl bg-primary/10 p-2 text-primary">
-            <b className="block text-base">{stats.accuracy}%</b>Accuracy
-          </div>
-        </div>
-      </div>
+    <div className="test-shell">
+      <TestHeader
+        title={title}
+        current={idx + 1}
+        total={questions.length}
+        progress={((idx + (revealed ? 1 : 0)) / questions.length) * 100}
+        subtitle="⚡ Practice Mode"
+      />
 
-      <div className="glass-card space-y-4 rounded-3xl p-5">
-        <p className="font-medium">{q.question_text}</p>
-        <div className="space-y-2">
+      <div className="space-y-4">
+        <LivePerformancePanel
+          stats={{
+            correct: stats.correct,
+            wrong: stats.wrong,
+            skipped: Math.max(0, idx - stats.attempted),
+            accuracy: stats.accuracy,
+            score: `${stats.correct}/${questions.length}`,
+            streak: stats.streak,
+            bestStreak: stats.best,
+            remaining: questions.length - (idx + (revealed ? 1 : 0)),
+          }}
+        />
+
+        <QuestionCard
+          key={q.id}
+          index={idx + 1}
+          meta={[subject, q.chapter, q.topic]}
+          question={q.question_text}
+        >
           {LETTERS.map((L) => {
             const val = (q as any)[`option_${L.toLowerCase()}`] as string | null;
             if (!val) return null;
             const isRight = q.correct_answer === L;
             const isMine = picked === L;
+            const state = !revealed
+              ? "idle"
+              : isRight ? "correct" : isMine ? "wrong" : "dim";
             return (
-              <button
+              <OptionCard
                 key={L}
+                letter={L}
+                text={val}
+                state={state as any}
                 disabled={revealed}
                 onClick={() => selectAnswer(q.id, L, q.correct_answer)}
-                className={cn(
-                  "flex w-full items-start gap-2 rounded-2xl border p-3 text-left text-sm transition-colors",
-                  !revealed && "border-border hover:bg-muted",
-                  revealed && isRight && "border-emerald-500 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-                  revealed && isMine && !isRight && "border-destructive bg-destructive/15 text-destructive",
-                  revealed && !isRight && !isMine && "border-border opacity-60",
-                )}
-              >
-                <span className="font-semibold">{L}.</span>
-                <span className="flex-1">{val}</span>
-                {revealed && isRight && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
-                {revealed && isMine && !isRight && <XCircle className="h-4 w-4 shrink-0 text-destructive" />}
-              </button>
+              />
             );
           })}
-        </div>
+        </QuestionCard>
 
         {revealed && (
-          <div className="animate-fade-in space-y-2 rounded-2xl bg-muted/50 p-4 text-sm">
-            <p className={cn("font-bold", isCorrect ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
-              {isCorrect ? "✅ Correct!" : "❌ Wrong"}
-            </p>
-            <p className="text-muted-foreground">
-              Your answer: <b className="text-foreground">{picked}</b> · Correct answer:{" "}
-              <b className="text-foreground">{q.correct_answer || "—"}</b>
-            </p>
-            {(q.chapter || q.topic) && (
-              <p className="text-xs text-muted-foreground">📚 {[q.chapter, q.topic].filter(Boolean).join(" · ")}</p>
-            )}
-            {q.explanation && (
-              <p className="flex gap-2 text-muted-foreground">
-                <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                <span>{q.explanation}</span>
-              </p>
-            )}
-            {q.previous_answer && (
-              <p className="text-xs text-muted-foreground">
+          <AnswerFeedback
+            correct={isCorrect}
+            correctOption={q.correct_answer}
+            yourOption={picked}
+            explanation={q.explanation}
+            aiInsight={buildInsight({
+              correct: isCorrect, topic: q.topic, chapter: q.chapter, subject,
+            })}
+            extra={q.previous_answer ? (
+              <p className="px-1 text-xs text-muted-foreground">
                 📝 Earlier you answered: <b className="text-foreground">{q.previous_answer}</b>
               </p>
-            )}
-          </div>
+            ) : undefined}
+          />
+        )}
+
+        {!revealed && (
+          <p className="text-center text-xs text-muted-foreground">
+            Select an option to see the answer instantly.
+          </p>
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Button variant="secondary" className="rounded-2xl" disabled={idx === 0} onClick={() => setIdx((i) => i - 1)}>
+      <FloatingAIStatus />
+
+      <TestBottomNav>
+        <Button variant="outline" className="h-12 flex-1 rounded-2xl" disabled={idx === 0} onClick={() => setIdx((i) => i - 1)}>
           Previous
         </Button>
         {idx < questions.length - 1 ? (
-          <Button className="rounded-2xl" disabled={!revealed} onClick={() => setIdx((i) => i + 1)}>Next Question</Button>
+          <Button className="h-12 flex-1 rounded-2xl bg-gradient-neon text-white" disabled={!revealed} onClick={() => setIdx((i) => i + 1)}>
+            Next Question
+          </Button>
         ) : (
-          <Button className="rounded-2xl" disabled={!revealed} onClick={finish}>Finish</Button>
+          <Button className="h-12 flex-1 rounded-2xl bg-gradient-neon text-white" disabled={!revealed} onClick={finish}>
+            Finish
+          </Button>
         )}
-      </div>
-      {!revealed && <p className="text-center text-xs text-muted-foreground">Select an option to see the answer instantly.</p>}
+      </TestBottomNav>
       {fx.overlay}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-white/15 p-3">
-      <p className="text-lg font-bold">{value}</p>
-      <p className="text-[11px] text-white/80">{label}</p>
     </div>
   );
 }
