@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
   Clock, CheckCircle2, XCircle, ArrowLeft, ArrowRight, Trophy, Flag,
@@ -264,8 +263,6 @@ export function TestEngine({
     return { total, gCorrect, gWrong, kCorrect, kWrong, kAttempted, guessAccuracy, knowledgeAccuracy, guessPct };
   }, [guesses, answers, sessionQs]);
 
-  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
-  const ss = String(secondsLeft % 60).padStart(2, "0");
 
   // ---------- RESULT SCREEN ----------
   if (submitted && result) {
@@ -574,24 +571,7 @@ export function TestEngine({
   );
 }
 
-function HeadStat({ label, value }: { label: string; value: any }) {
-  return (
-    <div className="rounded-lg bg-white/15 py-1">
-      <p className="text-sm font-bold leading-none">{value}</p>
-      <p className="mt-0.5 text-white/80">{label}</p>
-    </div>
-  );
-}
 
-function ResultStat({ label, value, className, icon: Icon }: { label: string; value: any; className?: string; icon: any }) {
-  return (
-    <div className={cn("rounded-2xl p-4 text-center shadow-sm", className)}>
-      <Icon className="mx-auto mb-1 h-5 w-5 opacity-90" />
-      <p className="text-xl font-extrabold leading-none">{value}</p>
-      <p className="mt-1 text-xs opacity-90">{label}</p>
-    </div>
-  );
-}
 
 function MiniStat({ label, value, tone }: { label: string; value: any; tone?: "success" | "danger" }) {
   return (
