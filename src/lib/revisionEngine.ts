@@ -12,8 +12,8 @@ export function priorityForCount(wrongCount: number): RevisionPriority {
   return "low";
 }
 
-// 3 consecutive correct revisions ⇒ mastered.
-const MASTERY_STREAK = 3;
+// 2 consecutive correct answers ⇒ mastered, question leaves the queue.
+export const MASTERY_STREAK = 2;
 
 type ExistingWQ = {
   id: string;
@@ -80,6 +80,8 @@ export async function recordAttempt(
           .update({
             wrong_count: wrongCount,
             consecutive_correct: 0,
+            mastery_score: 0,
+            last_attempt_result: attempted ? "wrong" : "skipped",
             priority: priorityForCount(wrongCount),
             status: "pending",
             mastered_at: null,
@@ -109,6 +111,8 @@ export async function recordAttempt(
           source: "auto",
           wrong_count: 1,
           consecutive_correct: 0,
+          mastery_score: 0,
+          last_attempt_result: attempted ? "wrong" : "skipped",
           last_attempt_at: now,
           is_guess: wasGuess,
           is_marked: wasMarked,
@@ -124,6 +128,8 @@ export async function recordAttempt(
         .update({
           correct_revision_count: (prev.correct_revision_count ?? 0) + 1,
           consecutive_correct: streak,
+          mastery_score: Math.min(streak, MASTERY_STREAK),
+          last_attempt_result: "correct",
           status: mastered ? "mastered" : "pending",
           mastered_at: mastered ? now : null,
           last_attempt_at: now,
@@ -148,6 +154,8 @@ export async function recordAttempt(
         wrong_count: 0,
         correct_revision_count: 1,
         consecutive_correct: 1,
+        mastery_score: 1,
+        last_attempt_result: "correct",
         last_attempt_at: now,
         is_guess: wasGuess,
         is_marked: true,
@@ -249,6 +257,8 @@ export async function recordRevisionAttempt(
       await supabase.from("wrong_questions").update({
         correct_revision_count: (prev.correct_revision_count ?? 0) + 1,
         consecutive_correct: streak,
+        mastery_score: Math.min(streak, MASTERY_STREAK),
+        last_attempt_result: "correct",
         status: mastered ? "mastered" : "pending",
         mastered_at: mastered ? now : null,
         last_attempt_at: now,
@@ -258,6 +268,8 @@ export async function recordRevisionAttempt(
       await supabase.from("wrong_questions").update({
         wrong_count: wrongCount,
         consecutive_correct: 0,
+        mastery_score: 0,
+        last_attempt_result: chosen ? "wrong" : "skipped",
         priority: priorityForCount(wrongCount),
         status: "pending",
         mastered_at: null,
