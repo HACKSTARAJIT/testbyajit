@@ -25,6 +25,12 @@ type WQ = {
   correct_option: string | null;
   priority: "high" | "medium" | "low";
   status: "pending" | "revised" | "mastered";
+  mastery_score: number | null;
+  last_attempt_result: string | null;
+  consecutive_correct: number | null;
+  correct_revision_count: number | null;
+  wrong_count: number | null;
+  last_attempt_at: string | null;
   created_at: string;
   tests: { title: string } | null;
   subjects: { name: string } | null;
@@ -164,7 +170,15 @@ export default function WrongQuestions() {
           {r.tests?.title && <Badge variant="secondary">{r.tests.title}</Badge>}
           {r.status === "revised" && <Badge>Revised</Badge>}
           {r.status === "mastered" && <Badge className="bg-green-600">Mastered</Badge>}
+          <Badge variant="outline">Mastery {Math.min(r.mastery_score ?? 0, 2)}/2</Badge>
+          {r.last_attempt_result && (
+            <Badge variant="outline" className="capitalize">Last: {r.last_attempt_result}</Badge>
+          )}
         </div>
+        <p className="text-[11px] text-muted-foreground">
+          ✅ {r.correct_revision_count ?? 0} correct · ❌ {r.wrong_count ?? 0} wrong · 🔥 streak {r.consecutive_correct ?? 0}
+          {r.last_attempt_at && ` · 🗓 ${new Date(r.last_attempt_at).toLocaleDateString()}`}
+        </p>
         {r.question_text && <p className="text-sm font-medium">{r.question_text}</p>}
         {(r.selected_option || r.correct_option) && (
           <p className="text-xs">
