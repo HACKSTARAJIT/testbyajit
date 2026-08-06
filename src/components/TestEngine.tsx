@@ -10,6 +10,11 @@ import {
   Target, RotateCcw, ListChecks, Sparkles, Info, Dice5, Brain,
 } from "lucide-react";
 import { recordAttempt } from "@/lib/revisionEngine";
+import {
+  TestHeader, CircularTimer, LivePerformancePanel, QuestionCard, OptionCard,
+  AnswerFeedback, FloatingAIStatus, TestBottomNav, AIAnalyzingLoader,
+  ResultHero, ResultStatGrid, gradeFor, xpFor, buildInsight,
+} from "@/components/test-ui/PremiumTestUI";
 
 export type EngineQuestion = {
   id: string;
@@ -268,23 +273,39 @@ export function TestEngine({
     const pct = totalMarks ? Math.round((result.score / totalMarks) * 100) : 0;
     const tm = String(Math.floor(result.timeTaken / 60)).padStart(2, "0");
     const ts = String(result.timeTaken % 60).padStart(2, "0");
+    const bestStreak = (() => {
+      let cur = 0, best = 0;
+      for (const item of sessionQs) {
+        const a = answers[item.id];
+        if (!a) continue;
+        if (a === item.correct_option) { cur += 1; best = Math.max(best, cur); } else cur = 0;
+      }
+      return best;
+    })();
     return (
-      <div className="mx-auto max-w-2xl space-y-4 animate-fade-in pb-8">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-royal p-8 text-center text-white shadow-lg">
-          <Trophy className="mx-auto h-14 w-14 drop-shadow" />
-          <p className="mt-2 text-sm font-medium uppercase tracking-wider text-white/80">Test Completed</p>
-          <h2 className="mt-1 text-4xl font-extrabold">{result.score} / {totalMarks}</h2>
-          <p className="mt-1 text-white/90">{pct}% Score</p>
-        </div>
+      <div className="test-shell animate-fade-in space-y-4 pb-10">
+        <ResultHero
+          title={test.title}
+          score={String(result.score)}
+          total={String(totalMarks)}
+          grade={gradeFor(result.accuracy)}
+          xp={xpFor(result.correct, result.accuracy)}
+        />
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <ResultStat label="Correct" value={result.correct} className="bg-gradient-emerald text-white" icon={CheckCircle2} />
-          <ResultStat label="Incorrect" value={result.incorrect} className="bg-gradient-warm text-white" icon={XCircle} />
-          <ResultStat label="Skipped" value={result.skipped} className="glass-card" icon={ListChecks} />
-          <ResultStat label="Accuracy" value={`${result.accuracy}%`} className="glass-card" icon={Target} />
-          <ResultStat label="Time Taken" value={`${tm}:${ts}`} className="glass-card" icon={Clock} />
-          <ResultStat label="Questions" value={sessionQs.length} className="glass-card" icon={Sparkles} />
-        </div>
+        <AIAnalyzingLoader />
+
+        <ResultStatGrid
+          items={[
+            { label: "Correct", value: result.correct },
+            { label: "Wrong", value: result.incorrect },
+            { label: "Skipped", value: result.skipped },
+            { label: "Accuracy", value: `${result.accuracy}%` },
+            { label: "Best Streak", value: bestStreak },
+            { label: "Total Time", value: `${tm}:${ts}` },
+            { label: "XP Earned", value: xpFor(result.correct, result.accuracy) },
+            { label: "Grade", value: gradeFor(result.accuracy) },
+          ]}
+        />
 
         {guessStats.total > 0 && (
           <div className="rounded-3xl border border-primary/20 bg-gradient-to-br from-card to-primary/5 p-5 shadow-md">
@@ -392,168 +413,163 @@ export function TestEngine({
     return "bg-muted text-muted-foreground";
   };
 
+  // Presentational streak metrics (no scoring impact)
+  const streaks = (() => {
+    let cur = 0, best = 0;
+    for (const item of sessionQs) {
+      const a = answers[item.id];
+      if (!a) continue;
+      if (a === item.correct_option) { cur += 1; best = Math.max(best, cur); }
+      else cur = 0;
+    }
+    return { cur, best };
+  })();
+
   return (
-    <div className="mx-auto max-w-2xl space-y-4 pb-28">
-      {/* Premium gradient header */}
-      <div className="rounded-3xl bg-gradient-royal p-4 text-white shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{test.title}</p>
-            <p className="text-xs text-white/80">
-              Question {current + 1} / {sessionQs.length}
-              {mode === "practice" ? " · Practice Mode" : " · Exam Mode"}
+    <div className="test-shell">
+      <TestHeader
+        title={test.title}
+        current={current + 1}
+        total={sessionQs.length}
+        progress={((current + 1) / sessionQs.length) * 100}
+        subtitle={mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}
+        right={<CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
+      />
+
+      <div className="space-y-4">
+        <LivePerformancePanel
+          stats={{
+            correct: stats.correct,
+            wrong: stats.incorrect,
+            skipped: stats.skipped,
+            accuracy: stats.accuracy,
+            score: stats.score,
+            streak: streaks.cur,
+            bestStreak: streaks.best,
+            remaining: sessionQs.length - stats.attempted,
+          }}
+        />
+
+        <QuestionCard
+          key={q.id}
+          index={current + 1}
+          meta={[test.subjectName, test.test_part]}
+          question={q.question_text}
+          actions={
+            <button
+              type="button"
+              onClick={toggleGuess}
+              aria-pressed={!!guessArmed[q.id]}
+              aria-label="Toggle guess mode for this question"
+              title="Mark this answer as a guess (does not affect scoring)"
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                guessArmed[q.id]
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/50",
+              )}
+            >
+              <Dice5 className="h-3.5 w-3.5" /> Guess {guessArmed[q.id] ? "ON" : "OFF"}
+            </button>
+          }
+        >
+          {marked[q.id] && (
+            <p className="text-[11px] font-semibold text-amber-400">
+              {marked[q.id] === "review" ? "🚩 Marked for Review" : "❓ Marked as Doubt"}
             </p>
-          </div>
-          <Badge className={cn("gap-1 border-0 text-sm", secondsLeft < 60 ? "bg-destructive" : "bg-white/20")}>
-            <Clock className="h-4 w-4" /> {mm}:{ss}
-          </Badge>
-        </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/25">
-          <div className="h-full rounded-full bg-white transition-all" style={{ width: `${((current + 1) / sessionQs.length) * 100}%` }} />
-        </div>
-        <div className="mt-3 grid grid-cols-5 gap-1.5 text-center text-[11px]">
-          <HeadStat label="Correct" value={stats.correct} />
-          <HeadStat label="Wrong" value={stats.incorrect} />
-          <HeadStat label="Skipped" value={stats.skipped} />
-          <HeadStat label="Score" value={stats.score} />
-          <HeadStat label="Accuracy" value={`${stats.accuracy}%`} />
-        </div>
-      </div>
-
-      {/* Question card */}
-      <div key={q.id} className="animate-fade-in rounded-3xl border border-primary/10 bg-gradient-to-br from-card to-muted/30 p-5 shadow-md">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-gradient-royal px-3 py-1 text-xs font-bold text-white">Q{current + 1}</span>
-          {marked[q.id] === "review" && <Badge className="bg-warning text-white">Marked for Review</Badge>}
-          {marked[q.id] === "doubt" && <Badge className="bg-warning text-white">Doubt</Badge>}
-          <button
-            type="button"
-            onClick={toggleGuess}
-            aria-pressed={!!guessArmed[q.id]}
-            aria-label="Toggle guess mode for this question"
-            className={cn(
-              "ml-auto inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
-              guessArmed[q.id]
-                ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                : "border-border bg-muted/50 text-muted-foreground hover:border-primary/50"
-            )}
-            title="Mark this answer as a guess (does not affect scoring)"
-          >
-            <Dice5 className="h-3.5 w-3.5" />
-            🎲 Guess {guessArmed[q.id] ? "ON" : "OFF"}
-          </button>
-        </div>
-        <p className="text-lg font-semibold leading-relaxed">{q.question_text}</p>
-
-        <div className="mt-4 space-y-2.5">
+          )}
           {LETTERS.map((L) => {
             const val = q[`option_${L.toLowerCase()}` as keyof EngineQuestion] as string;
             if (!val || val === "-") return null;
             const selected = answers[q.id] === L;
             const isCorrect = q.correct_option === L;
-            let style = "border-border hover:border-primary/50 hover:bg-primary/5";
-            if (revealedNow) {
-              if (isCorrect) style = "border-success bg-success/15 animate-scale-in";
-              else if (selected) style = "border-destructive bg-destructive/15 animate-scale-in";
-              else style = "border-border opacity-70";
-            } else if (selected) {
-              style = "border-primary bg-primary/10";
-            }
+            const state = revealedNow
+              ? isCorrect ? "correct" : selected ? "wrong" : "dim"
+              : selected ? "selected" : "idle";
             return (
-              <button
+              <OptionCard
                 key={L}
+                letter={L}
+                text={val}
+                state={state as any}
+                disabled={!!revealedNow}
                 onClick={() => choose(L)}
-                disabled={revealedNow}
-                className={cn(
-                  "btn-ripple flex w-full items-center gap-3 rounded-2xl border-2 p-4 text-left text-base transition-all",
-                  style
-                )}
-              >
-                <span className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold",
-                  selected && !revealedNow && "border-primary bg-primary text-primary-foreground",
-                  revealedNow && isCorrect && "border-success bg-success text-white",
-                  revealedNow && selected && !isCorrect && "border-destructive bg-destructive text-white",
-                )}>{L}</span>
-                <span className="flex-1">{val}</span>
-                {revealedNow && isCorrect && <CheckCircle2 className="h-5 w-5 text-success" />}
-                {revealedNow && selected && !isCorrect && <XCircle className="h-5 w-5 text-destructive" />}
-              </button>
+              />
             );
           })}
-        </div>
+        </QuestionCard>
 
-        {/* Practice feedback */}
         {revealedNow && (
-          <div className="mt-4 animate-fade-in space-y-2">
-            <div className={cn(
-              "rounded-xl p-3 text-sm font-medium",
-              answers[q.id] === q.correct_option ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
-            )}>
-              {answers[q.id] === q.correct_option
-                ? "✅ Correct!"
-                : `❌ Incorrect. Correct answer: ${q.correct_option}`}
-            </div>
-            {q.explanation && (
-              <div className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">
-                <Info className="mr-1 inline h-4 w-4" /><b>Explanation:</b> {q.explanation}
-              </div>
-            )}
-            {answers[q.id] !== q.correct_option && !isPreview && userId && (
-              <p className="text-xs text-muted-foreground">📓 Saved to your Wrong Questions Notebook.</p>
-            )}
-          </div>
+          <AnswerFeedback
+            correct={answers[q.id] === q.correct_option}
+            correctOption={q.correct_option}
+            yourOption={answers[q.id]}
+            explanation={q.explanation}
+            aiInsight={buildInsight({
+              correct: answers[q.id] === q.correct_option,
+              subject: test.subjectName,
+              chapter: test.test_part,
+              wasGuess: !!guesses[q.id],
+            })}
+            extra={
+              answers[q.id] !== q.correct_option && !isPreview && userId ? (
+                <p className="px-1 text-xs text-muted-foreground">📓 Saved to your Wrong Questions Notebook.</p>
+              ) : undefined
+            }
+          />
         )}
-      </div>
 
-      {/* Question palette */}
-      <div className="rounded-2xl border bg-card p-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Question Palette</p>
-        <div className="flex flex-wrap gap-2">
-          {sessionQs.map((item, i) => (
-            <button
-              key={item.id}
-              onClick={() => goto(i)}
-              className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-full border-2 text-xs font-bold transition-transform hover:scale-110",
-                paletteColor(item, i),
-                i === current && "ring-2 ring-primary ring-offset-2 ring-offset-background"
-              )}
-            >
-              {i + 1}
-            </button>
-          ))}
+        {/* Question palette */}
+        <div className="test-glass p-4">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Question Palette</p>
+          <div className="flex flex-wrap gap-2">
+            {sessionQs.map((item, i) => (
+              <button
+                key={item.id}
+                onClick={() => goto(i)}
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-xl border text-xs font-bold transition-transform hover:scale-105",
+                  paletteColor(item, i),
+                  i === current && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                )}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Sticky bottom navigation */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/90 p-3 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-2xl items-center gap-2">
-          <Button variant="outline" className="btn-ripple" disabled={current === 0} onClick={() => setCurrent((c) => c - 1)}>
-            <ArrowLeft className="h-4 w-4" />
+      <FloatingAIStatus />
+
+      <TestBottomNav>
+        <Button variant="outline" className="h-12 rounded-2xl" disabled={current === 0} onClick={() => setCurrent((c) => c - 1)}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          className={cn("h-12 flex-1 rounded-2xl", marked[q.id] === "review" && "border-amber-500/60 bg-amber-500/15 text-amber-400")}
+          onClick={() => toggleMark("review")}
+        >
+          <Flag className="mr-1 h-4 w-4" /> Review
+        </Button>
+        {current < sessionQs.length - 1 ? (
+          <Button className="h-12 flex-1 rounded-2xl bg-gradient-neon text-white" onClick={() => setCurrent((c) => c + 1)}>
+            Next <ArrowRight className="ml-1 h-4 w-4" />
           </Button>
+        ) : (
           <Button
-            variant={marked[q.id] === "review" ? "default" : "outline"}
-            className={cn("btn-ripple flex-1", marked[q.id] === "review" && "bg-warning text-white hover:bg-warning/90")}
-            onClick={() => toggleMark("review")}
-          >
-            <Flag className="mr-1 h-4 w-4" /> Review
-          </Button>
-          {current < sessionQs.length - 1 ? (
-            <Button className="btn-ripple flex-1 bg-gradient-royal text-white" onClick={() => setCurrent((c) => c + 1)}>
-              Next <ArrowRight className="ml-1 h-4 w-4" />
-            </Button>
-          ) : (
-            <Button className="btn-ripple flex-1 bg-gradient-emerald text-white" onClick={() => {
+            className="h-12 flex-1 rounded-2xl bg-gradient-neon text-white"
+            onClick={() => {
               if (mode === "exam" && answeredCount < sessionQs.length &&
                 !confirm(`${sessionQs.length - answeredCount} unanswered. Submit anyway?`)) return;
               submit();
-            }}>
-              Submit Test
-            </Button>
-          )}
-        </div>
-      </div>
+            }}
+          >
+            Submit Test
+          </Button>
+        )}
+      </TestBottomNav>
     </div>
   );
 }
