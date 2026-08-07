@@ -234,7 +234,7 @@ export function PracticeRunner({
         subtitle="⚡ Practice Mode"
       />
 
-      <div className="space-y-4">
+      <div className="test-shell-body space-y-4">
         <LivePerformancePanel
           stats={{
             correct: stats.correct,
@@ -302,9 +302,16 @@ export function PracticeRunner({
       <FloatingAIStatus />
 
       <TestBottomNav>
+        <QuestionNavigator
+          total={questions.length}
+          current={idx}
+          statusFor={navStatus}
+          onJump={(i) => setIdx(i)}
+        />
         <Button variant="outline" className="h-12 flex-1 rounded-2xl" disabled={idx === 0} onClick={() => setIdx((i) => i - 1)}>
           Previous
         </Button>
+
         {idx < questions.length - 1 ? (
           <Button className="h-12 flex-1 rounded-2xl bg-gradient-neon text-white" disabled={!revealed} onClick={() => setIdx((i) => i + 1)}>
             Next Question
