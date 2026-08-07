@@ -213,7 +213,9 @@ export function PracticeRunner({
           </Button>
         </div>
         {fx.overlay}
+        </div>
       </div>
+
     );
   }
 
