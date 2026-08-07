@@ -131,7 +131,9 @@ export function PracticeRunner({
     const timeTaken = attempt?.time_taken_seconds ?? 0;
     const accuracy = questions.length ? Math.round((stats.correct / questions.length) * 100) : 0;
     return (
-      <div className="test-shell animate-fade-in space-y-4 pb-10">
+      <div className="test-shell pb-10">
+        <div className="test-shell-body animate-fade-in space-y-4">
+
         <ResultHero
           title={title}
           score={String(stats.correct)}
