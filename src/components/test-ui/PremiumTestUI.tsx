@@ -1,8 +1,10 @@
 import { ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Brain, CheckCircle2, XCircle, Lightbulb, Zap, Sparkles, ChevronDown,
-  ArrowLeft, ArrowRight, Flag, Timer,
+  ArrowLeft, ArrowRight, Flag, Timer, ListOrdered,
 } from "lucide-react";
 
 /**
@@ -10,6 +12,7 @@ import {
  * Presentation only — no scoring, navigation, AI or data logic lives here.
  * Used by every test surface in AJIT 360 (TestEngine + PracticeRunner).
  */
+
 
 /* ------------------------------ Circular timer ----------------------------- */
 export function CircularTimer({
