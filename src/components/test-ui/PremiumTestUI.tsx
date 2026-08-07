@@ -51,8 +51,9 @@ export function TestHeader({
   right?: ReactNode; subtitle?: string;
 }) {
   return (
-    <div className="sticky top-0 z-30 -mx-3 mb-4 px-3 pt-3 sm:-mx-4 sm:px-4">
-      <div className="test-glass-strong overflow-hidden p-4">
+    <div className="sticky top-0 z-30 -mx-3 mb-4 px-3 pt-3 sm:-mx-5 sm:px-5">
+      <div className="test-glass-strong mx-auto max-w-4xl overflow-hidden p-4">
+
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <h1 className="truncate font-display text-base font-bold">{title}</h1>
@@ -116,8 +117,8 @@ export function QuestionCard({
 }) {
   const tags = (meta ?? []).filter(Boolean) as string[];
   return (
-    <div className="test-glass animate-test-slide p-5">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+    <div className="test-glass animate-test-slide p-5 sm:p-7">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-gradient-neon px-3 py-1 text-xs font-bold text-white shadow-sm">
           Q{index}
         </span>
@@ -125,9 +126,10 @@ export function QuestionCard({
         {difficulty && <span className="test-chip">{difficultyStars(difficulty)}</span>}
         {actions && <div className="ml-auto">{actions}</div>}
       </div>
-      <p className="text-[17px] font-semibold leading-relaxed">{question}</p>
-      <div className="mt-4 space-y-2.5">{children}</div>
+      <p className="text-[19px] font-semibold leading-[1.75] sm:text-[21px]">{question}</p>
+      <div className="mt-6 space-y-3.5">{children}</div>
     </div>
+
   );
 }
 
