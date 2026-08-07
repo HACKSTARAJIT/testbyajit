@@ -395,8 +395,10 @@ export function TestEngine({
           );
         })}
         <Button variant="outline" className="w-full" onClick={onExit}>Back</Button>
+        </div>
       </div>
     );
+
   }
 
   // ---------- QUESTION SCREEN ----------
