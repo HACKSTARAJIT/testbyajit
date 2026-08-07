@@ -224,6 +224,15 @@ export function PracticeRunner({
   const revealed = Boolean(picked);
   const isCorrect = picked === q.correct_answer;
 
+  const navStatus = (i: number): NavItemStatus => {
+    const item = questions[i];
+    if (!item) return "unvisited";
+    const a = answers[item.id];
+    if (a) return a === item.correct_answer ? "correct" : "wrong";
+    return i < idx ? "skipped" : "unvisited";
+  };
+
+
   return (
     <div className="test-shell">
       <TestHeader
