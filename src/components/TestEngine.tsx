@@ -438,7 +438,7 @@ export function TestEngine({
         right={<CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
       />
 
-      <div className="space-y-4">
+      <div className="test-shell-body space-y-4">
         <LivePerformancePanel
           stats={{
             correct: stats.correct,
@@ -527,9 +527,16 @@ export function TestEngine({
       <FloatingAIStatus />
 
       <TestBottomNav>
+        <QuestionNavigator
+          total={sessionQs.length}
+          current={current}
+          statusFor={navStatus}
+          onJump={goto}
+        />
         <Button variant="outline" className="h-12 rounded-2xl" disabled={current === 0} onClick={() => setCurrent((c) => c - 1)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
+
         <Button
           variant="outline"
           className={cn("h-12 flex-1 rounded-2xl", marked[q.id] === "review" && "border-amber-500/60 bg-amber-500/15 text-amber-400")}
