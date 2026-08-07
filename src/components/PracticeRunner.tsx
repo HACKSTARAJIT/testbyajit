@@ -9,8 +9,9 @@ import { useFeedbackFX } from "@/hooks/useFeedbackFX";
 import {
   TestHeader, LivePerformancePanel, QuestionCard, OptionCard, AnswerFeedback,
   FloatingAIStatus, TestBottomNav, AIAnalyzingLoader, ResultHero, ResultStatGrid,
-  gradeFor, xpFor, buildInsight,
+  gradeFor, xpFor, buildInsight, QuestionNavigator, type NavItemStatus,
 } from "@/components/test-ui/PremiumTestUI";
+
 
 const LETTERS = ["A", "B", "C", "D"] as const;
 
