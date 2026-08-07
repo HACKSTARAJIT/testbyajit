@@ -13,7 +13,9 @@ import {
   TestHeader, CircularTimer, LivePerformancePanel, QuestionCard, OptionCard,
   AnswerFeedback, FloatingAIStatus, TestBottomNav, AIAnalyzingLoader,
   ResultHero, ResultStatGrid, gradeFor, xpFor, buildInsight,
+  QuestionNavigator, type NavItemStatus,
 } from "@/components/test-ui/PremiumTestUI";
+
 
 export type EngineQuestion = {
   id: string;
@@ -280,7 +282,9 @@ export function TestEngine({
       return best;
     })();
     return (
-      <div className="test-shell animate-fade-in space-y-4 pb-10">
+      <div className="test-shell pb-10">
+        <div className="test-shell-body animate-fade-in space-y-4">
+
         <ResultHero
           title={test.title}
           score={String(result.score)}
@@ -391,24 +395,29 @@ export function TestEngine({
           );
         })}
         <Button variant="outline" className="w-full" onClick={onExit}>Back</Button>
+        </div>
       </div>
     );
+
   }
 
   // ---------- QUESTION SCREEN ----------
   const revealedNow = mode === "practice" && revealed[q.id];
   const answeredCount = Object.keys(answers).length;
 
-  const paletteColor = (item: EngineQuestion, i: number) => {
+  const navStatus = (i: number): NavItemStatus => {
+    const item = sessionQs[i];
+    if (!item) return "unvisited";
     const a = answers[item.id];
     const mk = marked[item.id];
     if (mode === "practice" && revealed[item.id]) {
-      return a === item.correct_option ? "bg-success text-white border-success" : "bg-destructive text-white border-destructive";
+      return a === item.correct_option ? "correct" : "wrong";
     }
-    if (mk === "review" || mk === "doubt") return "bg-warning text-white border-warning";
-    if (a) return "bg-primary text-primary-foreground border-primary";
-    return "bg-muted text-muted-foreground";
+    if (mk === "review" || mk === "doubt") return "marked";
+    if (a) return "answered";
+    return i < current ? "skipped" : "unvisited";
   };
+
 
   // Presentational streak metrics (no scoring impact)
   const streaks = (() => {
@@ -433,7 +442,7 @@ export function TestEngine({
         right={<CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
       />
 
-      <div className="space-y-4">
+      <div className="test-shell-body space-y-4">
         <LivePerformancePanel
           stats={{
             correct: stats.correct,
@@ -516,33 +525,22 @@ export function TestEngine({
           />
         )}
 
-        {/* Question palette */}
-        <div className="test-glass p-4">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Question Palette</p>
-          <div className="flex flex-wrap gap-2">
-            {sessionQs.map((item, i) => (
-              <button
-                key={item.id}
-                onClick={() => goto(i)}
-                className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-xl border text-xs font-bold transition-transform hover:scale-105",
-                  paletteColor(item, i),
-                  i === current && "ring-2 ring-primary ring-offset-2 ring-offset-background",
-                )}
-              >
-                {i + 1}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
+
 
       <FloatingAIStatus />
 
       <TestBottomNav>
+        <QuestionNavigator
+          total={sessionQs.length}
+          current={current}
+          statusFor={navStatus}
+          onJump={goto}
+        />
         <Button variant="outline" className="h-12 rounded-2xl" disabled={current === 0} onClick={() => setCurrent((c) => c - 1)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
+
         <Button
           variant="outline"
           className={cn("h-12 flex-1 rounded-2xl", marked[q.id] === "review" && "border-amber-500/60 bg-amber-500/15 text-amber-400")}

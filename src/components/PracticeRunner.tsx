@@ -9,8 +9,9 @@ import { useFeedbackFX } from "@/hooks/useFeedbackFX";
 import {
   TestHeader, LivePerformancePanel, QuestionCard, OptionCard, AnswerFeedback,
   FloatingAIStatus, TestBottomNav, AIAnalyzingLoader, ResultHero, ResultStatGrid,
-  gradeFor, xpFor, buildInsight,
+  gradeFor, xpFor, buildInsight, QuestionNavigator, type NavItemStatus,
 } from "@/components/test-ui/PremiumTestUI";
+
 
 const LETTERS = ["A", "B", "C", "D"] as const;
 
@@ -130,7 +131,9 @@ export function PracticeRunner({
     const timeTaken = attempt?.time_taken_seconds ?? 0;
     const accuracy = questions.length ? Math.round((stats.correct / questions.length) * 100) : 0;
     return (
-      <div className="test-shell animate-fade-in space-y-4 pb-10">
+      <div className="test-shell pb-10">
+        <div className="test-shell-body animate-fade-in space-y-4">
+
         <ResultHero
           title={title}
           score={String(stats.correct)}
@@ -210,7 +213,9 @@ export function PracticeRunner({
           </Button>
         </div>
         {fx.overlay}
+        </div>
       </div>
+
     );
   }
 
@@ -218,6 +223,15 @@ export function PracticeRunner({
   const picked = answers[q.id];
   const revealed = Boolean(picked);
   const isCorrect = picked === q.correct_answer;
+
+  const navStatus = (i: number): NavItemStatus => {
+    const item = questions[i];
+    if (!item) return "unvisited";
+    const a = answers[item.id];
+    if (a) return a === item.correct_answer ? "correct" : "wrong";
+    return i < idx ? "skipped" : "unvisited";
+  };
+
 
   return (
     <div className="test-shell">
@@ -229,7 +243,7 @@ export function PracticeRunner({
         subtitle="⚡ Practice Mode"
       />
 
-      <div className="space-y-4">
+      <div className="test-shell-body space-y-4">
         <LivePerformancePanel
           stats={{
             correct: stats.correct,
@@ -297,9 +311,16 @@ export function PracticeRunner({
       <FloatingAIStatus />
 
       <TestBottomNav>
+        <QuestionNavigator
+          total={questions.length}
+          current={idx}
+          statusFor={navStatus}
+          onJump={(i) => setIdx(i)}
+        />
         <Button variant="outline" className="h-12 flex-1 rounded-2xl" disabled={idx === 0} onClick={() => setIdx((i) => i - 1)}>
           Previous
         </Button>
+
         {idx < questions.length - 1 ? (
           <Button className="h-12 flex-1 rounded-2xl bg-gradient-neon text-white" disabled={!revealed} onClick={() => setIdx((i) => i + 1)}>
             Next Question

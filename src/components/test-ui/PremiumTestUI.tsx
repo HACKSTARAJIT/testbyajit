@@ -1,8 +1,10 @@
 import { ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Brain, CheckCircle2, XCircle, Lightbulb, Zap, Sparkles, ChevronDown,
-  ArrowLeft, ArrowRight, Flag, Timer,
+  ArrowLeft, ArrowRight, Flag, Timer, ListOrdered,
 } from "lucide-react";
 
 /**
@@ -10,6 +12,7 @@ import {
  * Presentation only — no scoring, navigation, AI or data logic lives here.
  * Used by every test surface in AJIT 360 (TestEngine + PracticeRunner).
  */
+
 
 /* ------------------------------ Circular timer ----------------------------- */
 export function CircularTimer({
@@ -48,8 +51,9 @@ export function TestHeader({
   right?: ReactNode; subtitle?: string;
 }) {
   return (
-    <div className="sticky top-0 z-30 -mx-3 mb-4 px-3 pt-3 sm:-mx-4 sm:px-4">
-      <div className="test-glass-strong overflow-hidden p-4">
+    <div className="sticky top-0 z-30 -mx-3 mb-4 px-3 pt-3 sm:-mx-5 sm:px-5">
+      <div className="test-glass-strong mx-auto max-w-4xl overflow-hidden p-4">
+
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <h1 className="truncate font-display text-base font-bold">{title}</h1>
@@ -113,8 +117,8 @@ export function QuestionCard({
 }) {
   const tags = (meta ?? []).filter(Boolean) as string[];
   return (
-    <div className="test-glass animate-test-slide p-5">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+    <div className="test-glass animate-test-slide p-5 sm:p-7">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-gradient-neon px-3 py-1 text-xs font-bold text-white shadow-sm">
           Q{index}
         </span>
@@ -122,9 +126,10 @@ export function QuestionCard({
         {difficulty && <span className="test-chip">{difficultyStars(difficulty)}</span>}
         {actions && <div className="ml-auto">{actions}</div>}
       </div>
-      <p className="text-[17px] font-semibold leading-relaxed">{question}</p>
-      <div className="mt-4 space-y-2.5">{children}</div>
+      <p className="text-[19px] font-semibold leading-[1.75] sm:text-[21px]">{question}</p>
+      <div className="mt-6 space-y-3.5">{children}</div>
     </div>
+
   );
 }
 
@@ -171,7 +176,7 @@ export function OptionCard({
       >
         {letter}
       </span>
-      <span className="flex-1 text-[15px] leading-snug">{text}</span>
+      <span className="flex-1 text-[16px] leading-relaxed sm:text-[17px]">{text}</span>
       {state === "correct" && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />}
       {state === "wrong" && <XCircle className="h-5 w-5 shrink-0 text-destructive" />}
     </button>
@@ -276,12 +281,114 @@ export function FloatingAIStatus({ text = "Watching your performance…" }: { te
 export function TestBottomNav({ children }: { children: ReactNode }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-background/80 p-3 backdrop-blur-2xl">
-      <div className="mx-auto flex max-w-3xl items-center gap-2">{children}</div>
+      <div className="mx-auto flex max-w-4xl items-center gap-2">{children}</div>
     </div>
   );
 }
 
+/* --------------------------- Question navigator ---------------------------- */
+export type NavItemStatus = "answered" | "correct" | "wrong" | "marked" | "skipped" | "unvisited";
+
+const NAV_STATUS_CLASS: Record<NavItemStatus, string> = {
+  correct: "border-emerald-500/60 bg-emerald-500/20 text-emerald-300",
+  answered: "border-primary/60 bg-primary/20 text-primary",
+  wrong: "border-destructive/60 bg-destructive/20 text-destructive",
+  marked: "border-amber-500/60 bg-amber-500/20 text-amber-300",
+  skipped: "border-amber-500/40 bg-amber-500/10 text-amber-300",
+  unvisited: "border-white/10 bg-white/5 text-muted-foreground",
+};
+
+const NAV_LEGEND: Array<[NavItemStatus, string]> = [
+  ["correct", "🟢 Answered / Correct"],
+  ["wrong", "🔴 Wrong"],
+  ["skipped", "🟡 Skipped / Review"],
+  ["unvisited", "⚪ Not Visited"],
+];
+
+/**
+ * Universal Question Navigator — floating trigger + drawer.
+ * Desktop/tablet: slides in from the left. Mobile: bottom sheet.
+ * Purely presentational; jumping is delegated to `onJump`.
+ */
+export function QuestionNavigator({
+  total, current, statusFor, onJump, triggerClassName, floating = false,
+}: {
+  total: number;
+  current: number;
+  statusFor: (index: number) => NavItemStatus;
+  onJump: (index: number) => void;
+  triggerClassName?: string;
+  floating?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const isMobile = useIsMobile();
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          aria-label="Open question navigator"
+          className={cn(
+            "inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-card/70 px-4 text-sm font-semibold backdrop-blur-2xl transition-colors hover:border-primary/50 hover:text-primary",
+            floating
+              ? "fixed bottom-24 left-3 z-30 h-12 shadow-lg"
+              : "h-12 shrink-0",
+            triggerClassName,
+          )}
+        >
+          <ListOrdered className="h-4 w-4" />
+          <span className={floating ? "" : "hidden sm:inline"}>Questions</span>
+        </button>
+      </SheetTrigger>
+      <SheetContent
+        side={isMobile ? "bottom" : "left"}
+        className={cn(
+          "border-white/10 bg-background/95 backdrop-blur-2xl",
+          isMobile ? "h-[80dvh] rounded-t-3xl" : "w-[320px] sm:max-w-sm",
+        )}
+      >
+        <div className="flex h-full flex-col">
+          <div className="pb-3 pr-8">
+            <h2 className="font-display text-base font-bold">📋 Question Navigator</h2>
+            <p className="text-xs text-muted-foreground">Question {current + 1} of {total}</p>
+          </div>
+
+          <div className="-mx-1 flex-1 overflow-y-auto px-1 py-2">
+            <div className="grid grid-cols-5 gap-2 sm:grid-cols-5">
+              {Array.from({ length: total }, (_, i) => {
+                const st = statusFor(i);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => { onJump(i); setOpen(false); }}
+                    className={cn(
+                      "flex h-11 items-center justify-center rounded-xl border text-sm font-bold transition-transform hover:scale-105",
+                      NAV_STATUS_CLASS[st],
+                      i === current && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                    )}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-1 border-t border-white/10 pt-3 text-[11px] text-muted-foreground">
+            {NAV_LEGEND.map(([, label]) => (
+              <p key={label}>{label}</p>
+            ))}
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export const NavIcons = { ArrowLeft, ArrowRight, Flag, Timer };
+
 
 /* --------------------------- AI analysing loader --------------------------- */
 const AI_STEPS = [
