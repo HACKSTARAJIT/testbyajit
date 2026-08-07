@@ -521,26 +521,8 @@ export function TestEngine({
           />
         )}
 
-        {/* Question palette */}
-        <div className="test-glass p-4">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Question Palette</p>
-          <div className="flex flex-wrap gap-2">
-            {sessionQs.map((item, i) => (
-              <button
-                key={item.id}
-                onClick={() => goto(i)}
-                className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-xl border text-xs font-bold transition-transform hover:scale-105",
-                  paletteColor(item, i),
-                  i === current && "ring-2 ring-primary ring-offset-2 ring-offset-background",
-                )}
-              >
-                {i + 1}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
+
 
       <FloatingAIStatus />
 
