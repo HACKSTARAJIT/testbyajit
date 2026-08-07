@@ -401,16 +401,19 @@ export function TestEngine({
   const revealedNow = mode === "practice" && revealed[q.id];
   const answeredCount = Object.keys(answers).length;
 
-  const paletteColor = (item: EngineQuestion, i: number) => {
+  const navStatus = (i: number): NavItemStatus => {
+    const item = sessionQs[i];
+    if (!item) return "unvisited";
     const a = answers[item.id];
     const mk = marked[item.id];
     if (mode === "practice" && revealed[item.id]) {
-      return a === item.correct_option ? "bg-success text-white border-success" : "bg-destructive text-white border-destructive";
+      return a === item.correct_option ? "correct" : "wrong";
     }
-    if (mk === "review" || mk === "doubt") return "bg-warning text-white border-warning";
-    if (a) return "bg-primary text-primary-foreground border-primary";
-    return "bg-muted text-muted-foreground";
+    if (mk === "review" || mk === "doubt") return "marked";
+    if (a) return "answered";
+    return i < current ? "skipped" : "unvisited";
   };
+
 
   // Presentational streak metrics (no scoring impact)
   const streaks = (() => {
