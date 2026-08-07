@@ -282,7 +282,9 @@ export function TestEngine({
       return best;
     })();
     return (
-      <div className="test-shell animate-fade-in space-y-4 pb-10">
+      <div className="test-shell pb-10">
+        <div className="test-shell-body animate-fade-in space-y-4">
+
         <ResultHero
           title={test.title}
           score={String(result.score)}
