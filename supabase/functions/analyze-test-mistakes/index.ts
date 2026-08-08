@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
     };
     const nodeMap = new Map<string, Node>();
     for (const q of perQ) {
-      const topic = q.topic ?? q.concept ?? q.chapter ?? "अवर्गीकृत";
+      const topic = q.topic ?? q.concept ?? q.chapter ?? subjectName;
       const key = `${q.subject}||${q.chapter}||${topic}||${q.subtopic ?? ""}`;
       const n = nodeMap.get(key) ?? {
         subject: q.subject, chapter: q.chapter, topic, subtopic: q.subtopic,
