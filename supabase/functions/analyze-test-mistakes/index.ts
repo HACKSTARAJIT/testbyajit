@@ -172,7 +172,14 @@ Deno.serve(async (req) => {
       .map((n) => ({ ...n, accuracy: n.total ? Math.round(((n.total - n.wrong - n.skipped) / n.total) * 100) : 0 }))
       .sort((a, b) => (b.wrong + b.skipped) - (a.wrong + a.skipped));
 
-    // ---- Repeated weakness detection across previous analysed tests ----
+    // ---- Scope lock: only what actually exists in THIS test may be discussed ----
+    const scopeSubjects = [...new Set(perQ.map((q) => q.subject))];
+    const scopeChapters = [...new Set(perQ.map((q) => q.chapter))];
+    const scopeTopics = [...new Set(perQ.map((q) => q.topic ?? q.concept ?? q.chapter))];
+    const scopeSubtopics = [...new Set(perQ.map((q) => q.subtopic).filter(Boolean))] as string[];
+    const inScopeSubject = (s: any) => typeof s === "string" && scopeSubjects.includes(s);
+
+    // ---- Repeated weakness detection (same subject only, so unrelated subjects never leak in) ----
     const repeatCount = new Map<string, { subject: string; topic: string; tests: number; wrong: number; last_seen: string }>();
     for (const r of (pastReports ?? [])) {
       if ((r as any).attempt_id === attemptId) continue;
@@ -181,6 +188,7 @@ Deno.serve(async (req) => {
       for (const t of tb) {
         const bad = Number(t?.wrong ?? 0) + Number(t?.skipped ?? 0);
         if (!t?.topic || bad <= 0) continue;
+        if (!inScopeSubject(t.subject)) continue;
         const k = `${t.subject ?? ""}||${t.topic}`;
         if (seen.has(k)) continue;
         seen.add(k);
