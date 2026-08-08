@@ -393,6 +393,31 @@ ${JSON.stringify({
       return json({ error: `AI विश्लेषण नहीं बन पाया${lastErr ? `: ${lastErr}` : ""}` }, 500);
     }
 
+    // ---- Scope sanitizer: कोई भी असंबंधित Subject/Chapter/Topic report में न बचे ----
+    const allowed = new Set(
+      [...scopeSubjects, ...scopeChapters, ...scopeTopics, ...scopeSubtopics]
+        .filter(Boolean).map((s) => String(s).trim().toLowerCase()),
+    );
+    const keepInScope = (arr: any) =>
+      Array.isArray(arr) ? arr.filter((x) => typeof x === "string" && allowed.has(x.trim().toLowerCase())) : [];
+    if (parsed.overall) {
+      parsed.overall.strong_topics = keepInScope(parsed.overall.strong_topics);
+      parsed.overall.weak_topics = keepInScope(parsed.overall.weak_topics);
+      parsed.overall.strong_chapters = keepInScope(parsed.overall.strong_chapters);
+      parsed.overall.weak_chapters = keepInScope(parsed.overall.weak_chapters);
+      delete parsed.overall.strong_subjects;
+      delete parsed.overall.weak_subjects;
+    }
+    if (parsed.hindi_report) {
+      parsed.hindi_report.strong_topics = keepInScope(parsed.hindi_report.strong_topics);
+      parsed.hindi_report.weak_topics = keepInScope(parsed.hindi_report.weak_topics);
+      parsed.hindi_report.insights = (parsed.hindi_report.insights ?? [])
+        .filter((i: any) => i?.title && i?.body)
+        .slice(0, 14);
+    }
+
+
+
 
     const analysisRow = {
       attempt_id: attemptId,
