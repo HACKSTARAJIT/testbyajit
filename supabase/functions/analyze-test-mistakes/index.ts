@@ -216,25 +216,29 @@ Deno.serve(async (req) => {
     const historySummary = {
       recent_accuracy_trend: (pastAttempts ?? []).slice(0, 8).map((a: any) => a.accuracy).reverse(),
       previous_mistake_dna: dnaRow?.distribution ?? null,
-      recent_coach_notes: (pastReports ?? []).slice(0, 3).map((r: any) => r.coach_summary).filter(Boolean),
       repeated_weak_topics: repeatedWeaknesses,
+      // सिर्फ़ इसी subject का इतिहास — दूसरे विषय कभी report में न आएँ
       previous_topic_breakdowns: (pastReports ?? []).slice(0, 5).map((r: any) => ({
         at: r.created_at,
-        topics: ((r.topic_breakdown ?? []) as any[]).slice(0, 10).map((t) => ({ subject: t.subject, chapter: t.chapter, topic: t.topic, wrong: t.wrong, skipped: t.skipped })),
-      })),
+        topics: ((r.topic_breakdown ?? []) as any[])
+          .filter((t) => inScopeSubject(t?.subject))
+          .slice(0, 10)
+          .map((t) => ({ subject: t.subject, chapter: t.chapter, topic: t.topic, wrong: t.wrong, skipped: t.skipped })),
+      })).filter((r) => r.topics.length > 0),
       previous_overalls: (pastReports ?? []).slice(0, 5).map((r: any) => ({
         at: r.created_at,
-        headline: (r.overall ?? {})?.headline ?? null,
-        weak_topics: (r.overall ?? {})?.weak_topics ?? [],
-        strong_topics: (r.overall ?? {})?.strong_topics ?? [],
+        weak_topics: ((r.overall ?? {})?.weak_topics ?? []).filter((t: any) => scopeTopics.includes(t) || scopeChapters.includes(t)),
+        strong_topics: ((r.overall ?? {})?.strong_topics ?? []).filter((t: any) => scopeTopics.includes(t) || scopeChapters.includes(t)),
       })),
     };
 
-    // AJIT AI लंबी अवधि की memory (append-only timeline)
+    // AJIT AI लंबी अवधि की memory (append-only timeline) — इसी subject तक सीमित
     const aiMemory = {
       tests_analysed: (dnaRow?.totals as any)?.tests_analysed ?? 0,
       mistake_dna: dnaRow?.distribution ?? null,
-      timeline: ((dnaRow?.timeline as any[]) ?? []).slice(-12),
+      timeline: ((dnaRow?.timeline as any[]) ?? [])
+        .filter((t: any) => inScopeSubject(t?.subject))
+        .slice(-12),
     };
 
     // Same-test previous attempts (क्या सुधार हुआ?)
