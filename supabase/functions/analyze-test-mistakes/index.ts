@@ -488,6 +488,7 @@ ${JSON.stringify({
       careless_mistakes: (hr.careless_mistakes ?? []).slice(0, 10),
       conceptual_mistakes: (hr.conceptual_mistakes ?? []).slice(0, 10),
       guess_behaviour: guessStats,
+      key_insights: (hr.insights ?? []).slice(0, 8).map((i: any) => ({ title: i.title, body: i.body })),
       revision_recommendations: (hr.next_revision_plan ?? hr.topics_to_revise_first ?? []).slice(0, 10),
       ai_observation: parsed.coach_summary ?? null,
     });
