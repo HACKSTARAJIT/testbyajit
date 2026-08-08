@@ -412,6 +412,20 @@ function HindiReport({ report, attempt }: { report: any; attempt: any }) {
           <p className="leading-relaxed text-foreground/90">{report.overall_performance}</p>
         )}
 
+        {Array.isArray(report.insights) && report.insights.length > 0 && (
+          <div className="space-y-2">
+            {report.insights.map((ins: any, i: number) => (
+              <div key={i} className="rounded-xl border border-primary/15 bg-muted/20 p-3">
+                <p className="text-sm font-semibold text-foreground">{i + 1}. {ins?.title}</p>
+                <p className="mt-1 leading-relaxed text-foreground/90">{ins?.body}</p>
+                {ins?.evidence && (
+                  <p className="mt-1.5 text-xs text-muted-foreground">🔎 {ins.evidence}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-2">
           {listBlock("मजबूत Subjects", report.strong_subjects, "good")}
           {listBlock("कमजोर Subjects", report.weak_subjects, "bad")}

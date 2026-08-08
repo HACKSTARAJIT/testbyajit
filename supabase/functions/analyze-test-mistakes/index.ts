@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
     };
     const nodeMap = new Map<string, Node>();
     for (const q of perQ) {
-      const topic = q.topic ?? q.concept ?? q.chapter ?? "अवर्गीकृत";
+      const topic = q.topic ?? q.concept ?? q.chapter ?? subjectName;
       const key = `${q.subject}||${q.chapter}||${topic}||${q.subtopic ?? ""}`;
       const n = nodeMap.get(key) ?? {
         subject: q.subject, chapter: q.chapter, topic, subtopic: q.subtopic,
@@ -172,7 +172,14 @@ Deno.serve(async (req) => {
       .map((n) => ({ ...n, accuracy: n.total ? Math.round(((n.total - n.wrong - n.skipped) / n.total) * 100) : 0 }))
       .sort((a, b) => (b.wrong + b.skipped) - (a.wrong + a.skipped));
 
-    // ---- Repeated weakness detection across previous analysed tests ----
+    // ---- Scope lock: only what actually exists in THIS test may be discussed ----
+    const scopeSubjects = [...new Set(perQ.map((q) => q.subject))];
+    const scopeChapters = [...new Set(perQ.map((q) => q.chapter))];
+    const scopeTopics = [...new Set(perQ.map((q) => q.topic ?? q.concept ?? q.chapter))];
+    const scopeSubtopics = [...new Set(perQ.map((q) => q.subtopic).filter(Boolean))] as string[];
+    const inScopeSubject = (s: any) => typeof s === "string" && scopeSubjects.includes(s);
+
+    // ---- Repeated weakness detection (same subject only, so unrelated subjects never leak in) ----
     const repeatCount = new Map<string, { subject: string; topic: string; tests: number; wrong: number; last_seen: string }>();
     for (const r of (pastReports ?? [])) {
       if ((r as any).attempt_id === attemptId) continue;
@@ -181,6 +188,7 @@ Deno.serve(async (req) => {
       for (const t of tb) {
         const bad = Number(t?.wrong ?? 0) + Number(t?.skipped ?? 0);
         if (!t?.topic || bad <= 0) continue;
+        if (!inScopeSubject(t.subject)) continue;
         const k = `${t.subject ?? ""}||${t.topic}`;
         if (seen.has(k)) continue;
         seen.add(k);
@@ -208,25 +216,29 @@ Deno.serve(async (req) => {
     const historySummary = {
       recent_accuracy_trend: (pastAttempts ?? []).slice(0, 8).map((a: any) => a.accuracy).reverse(),
       previous_mistake_dna: dnaRow?.distribution ?? null,
-      recent_coach_notes: (pastReports ?? []).slice(0, 3).map((r: any) => r.coach_summary).filter(Boolean),
       repeated_weak_topics: repeatedWeaknesses,
+      // सिर्फ़ इसी subject का इतिहास — दूसरे विषय कभी report में न आएँ
       previous_topic_breakdowns: (pastReports ?? []).slice(0, 5).map((r: any) => ({
         at: r.created_at,
-        topics: ((r.topic_breakdown ?? []) as any[]).slice(0, 10).map((t) => ({ subject: t.subject, chapter: t.chapter, topic: t.topic, wrong: t.wrong, skipped: t.skipped })),
-      })),
+        topics: ((r.topic_breakdown ?? []) as any[])
+          .filter((t) => inScopeSubject(t?.subject))
+          .slice(0, 10)
+          .map((t) => ({ subject: t.subject, chapter: t.chapter, topic: t.topic, wrong: t.wrong, skipped: t.skipped })),
+      })).filter((r) => r.topics.length > 0),
       previous_overalls: (pastReports ?? []).slice(0, 5).map((r: any) => ({
         at: r.created_at,
-        headline: (r.overall ?? {})?.headline ?? null,
-        weak_topics: (r.overall ?? {})?.weak_topics ?? [],
-        strong_topics: (r.overall ?? {})?.strong_topics ?? [],
+        weak_topics: ((r.overall ?? {})?.weak_topics ?? []).filter((t: any) => scopeTopics.includes(t) || scopeChapters.includes(t)),
+        strong_topics: ((r.overall ?? {})?.strong_topics ?? []).filter((t: any) => scopeTopics.includes(t) || scopeChapters.includes(t)),
       })),
     };
 
-    // AJIT AI लंबी अवधि की memory (append-only timeline)
+    // AJIT AI लंबी अवधि की memory (append-only timeline) — इसी subject तक सीमित
     const aiMemory = {
       tests_analysed: (dnaRow?.totals as any)?.tests_analysed ?? 0,
       mistake_dna: dnaRow?.distribution ?? null,
-      timeline: ((dnaRow?.timeline as any[]) ?? []).slice(-12),
+      timeline: ((dnaRow?.timeline as any[]) ?? [])
+        .filter((t: any) => inScopeSubject(t?.subject))
+        .slice(-12),
     };
 
     // Same-test previous attempts (क्या सुधार हुआ?)
@@ -241,63 +253,72 @@ Deno.serve(async (req) => {
       guessed_wrong: perQ.filter((q) => q.was_guess && q.status === "wrong").length,
     };
 
-    const sys = `You are AJIT AI — a senior competitive-exam mentor.
+    const sys = `तुम AJIT AI हो — एक अनुभवी प्रतियोगी-परीक्षा मेंटर, जो छात्र की कॉपी ख़ुद जाँचता है।
 
-STEP 1 — DEEP THINKING (चुपचाप, output में मत लिखो):
-पहले हर correct, wrong और skipped question को अलग-अलग पढ़ो। फिर सोचो: time, accuracy, difficulty mix,
-subject/chapter/topic distribution, repeated mistakes, पिछले attempts से improvement या गिरावट,
-guessing behaviour, careless बनाम conceptual गलतियाँ। पूरी reasoning ख़त्म करने के बाद ही report बनाओ।
+STEP 1 — गहराई से सोचो (यह सोच output में मत लिखो):
+हर correct, wrong और skipped question को अलग-अलग पढ़ो — question text, चुना हुआ option, सही option,
+explanation, difficulty, peer accuracy, guess flag। फिर पूछो: गलती *क्यों* हुई?
+concept confusion, formula गलती, calculation गलती, reading गलती, time pressure, guessing, careless,
+pattern confusion — इनमें से क्या? फिर पिछले attempts और ai_memory से तुलना करो।
 Speed से ज़्यादा ज़रूरी accuracy है।
 
 STEP 2 — OUTPUT: सिर्फ़ एक valid JSON object लौटाओ (कोई markdown fence नहीं, कोई अतिरिक्त text नहीं)।
 
-भाषा नियम: हर text value हिंदी (देवनागरी) में। सिर्फ़ Subject/Chapter/Topic/formula/तकनीकी exam शब्द अंग्रेज़ी में रह सकते हैं।
-अंग्रेज़ी में पूरा वाक्य कभी मत लिखो।
+🚫 SCOPE LOCK (सबसे सख़्त नियम):
+इस test में सिर्फ़ ये चीज़ें मौजूद हैं —
+Subjects: ${JSON.stringify(scopeSubjects)}
+Chapters: ${JSON.stringify(scopeChapters)}
+Topics: ${JSON.stringify(scopeTopics)}
+Subtopics: ${JSON.stringify(scopeSubtopics)}
+इनके बाहर का कोई भी Subject/Chapter/Topic रिपोर्ट में मत लिखो। English, Reasoning, General Awareness,
+Vocabulary या कोई भी असंबंधित विषय बिल्कुल मत छेड़ो — अगर वह ऊपर की सूची में नहीं है तो उसका अस्तित्व ही नहीं है।
+"अवर्गीकृत"/"Unclassified" जैसी श्रेणी मत बनाओ।
 
-Evidence नियम (सबसे सख़्त): सिर्फ़ payload में दिए गए data — current test result, question-level data,
-previous test history और ai_memory — का उपयोग करो। कोई भी बात मत गढ़ो। कोई fixed/template paragraph मत दोहराओ।
-हर test के लिए बिल्कुल नई, उसी test के आँकड़ों पर आधारित भाषा लिखो।
-जिस section का evidence नहीं है वहाँ साफ़ लिखो: "पर्याप्त data नहीं"। किसी section को ज़बरदस्ती मत भरो।
+🚫 TEMPLATE निषेध:
+कोई fixed heading-set नहीं। कोई दोहराया हुआ paragraph नहीं। कोई generic सलाह नहीं।
+हर report बिल्कुल नई भाषा में, इसी test के आँकड़ों से लिखी जाए।
 
-For each wrong/skipped question, assign 1–2 root-cause categories from this fixed list (keys stay English):
+📝 मुख्य आउटपुट = insights[] (dynamic):
+जितना असली evidence है उतने ही insight दो — कम से कम 4, ज़्यादा से ज़्यादा 14।
+हर insight = { "title": "...", "body": "...", "evidence": "..." }
+title इसी test से निकला हुआ हो (जैसे "Triangle Similarity में Congruency से भ्रम"),
+body में असली कारण-सहित मेंटर जैसी व्याख्या (2–5 वाक्य),
+evidence में ठोस आँकड़ा (जैसे "प्रश्न 4, 9, 12 — तीनों में similarity ratio उलटा लगाया")।
+जहाँ निष्कर्ष के लिए data नहीं है वहाँ insight मत बनाओ; ज़रूरत हो तो लिखो:
+"इस परीक्षण के आधार पर इस विषय पर निष्कर्ष निकालने के लिए पर्याप्त डेटा उपलब्ध नहीं है।"
+
+भाषा: पूरी report सरल, स्वाभाविक हिंदी (देवनागरी) में। सिर्फ़ Subject/Chapter/Topic/formula के नाम अंग्रेज़ी रह सकते हैं।
+
+हर wrong/skipped question के लिए 1–2 root-cause categories चुनो (keys अंग्रेज़ी में रहें):
 ${MISTAKE_CATEGORIES.join(", ")}.
 "easy" wrong = careless/reading; "hard" wrong = knowledge gap; was_guess=true = guessing behaviour.
-हर wrong/skipped question का Subject, Chapter, Topic और (अगर मिले) Subtopic payload से ही भरो।
+हर question का Subject/Chapter/Topic/Subtopic payload से ही लो, ख़ुद मत गढ़ो।
 
-hindi_report में ये 20 sections भरो (जहाँ evidence नहीं वहाँ "पर्याप्त data नहीं"):
-1 overall_performance, 2 subject_analysis, 3 chapter_analysis, 4 topic_analysis, 5 strong_areas,
-6 weak_areas, 7 repeated_mistakes, 8 careless_mistakes, 9 conceptual_mistakes, 10 guessing_pattern,
-11 time_management, 12 improvement_vs_previous, 13 performance_trend, 14 what_improved,
-15 what_got_worse, 16 highest_priority_topics, 17 next_revision_plan, 18 next_practice_recommendation,
-19 marks_improvement_strategy, 20 final_conclusion.
-repeated_weakness_alerts में payload के repeated_weak_topics को ही हिंदी वाक्यों में लिखो (कुछ नया मत जोड़ो)।
+recommendations सिर्फ़ इसी test + ai_memory से निकलें (जैसे "Triangle Similarity आज 20 मिनट revise करो")।
+repeated_weakness_alerts में payload के repeated_weak_topics को ही हिंदी वाक्यों में लिखो।
 
-JSON की अपेक्षित संरचना (सभी keys अंग्रेज़ी, values हिंदी):
+JSON की अपेक्षित संरचना (keys अंग्रेज़ी, values हिंदी):
 ${JSON.stringify({
-      overall: { performance_grade: "", headline: "", strong_subjects: [], weak_subjects: [], strong_chapters: [], weak_chapters: [], strong_topics: [], weak_topics: [], most_repeated_mistake: "", most_expensive_mistake: "", most_common_weakness: "" },
+      overall: { performance_grade: "", headline: "", strong_chapters: [], weak_chapters: [], strong_topics: [], weak_topics: [], most_repeated_mistake: "", most_expensive_mistake: "" },
       mistake_distribution: { knowledge_gap: 0 },
       question_analyses: [{ question_id: "", index: 0, difficulty: "", subject: "", chapter: "", topic: "", subtopic: "", concept: "", expected_skill: "", root_causes: [], why_wrong: "", confidence: 0, suggested_improvement: "", suggested_revision: "" }],
-      time_analysis: { too_fast_count: 0, too_slow_count: 0, skipped_count: 0, late_attempts_count: 0, time_wasted_on_hard_seconds: 0, summary: "" },
+      time_analysis: { too_fast_count: 0, too_slow_count: 0, skipped_count: 0, summary: "" },
       thinking_profile: { style: "", traits: [], summary: "" },
       memory_analysis: { memory_strength: 0, revision_quality: 0, retention: 0, forgotten_concepts: [], revision_due: [] },
       improvements: [{ action: "", expected_marks: 0, why: "" }],
-      action_plan: { today: [], tomorrow: [], this_week: [], this_month: [] },
-      related_learning: [{ question_index: 0, pdf_id: "", test_id: "", chapter: "", topic: "" }],
+      action_plan: { today: [], tomorrow: [], this_week: [] },
       repeated_weakness_alerts: [],
       hindi_report: {
-        overall_performance: "", subject_analysis: [], chapter_analysis: [], topic_analysis: [],
-        strong_areas: [], weak_areas: [], repeated_mistakes: [], careless_mistakes: [], conceptual_mistakes: [],
-        guessing_pattern: "", time_management: "", improvement_vs_previous: "", performance_trend: "",
-        what_improved: [], what_got_worse: [], highest_priority_topics: [], next_revision_plan: [],
-        next_practice_recommendation: [], marks_improvement_strategy: [],
-        strong_subjects: [], weak_subjects: [], strong_chapters: [], weak_chapters: [],
-        strong_topics: [], weak_topics: [], topics_to_revise_first: [], revise_before_next_test: [],
+        insights: [{ title: "", body: "", evidence: "" }],
+        weak_topics: [], strong_topics: [],
+        next_revision_plan: [], next_practice_recommendation: [],
         final_conclusion: "",
       },
       coach_summary: "",
     })}`;
 
     const userPayload = {
+      scope: { subjects: scopeSubjects, chapters: scopeChapters, topics: scopeTopics, subtopics: scopeSubtopics },
       test: { id: attempt.test_id, title: (attempt.tests as any)?.title, subject: (attempt.tests as any)?.subjects?.name, attempted_at: attempt.created_at },
       score: {
         marks_obtained: attempt.marks_obtained,
@@ -330,7 +351,7 @@ ${JSON.stringify({
       return await unifiedFetch({
         body: {
           model: MODEL,
-          temperature: 0.4,
+          temperature: 0.85,
           max_tokens: 12000,
           response_format: { type: "json_object" },
           messages: [
@@ -344,9 +365,10 @@ ${JSON.stringify({
     }
 
     function isUsable(p: any) {
+      const ins = p?.hindi_report?.insights;
       return !!p && typeof p === "object"
         && (p.coach_summary || p.overall?.headline)
-        && p.hindi_report && Object.keys(p.hindi_report).length > 0;
+        && Array.isArray(ins) && ins.filter((i: any) => i?.title && i?.body).length >= 3;
     }
 
     let parsed: any = null;
@@ -370,6 +392,31 @@ ${JSON.stringify({
     if (!isUsable(parsed)) {
       return json({ error: `AI विश्लेषण नहीं बन पाया${lastErr ? `: ${lastErr}` : ""}` }, 500);
     }
+
+    // ---- Scope sanitizer: कोई भी असंबंधित Subject/Chapter/Topic report में न बचे ----
+    const allowed = new Set(
+      [...scopeSubjects, ...scopeChapters, ...scopeTopics, ...scopeSubtopics]
+        .filter(Boolean).map((s) => String(s).trim().toLowerCase()),
+    );
+    const keepInScope = (arr: any) =>
+      Array.isArray(arr) ? arr.filter((x) => typeof x === "string" && allowed.has(x.trim().toLowerCase())) : [];
+    if (parsed.overall) {
+      parsed.overall.strong_topics = keepInScope(parsed.overall.strong_topics);
+      parsed.overall.weak_topics = keepInScope(parsed.overall.weak_topics);
+      parsed.overall.strong_chapters = keepInScope(parsed.overall.strong_chapters);
+      parsed.overall.weak_chapters = keepInScope(parsed.overall.weak_chapters);
+      delete parsed.overall.strong_subjects;
+      delete parsed.overall.weak_subjects;
+    }
+    if (parsed.hindi_report) {
+      parsed.hindi_report.strong_topics = keepInScope(parsed.hindi_report.strong_topics);
+      parsed.hindi_report.weak_topics = keepInScope(parsed.hindi_report.weak_topics);
+      parsed.hindi_report.insights = (parsed.hindi_report.insights ?? [])
+        .filter((i: any) => i?.title && i?.body)
+        .slice(0, 14);
+    }
+
+
 
 
     const analysisRow = {
@@ -441,6 +488,7 @@ ${JSON.stringify({
       careless_mistakes: (hr.careless_mistakes ?? []).slice(0, 10),
       conceptual_mistakes: (hr.conceptual_mistakes ?? []).slice(0, 10),
       guess_behaviour: guessStats,
+      key_insights: (hr.insights ?? []).slice(0, 8).map((i: any) => ({ title: i.title, body: i.body })),
       revision_recommendations: (hr.next_revision_plan ?? hr.topics_to_revise_first ?? []).slice(0, 10),
       ai_observation: parsed.coach_summary ?? null,
     });
