@@ -318,6 +318,7 @@ ${JSON.stringify({
     })}`;
 
     const userPayload = {
+      scope: { subjects: scopeSubjects, chapters: scopeChapters, topics: scopeTopics, subtopics: scopeSubtopics },
       test: { id: attempt.test_id, title: (attempt.tests as any)?.title, subject: (attempt.tests as any)?.subjects?.name, attempted_at: attempt.created_at },
       score: {
         marks_obtained: attempt.marks_obtained,
