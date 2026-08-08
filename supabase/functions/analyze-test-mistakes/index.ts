@@ -351,7 +351,7 @@ ${JSON.stringify({
       return await unifiedFetch({
         body: {
           model: MODEL,
-          temperature: 0.4,
+          temperature: 0.85,
           max_tokens: 12000,
           response_format: { type: "json_object" },
           messages: [
