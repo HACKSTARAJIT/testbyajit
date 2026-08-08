@@ -365,9 +365,10 @@ ${JSON.stringify({
     }
 
     function isUsable(p: any) {
+      const ins = p?.hindi_report?.insights;
       return !!p && typeof p === "object"
         && (p.coach_summary || p.overall?.headline)
-        && p.hindi_report && Object.keys(p.hindi_report).length > 0;
+        && Array.isArray(ins) && ins.filter((i: any) => i?.title && i?.body).length >= 3;
     }
 
     let parsed: any = null;
