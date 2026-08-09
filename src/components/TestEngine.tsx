@@ -53,6 +53,7 @@ export function TestEngine({
   isPreview = false,
   saveAttempt = true,
   autoRecord = true,
+  shuffle = false,
   onSubmit,
   onExit,
   resume,
@@ -64,6 +65,8 @@ export function TestEngine({
   isPreview?: boolean;
   saveAttempt?: boolean;
   autoRecord?: boolean;
+  /** Presentation-only: randomise question + option order for this attempt. */
+  shuffle?: boolean;
   onSubmit?: (answers: Record<string, string>, questions: EngineQuestion[]) => void | Promise<void>;
   onExit: () => void;
   resume?: {
@@ -73,7 +76,14 @@ export function TestEngine({
     marked: Record<string, MarkState>;
   };
 }) {
-  const [sessionQs, setSessionQs] = useState<EngineQuestion[]>(questions);
+  // Shuffle is applied only to the display order of this session; question IDs,
+  // option texts and correct answers are never modified.
+  const [sessionQs, setSessionQs] = useState<EngineQuestion[]>(() =>
+    shuffle ? shuffleArray(questions) : questions
+  );
+  const [optionOrder, setOptionOrder] = useState<Record<string, OptionLetter[]>>(() =>
+    buildOptionOrder(questions.map((x) => x.id), shuffle)
+  );
   const [current, setCurrent] = useState(resume?.current_index ?? 0);
   const [answers, setAnswers] = useState<Record<string, string>>(resume?.answers ?? {});
   const [marked, setMarked] = useState<Record<string, MarkState>>(resume?.marked ?? {});
@@ -93,7 +103,9 @@ export function TestEngine({
   const savedWrong = useRef<Set<string>>(new Set());
 
   const q = sessionQs[current];
+  const orderFor = (id: string) => optionOrder[id] ?? [...OPTION_LETTERS];
   const perQMarks = (item: EngineQuestion) => item.marks ?? 1;
+
 
   const stats = useMemo(() => {
     let correct = 0, incorrect = 0, score = 0, totalMarks = 0;
