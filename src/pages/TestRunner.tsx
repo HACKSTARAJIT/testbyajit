@@ -133,8 +133,11 @@ export default function TestRunner() {
         </button>
       )}
 
+      <ShuffleModeSetting value={shuffle} onChange={setShuffle} />
+
       <div>
         <p className="mb-3 text-center font-semibold">Choose Test Mode</p>
+
         <div className="grid gap-3">
           <button
             onClick={() => { setMode("practice"); setStarted(true); }}
