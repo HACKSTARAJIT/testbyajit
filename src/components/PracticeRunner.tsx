@@ -6,6 +6,11 @@ import {
   type AttemptRow, type PracticeQuestion, type PracticeSource,
 } from "@/lib/revisionPractice";
 import { useFeedbackFX } from "@/hooks/useFeedbackFX";
+import { ShuffleModeSetting } from "@/components/test-ui/ShuffleModeSetting";
+import {
+  shuffleArray, buildOptionOrder, displayLetter, OPTION_LETTERS, type OptionLetter,
+} from "@/lib/shuffleMode";
+
 import {
   TestHeader, LivePerformancePanel, QuestionCard, OptionCard, AnswerFeedback,
   FloatingAIStatus, TestBottomNav, AIAnalyzingLoader, ResultHero, ResultStatGrid,
