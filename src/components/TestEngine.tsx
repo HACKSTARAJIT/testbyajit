@@ -387,9 +387,10 @@ export function TestEngine({
                 )}
               </div>
               <div className="mt-2 space-y-1.5">
-                {LETTERS.map((L) => {
+                {orderFor(item.id).map((L, oi) => {
                   const val = item[`option_${L.toLowerCase()}` as keyof EngineQuestion] as string;
                   if (!val || val === "-") return null;
+                  const label = LETTERS[oi];
                   const isCorrect = item.correct_option === L;
                   const isChosen = chosen === L;
                   return (
@@ -398,12 +399,13 @@ export function TestEngine({
                       isCorrect && "border-success bg-success/10",
                       isChosen && !isCorrect && "border-destructive bg-destructive/10"
                     )}>
-                      <span className="font-semibold">{L}.</span> {val}
+                      <span className="font-semibold">{label}.</span> {val}
                       {isCorrect && <CheckCircle2 className="ml-auto h-4 w-4 text-success" />}
                       {isChosen && !isCorrect && <XCircle className="ml-auto h-4 w-4 text-destructive" />}
                     </div>
                   );
                 })}
+
               </div>
               {item.explanation && (
                 <p className="mt-2 rounded-lg bg-muted/60 p-2 text-xs text-muted-foreground">
