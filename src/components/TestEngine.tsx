@@ -10,6 +10,10 @@ import {
 } from "lucide-react";
 import { recordAttempt } from "@/lib/revisionEngine";
 import {
+  shuffleArray, buildOptionOrder, OPTION_LETTERS, type OptionLetter,
+} from "@/lib/shuffleMode";
+
+import {
   TestHeader, CircularTimer, LivePerformancePanel, QuestionCard, OptionCard,
   AnswerFeedback, FloatingAIStatus, TestBottomNav, AIAnalyzingLoader,
   ResultHero, ResultStatGrid, gradeFor, xpFor, buildInsight,
