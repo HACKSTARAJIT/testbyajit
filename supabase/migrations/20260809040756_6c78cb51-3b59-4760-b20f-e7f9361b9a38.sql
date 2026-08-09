@@ -1,0 +1,2 @@
+ALTER TABLE public.test_attempts ADD COLUMN IF NOT EXISTS shuffle_mode boolean NOT NULL DEFAULT false;
+ALTER TABLE public.revision_practice_attempts ADD COLUMN IF NOT EXISTS shuffle_mode boolean NOT NULL DEFAULT false;
