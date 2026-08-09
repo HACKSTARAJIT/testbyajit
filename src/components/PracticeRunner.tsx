@@ -139,20 +139,43 @@ export function PracticeRunner({
   }
 
   function restart() {
-    setAnswers({});
-    setIdx(0);
     setFinished(false);
     setAttempt(null);
     setAnalysis("");
     setComparison("");
     setAiError("");
     fx.resetSession();
-    startedAt.current = Date.now();
+    // Fresh randomisation for every new shuffled attempt.
+    beginSession(shuffle);
   }
 
   useEffect(() => { startedAt.current = Date.now(); }, []);
 
+  if (!started) {
+    return (
+      <div className="test-shell">
+        <div className="test-shell-body animate-fade-in space-y-4 py-6">
+          <div className="test-glass rounded-3xl p-5">
+            <h2 className="text-lg font-bold">{title}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {allQuestions.length} questions · ⚡ Practice Mode
+            </p>
+          </div>
+          <ShuffleModeSetting value={shuffle} onChange={setShuffle} />
+          <Button
+            className="h-12 w-full rounded-2xl bg-gradient-neon text-white"
+            onClick={() => beginSession(shuffle)}
+          >
+            START TEST
+          </Button>
+          <Button variant="ghost" className="w-full" onClick={onExit}>Back</Button>
+        </div>
+      </div>
+    );
+  }
+
   if (finished) {
+
     const timeTaken = attempt?.time_taken_seconds ?? 0;
     const accuracy = questions.length ? Math.round((stats.correct / questions.length) * 100) : 0;
     return (
