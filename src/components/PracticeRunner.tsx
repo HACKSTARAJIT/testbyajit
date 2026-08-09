@@ -33,8 +33,14 @@ type Props = {
  * UI uses the universal Premium Test UI kit; logic is unchanged.
  */
 export function PracticeRunner({
-  userId, source, sourceKey, title, subject, chapter, questions, onExit, onFinished,
+  userId, source, sourceKey, title, subject, chapter, questions: allQuestions, onExit, onFinished,
 }: Props) {
+  const [started, setStarted] = useState(false);
+  const [shuffle, setShuffle] = useState(false);
+  const [questions, setQuestions] = useState<PracticeQuestion[]>(allQuestions);
+  const [optionOrder, setOptionOrder] = useState<Record<string, OptionLetter[]>>(() =>
+    buildOptionOrder(allQuestions.map((x) => x.id), false)
+  );
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [finished, setFinished] = useState(false);
@@ -46,6 +52,20 @@ export function PracticeRunner({
   const [aiError, setAiError] = useState("");
   const startedAt = useRef(Date.now());
   const fx = useFeedbackFX();
+
+  const orderFor = (id: string) => optionOrder[id] ?? [...OPTION_LETTERS];
+
+  /** Presentation-only randomisation for this attempt; stored data never changes. */
+  function beginSession(useShuffle: boolean) {
+    const list = useShuffle ? shuffleArray(allQuestions) : allQuestions;
+    setQuestions(list);
+    setOptionOrder(buildOptionOrder(list.map((x) => x.id), useShuffle));
+    setIdx(0);
+    setAnswers({});
+    startedAt.current = Date.now();
+    setStarted(true);
+  }
+
 
   const stats = useMemo(() => {
     const answered = questions.filter((q) => answers[q.id]);
