@@ -22,7 +22,9 @@ export default function TestRunner() {
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<Mode | null>(null);
   const [started, setStarted] = useState(false);
+  const [shuffle, setShuffle] = useState(false);
   const [resume, setResume] = useState<any>(null);
+
 
   useEffect(() => {
     (async () => {
