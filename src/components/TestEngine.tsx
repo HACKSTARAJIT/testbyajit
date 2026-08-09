@@ -505,7 +505,7 @@ export function TestEngine({
               {marked[q.id] === "review" ? "🚩 Marked for Review" : "❓ Marked as Doubt"}
             </p>
           )}
-          {LETTERS.map((L) => {
+          {orderFor(q.id).map((L, oi) => {
             const val = q[`option_${L.toLowerCase()}` as keyof EngineQuestion] as string;
             if (!val || val === "-") return null;
             const selected = answers[q.id] === L;
@@ -516,7 +516,7 @@ export function TestEngine({
             return (
               <OptionCard
                 key={L}
-                letter={L}
+                letter={LETTERS[oi]}
                 text={val}
                 state={state as any}
                 disabled={!!revealedNow}
@@ -529,8 +529,9 @@ export function TestEngine({
         {revealedNow && (
           <AnswerFeedback
             correct={answers[q.id] === q.correct_option}
-            correctOption={q.correct_option}
-            yourOption={answers[q.id]}
+            correctOption={displayLetter(orderFor(q.id), q.correct_option)}
+            yourOption={answers[q.id] ? displayLetter(orderFor(q.id), answers[q.id]) : answers[q.id]}
+
             explanation={q.explanation}
             aiInsight={buildInsight({
               correct: answers[q.id] === q.correct_option,
