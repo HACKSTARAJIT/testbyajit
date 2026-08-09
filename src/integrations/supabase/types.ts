@@ -1625,6 +1625,7 @@ export type Database = {
           created_at: string
           details: Json
           id: string
+          shuffle_mode: boolean
           skipped_count: number
           source: string
           source_key: string
@@ -1645,6 +1646,7 @@ export type Database = {
           created_at?: string
           details?: Json
           id?: string
+          shuffle_mode?: boolean
           skipped_count?: number
           source: string
           source_key: string
@@ -1665,6 +1667,7 @@ export type Database = {
           created_at?: string
           details?: Json
           id?: string
+          shuffle_mode?: boolean
           skipped_count?: number
           source?: string
           source_key?: string
@@ -2136,6 +2139,7 @@ export type Database = {
           marked: Json | null
           marks_obtained: number
           mode: string
+          shuffle_mode: boolean
           skipped_count: number
           status: string
           test_id: string
@@ -2157,6 +2161,7 @@ export type Database = {
           marked?: Json | null
           marks_obtained?: number
           mode?: string
+          shuffle_mode?: boolean
           skipped_count?: number
           status?: string
           test_id: string
@@ -2178,6 +2183,7 @@ export type Database = {
           marked?: Json | null
           marks_obtained?: number
           mode?: string
+          shuffle_mode?: boolean
           skipped_count?: number
           status?: string
           test_id?: string

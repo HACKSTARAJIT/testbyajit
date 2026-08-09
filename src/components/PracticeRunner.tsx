@@ -6,6 +6,11 @@ import {
   type AttemptRow, type PracticeQuestion, type PracticeSource,
 } from "@/lib/revisionPractice";
 import { useFeedbackFX } from "@/hooks/useFeedbackFX";
+import { ShuffleModeSetting } from "@/components/test-ui/ShuffleModeSetting";
+import {
+  shuffleArray, buildOptionOrder, displayLetter, OPTION_LETTERS, type OptionLetter,
+} from "@/lib/shuffleMode";
+
 import {
   TestHeader, LivePerformancePanel, QuestionCard, OptionCard, AnswerFeedback,
   FloatingAIStatus, TestBottomNav, AIAnalyzingLoader, ResultHero, ResultStatGrid,
@@ -33,8 +38,14 @@ type Props = {
  * UI uses the universal Premium Test UI kit; logic is unchanged.
  */
 export function PracticeRunner({
-  userId, source, sourceKey, title, subject, chapter, questions, onExit, onFinished,
+  userId, source, sourceKey, title, subject, chapter, questions: allQuestions, onExit, onFinished,
 }: Props) {
+  const [started, setStarted] = useState(false);
+  const [shuffle, setShuffle] = useState(false);
+  const [questions, setQuestions] = useState<PracticeQuestion[]>(allQuestions);
+  const [optionOrder, setOptionOrder] = useState<Record<string, OptionLetter[]>>(() =>
+    buildOptionOrder(allQuestions.map((x) => x.id), false)
+  );
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [finished, setFinished] = useState(false);
@@ -46,6 +57,20 @@ export function PracticeRunner({
   const [aiError, setAiError] = useState("");
   const startedAt = useRef(Date.now());
   const fx = useFeedbackFX();
+
+  const orderFor = (id: string) => optionOrder[id] ?? [...OPTION_LETTERS];
+
+  /** Presentation-only randomisation for this attempt; stored data never changes. */
+  function beginSession(useShuffle: boolean) {
+    const list = useShuffle ? shuffleArray(allQuestions) : allQuestions;
+    setQuestions(list);
+    setOptionOrder(buildOptionOrder(list.map((x) => x.id), useShuffle));
+    setIdx(0);
+    setAnswers({});
+    startedAt.current = Date.now();
+    setStarted(true);
+  }
+
 
   const stats = useMemo(() => {
     const answered = questions.filter((q) => answers[q.id]);
@@ -84,6 +109,7 @@ export function PracticeRunner({
       userId, source, sourceKey, title, subject, chapter,
       questions, answers,
       timeTakenSeconds: Math.round((Date.now() - startedAt.current) / 1000),
+      shuffleMode: shuffle,
     });
     setAttempt(row);
     setSaving(false);
@@ -114,20 +140,43 @@ export function PracticeRunner({
   }
 
   function restart() {
-    setAnswers({});
-    setIdx(0);
     setFinished(false);
     setAttempt(null);
     setAnalysis("");
     setComparison("");
     setAiError("");
     fx.resetSession();
-    startedAt.current = Date.now();
+    // Fresh randomisation for every new shuffled attempt.
+    beginSession(shuffle);
   }
 
   useEffect(() => { startedAt.current = Date.now(); }, []);
 
+  if (!started) {
+    return (
+      <div className="test-shell">
+        <div className="test-shell-body animate-fade-in space-y-4 py-6">
+          <div className="test-glass rounded-3xl p-5">
+            <h2 className="text-lg font-bold">{title}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {allQuestions.length} questions · ⚡ Practice Mode
+            </p>
+          </div>
+          <ShuffleModeSetting value={shuffle} onChange={setShuffle} />
+          <Button
+            className="h-12 w-full rounded-2xl bg-gradient-neon text-white"
+            onClick={() => beginSession(shuffle)}
+          >
+            START TEST
+          </Button>
+          <Button variant="ghost" className="w-full" onClick={onExit}>Back</Button>
+        </div>
+      </div>
+    );
+  }
+
   if (finished) {
+
     const timeTaken = attempt?.time_taken_seconds ?? 0;
     const accuracy = questions.length ? Math.round((stats.correct / questions.length) * 100) : 0;
     return (
@@ -240,7 +289,7 @@ export function PracticeRunner({
         current={idx + 1}
         total={questions.length}
         progress={((idx + (revealed ? 1 : 0)) / questions.length) * 100}
-        subtitle="⚡ Practice Mode"
+        subtitle={shuffle ? "⚡ Practice Mode · 🔀 Shuffled" : "⚡ Practice Mode"}
       />
 
       <div className="test-shell-body space-y-4">
@@ -263,7 +312,7 @@ export function PracticeRunner({
           meta={[subject, q.chapter, q.topic]}
           question={q.question_text}
         >
-          {LETTERS.map((L) => {
+          {orderFor(q.id).map((L, oi) => {
             const val = (q as any)[`option_${L.toLowerCase()}`] as string | null;
             if (!val) return null;
             const isRight = q.correct_answer === L;
@@ -274,7 +323,7 @@ export function PracticeRunner({
             return (
               <OptionCard
                 key={L}
-                letter={L}
+                letter={LETTERS[oi]}
                 text={val}
                 state={state as any}
                 disabled={revealed}
@@ -287,8 +336,9 @@ export function PracticeRunner({
         {revealed && (
           <AnswerFeedback
             correct={isCorrect}
-            correctOption={q.correct_answer}
-            yourOption={picked}
+            correctOption={q.correct_answer ? displayLetter(orderFor(q.id), q.correct_answer) : q.correct_answer}
+            yourOption={picked ? displayLetter(orderFor(q.id), picked) : picked}
+
             explanation={q.explanation}
             aiInsight={buildInsight({
               correct: isCorrect, topic: q.topic, chapter: q.chapter, subject,

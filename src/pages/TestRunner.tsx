@@ -9,6 +9,8 @@ import { GraduationCap, Zap, ArrowLeft, Clock, ListChecks, Award, PlayCircle, Al
 import { TestEngine, type EngineQuestion, type EngineTest } from "@/components/TestEngine";
 import { loadTestWithQuestions } from "@/lib/testLoader";
 import { PreTestDashboard } from "@/components/PreTestDashboard";
+import { ShuffleModeSetting } from "@/components/test-ui/ShuffleModeSetting";
+
 
 type Mode = "practice" | "exam";
 
@@ -22,7 +24,9 @@ export default function TestRunner() {
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<Mode | null>(null);
   const [started, setStarted] = useState(false);
+  const [shuffle, setShuffle] = useState(false);
   const [resume, setResume] = useState<any>(null);
+
 
   useEffect(() => {
     (async () => {
@@ -79,6 +83,7 @@ export default function TestRunner() {
         questions={questions}
         mode={mode}
         userId={user?.id}
+        shuffle={shuffle}
         onExit={() => navigate(-1)}
         resume={resume && resume.mode === mode ? {
           attemptId: resume.id,
@@ -89,6 +94,7 @@ export default function TestRunner() {
       />
     );
   }
+
 
   // Mode selection / intro
   return (
@@ -129,8 +135,11 @@ export default function TestRunner() {
         </button>
       )}
 
+      <ShuffleModeSetting value={shuffle} onChange={setShuffle} />
+
       <div>
         <p className="mb-3 text-center font-semibold">Choose Test Mode</p>
+
         <div className="grid gap-3">
           <button
             onClick={() => { setMode("practice"); setStarted(true); }}

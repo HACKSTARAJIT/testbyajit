@@ -10,6 +10,10 @@ import {
 } from "lucide-react";
 import { recordAttempt } from "@/lib/revisionEngine";
 import {
+  shuffleArray, buildOptionOrder, displayLetter, OPTION_LETTERS, type OptionLetter,
+} from "@/lib/shuffleMode";
+
+import {
   TestHeader, CircularTimer, LivePerformancePanel, QuestionCard, OptionCard,
   AnswerFeedback, FloatingAIStatus, TestBottomNav, AIAnalyzingLoader,
   ResultHero, ResultStatGrid, gradeFor, xpFor, buildInsight,
@@ -53,6 +57,7 @@ export function TestEngine({
   isPreview = false,
   saveAttempt = true,
   autoRecord = true,
+  shuffle = false,
   onSubmit,
   onExit,
   resume,
@@ -64,6 +69,8 @@ export function TestEngine({
   isPreview?: boolean;
   saveAttempt?: boolean;
   autoRecord?: boolean;
+  /** Presentation-only: randomise question + option order for this attempt. */
+  shuffle?: boolean;
   onSubmit?: (answers: Record<string, string>, questions: EngineQuestion[]) => void | Promise<void>;
   onExit: () => void;
   resume?: {
@@ -73,7 +80,14 @@ export function TestEngine({
     marked: Record<string, MarkState>;
   };
 }) {
-  const [sessionQs, setSessionQs] = useState<EngineQuestion[]>(questions);
+  // Shuffle is applied only to the display order of this session; question IDs,
+  // option texts and correct answers are never modified.
+  const [sessionQs, setSessionQs] = useState<EngineQuestion[]>(() =>
+    shuffle ? shuffleArray(questions) : questions
+  );
+  const [optionOrder, setOptionOrder] = useState<Record<string, OptionLetter[]>>(() =>
+    buildOptionOrder(questions.map((x) => x.id), shuffle)
+  );
   const [current, setCurrent] = useState(resume?.current_index ?? 0);
   const [answers, setAnswers] = useState<Record<string, string>>(resume?.answers ?? {});
   const [marked, setMarked] = useState<Record<string, MarkState>>(resume?.marked ?? {});
@@ -93,7 +107,9 @@ export function TestEngine({
   const savedWrong = useRef<Set<string>>(new Set());
 
   const q = sessionQs[current];
+  const orderFor = (id: string) => optionOrder[id] ?? [...OPTION_LETTERS];
   const perQMarks = (item: EngineQuestion) => item.marks ?? 1;
+
 
   const stats = useMemo(() => {
     let correct = 0, incorrect = 0, score = 0, totalMarks = 0;
@@ -128,6 +144,7 @@ export function TestEngine({
       accuracy: s.accuracy,
       status,
       mode,
+      shuffle_mode: shuffle,
       current_index: current,
       answers,
       marked,
@@ -140,7 +157,7 @@ export function TestEngine({
       const { data } = await supabase.from("test_attempts").insert(payload).select("id").single();
       if (data) attemptId.current = data.id;
     }
-  }, [canSave, userId, test.id, stats, sessionQs.length, mode, current, answers, marked, guesses]);
+  }, [canSave, userId, test.id, stats, sessionQs.length, mode, shuffle, current, answers, marked, guesses]);
 
   // create/resume attempt on mount
   useEffect(() => {
@@ -226,7 +243,10 @@ export function TestEngine({
     const base = onlyIncorrect
       ? questions.filter((item) => answers[item.id] !== item.correct_option)
       : questions;
-    setSessionQs(base);
+    // Fresh randomisation on every new shuffled attempt.
+    setSessionQs(shuffle ? shuffleArray(base) : base);
+    setOptionOrder(buildOptionOrder(base.map((x) => x.id), shuffle));
+
     setAnswers({});
     setMarked({});
     setRevealed({});
@@ -368,9 +388,10 @@ export function TestEngine({
                 )}
               </div>
               <div className="mt-2 space-y-1.5">
-                {LETTERS.map((L) => {
+                {orderFor(item.id).map((L, oi) => {
                   const val = item[`option_${L.toLowerCase()}` as keyof EngineQuestion] as string;
                   if (!val || val === "-") return null;
+                  const label = LETTERS[oi];
                   const isCorrect = item.correct_option === L;
                   const isChosen = chosen === L;
                   return (
@@ -379,12 +400,13 @@ export function TestEngine({
                       isCorrect && "border-success bg-success/10",
                       isChosen && !isCorrect && "border-destructive bg-destructive/10"
                     )}>
-                      <span className="font-semibold">{L}.</span> {val}
+                      <span className="font-semibold">{label}.</span> {val}
                       {isCorrect && <CheckCircle2 className="ml-auto h-4 w-4 text-success" />}
                       {isChosen && !isCorrect && <XCircle className="ml-auto h-4 w-4 text-destructive" />}
                     </div>
                   );
                 })}
+
               </div>
               {item.explanation && (
                 <p className="mt-2 rounded-lg bg-muted/60 p-2 text-xs text-muted-foreground">
@@ -438,7 +460,7 @@ export function TestEngine({
         current={current + 1}
         total={sessionQs.length}
         progress={((current + 1) / sessionQs.length) * 100}
-        subtitle={mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}
+        subtitle={`${mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}${shuffle ? " · 🔀 Shuffled" : ""}`}
         right={<CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
       />
 
@@ -484,7 +506,7 @@ export function TestEngine({
               {marked[q.id] === "review" ? "🚩 Marked for Review" : "❓ Marked as Doubt"}
             </p>
           )}
-          {LETTERS.map((L) => {
+          {orderFor(q.id).map((L, oi) => {
             const val = q[`option_${L.toLowerCase()}` as keyof EngineQuestion] as string;
             if (!val || val === "-") return null;
             const selected = answers[q.id] === L;
@@ -495,7 +517,7 @@ export function TestEngine({
             return (
               <OptionCard
                 key={L}
-                letter={L}
+                letter={LETTERS[oi]}
                 text={val}
                 state={state as any}
                 disabled={!!revealedNow}
@@ -508,8 +530,9 @@ export function TestEngine({
         {revealedNow && (
           <AnswerFeedback
             correct={answers[q.id] === q.correct_option}
-            correctOption={q.correct_option}
-            yourOption={answers[q.id]}
+            correctOption={displayLetter(orderFor(q.id), q.correct_option)}
+            yourOption={answers[q.id] ? displayLetter(orderFor(q.id), answers[q.id]) : answers[q.id]}
+
             explanation={q.explanation}
             aiInsight={buildInsight({
               correct: answers[q.id] === q.correct_option,

@@ -9,6 +9,7 @@ import { TestEngine, type EngineQuestion, type EngineTest } from "@/components/T
 import { loadQuestionsByIds, loadTodaysRevisionIds, recordRevisionAttempt } from "@/lib/revisionEngine";
 import { loadQuickRevisionIds } from "@/lib/smartRevision";
 import { loadFilteredRevisionIds, type CommandFilter } from "@/lib/smartRevisionCommand";
+import { ShuffleModeSetting } from "@/components/test-ui/ShuffleModeSetting";
 
 type Mode = "practice" | "exam";
 
@@ -20,6 +21,7 @@ export default function RevisionRunner() {
   const { user } = useAuth();
   const [questions, setQuestions] = useState<EngineQuestion[]>([]);
   const [title, setTitle] = useState("Today's Revision");
+  const [shuffle, setShuffle] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<Mode | null>(null);
 
@@ -140,6 +142,7 @@ export default function RevisionRunner() {
         questions={questions}
         mode={mode}
         userId={user.id}
+        shuffle={shuffle}
         saveAttempt={false}
         autoRecord={false}
         onSubmit={(answers, qs) => recordRevisionAttempt(user.id, qs, answers)}
@@ -155,6 +158,7 @@ export default function RevisionRunner() {
         <h1 className="text-2xl font-bold">{title}</h1>
         <p className="mt-1 text-white/85">{questions.length} question{questions.length !== 1 ? "s" : ""} to revise · master after 2 correct in a row</p>
       </div>
+      <ShuffleModeSetting value={shuffle} onChange={setShuffle} />
       <p className="text-center font-semibold">Choose Mode</p>
       <div className="grid gap-3">
         <button onClick={() => setMode("practice")} className="btn-ripple flex items-center gap-4 rounded-2xl bg-gradient-practice p-5 text-left text-white shadow-md">

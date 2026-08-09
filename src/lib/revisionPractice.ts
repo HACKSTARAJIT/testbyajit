@@ -111,6 +111,8 @@ export type SaveAttemptInput = {
   questions: PracticeQuestion[];
   answers: Record<string, string>;
   timeTakenSeconds: number;
+  /** presentation-only: was this attempt taken with Shuffle Mode ON */
+  shuffleMode?: boolean;
 };
 
 /** Always APPENDS a new attempt — previous attempts are never overwritten. */
@@ -142,6 +144,7 @@ export async function saveAttempt(input: SaveAttemptInput): Promise<AttemptRow |
       subject: input.subject ?? null,
       chapter: input.chapter ?? null,
       total_questions: questions.length,
+      shuffle_mode: input.shuffleMode ?? false,
       correct_count: correct,
       wrong_count: wrong,
       skipped_count: skipped,

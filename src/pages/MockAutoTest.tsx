@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TestEngine, type EngineQuestion, type EngineTest } from "@/components/TestEngine";
 import { recordRevisionAttempt } from "@/lib/revisionEngine";
+import { ShuffleModeSetting } from "@/components/test-ui/ShuffleModeSetting";
 import {
   ArrowLeft, Brain, Layers, ListChecks, Zap, GraduationCap,
   CheckCircle2, XCircle, ChevronRight, Sparkles, BookMarked,
@@ -51,6 +52,7 @@ export default function MockAutoTest() {
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<Mode | null>(null);
   const [view, setView] = useState<"mcq" | "flashcard">("mcq");
+  const [shuffle, setShuffle] = useState(false);
 
   useEffect(() => {
     if (!user || !reportId) { setLoading(false); return; }
@@ -127,6 +129,7 @@ export default function MockAutoTest() {
         questions={engineQs}
         mode={mode}
         userId={user.id}
+        shuffle={shuffle}
         saveAttempt={false}
         autoRecord={false}
         onSubmit={(answers, qs) => recordRevisionAttempt(user.id, qs, answers)}
@@ -164,6 +167,7 @@ export default function MockAutoTest() {
       {mcq.length > 0 ? (
         <div className="space-y-3">
           <p className="text-sm font-semibold">🟢 MCQ Auto Test ({mcq.length})</p>
+          <ShuffleModeSetting value={shuffle} onChange={setShuffle} />
           <button onClick={() => { setView("mcq"); setMode("practice"); }} className="btn-ripple flex w-full items-center gap-4 rounded-2xl bg-gradient-practice p-5 text-left text-white shadow-md">
             <Zap className="h-8 w-8 shrink-0" />
             <div><p className="text-lg font-bold">🟢 Practice Mode</p><p className="text-sm text-white/90">Instant feedback + explanations.</p></div>
