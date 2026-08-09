@@ -142,6 +142,7 @@ export async function saveAttempt(input: SaveAttemptInput): Promise<AttemptRow |
       subject: input.subject ?? null,
       chapter: input.chapter ?? null,
       total_questions: questions.length,
+      shuffle_mode: input.shuffleMode ?? false,
       correct_count: correct,
       wrong_count: wrong,
       skipped_count: skipped,

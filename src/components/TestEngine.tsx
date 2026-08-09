@@ -144,6 +144,7 @@ export function TestEngine({
       accuracy: s.accuracy,
       status,
       mode,
+      shuffle_mode: shuffle,
       current_index: current,
       answers,
       marked,
@@ -156,7 +157,7 @@ export function TestEngine({
       const { data } = await supabase.from("test_attempts").insert(payload).select("id").single();
       if (data) attemptId.current = data.id;
     }
-  }, [canSave, userId, test.id, stats, sessionQs.length, mode, current, answers, marked, guesses]);
+  }, [canSave, userId, test.id, stats, sessionQs.length, mode, shuffle, current, answers, marked, guesses]);
 
   // create/resume attempt on mount
   useEffect(() => {
