@@ -111,6 +111,8 @@ export type SaveAttemptInput = {
   questions: PracticeQuestion[];
   answers: Record<string, string>;
   timeTakenSeconds: number;
+  /** presentation-only: was this attempt taken with Shuffle Mode ON */
+  shuffleMode?: boolean;
 };
 
 /** Always APPENDS a new attempt — previous attempts are never overwritten. */

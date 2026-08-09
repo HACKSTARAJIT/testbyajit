@@ -109,6 +109,7 @@ export function PracticeRunner({
       userId, source, sourceKey, title, subject, chapter,
       questions, answers,
       timeTakenSeconds: Math.round((Date.now() - startedAt.current) / 1000),
+      shuffleMode: shuffle,
     });
     setAttempt(row);
     setSaving(false);
@@ -288,7 +289,7 @@ export function PracticeRunner({
         current={idx + 1}
         total={questions.length}
         progress={((idx + (revealed ? 1 : 0)) / questions.length) * 100}
-        subtitle="⚡ Practice Mode"
+        subtitle={shuffle ? "⚡ Practice Mode · 🔀 Shuffled" : "⚡ Practice Mode"}
       />
 
       <div className="test-shell-body space-y-4">
