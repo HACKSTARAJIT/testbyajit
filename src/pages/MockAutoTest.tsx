@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TestEngine, type EngineQuestion, type EngineTest } from "@/components/TestEngine";
 import { recordRevisionAttempt } from "@/lib/revisionEngine";
+import { ShuffleModeSetting } from "@/components/test-ui/ShuffleModeSetting";
 import {
   ArrowLeft, Brain, Layers, ListChecks, Zap, GraduationCap,
   CheckCircle2, XCircle, ChevronRight, Sparkles, BookMarked,
@@ -127,6 +128,7 @@ export default function MockAutoTest() {
         questions={engineQs}
         mode={mode}
         userId={user.id}
+        shuffle={shuffle}
         saveAttempt={false}
         autoRecord={false}
         onSubmit={(answers, qs) => recordRevisionAttempt(user.id, qs, answers)}
