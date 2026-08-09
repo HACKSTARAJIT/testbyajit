@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { recordAttempt } from "@/lib/revisionEngine";
 import {
-  shuffleArray, buildOptionOrder, OPTION_LETTERS, type OptionLetter,
+  shuffleArray, buildOptionOrder, displayLetter, OPTION_LETTERS, type OptionLetter,
 } from "@/lib/shuffleMode";
 
 import {
