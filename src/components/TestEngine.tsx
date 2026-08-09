@@ -242,7 +242,10 @@ export function TestEngine({
     const base = onlyIncorrect
       ? questions.filter((item) => answers[item.id] !== item.correct_option)
       : questions;
-    setSessionQs(base);
+    // Fresh randomisation on every new shuffled attempt.
+    setSessionQs(shuffle ? shuffleArray(base) : base);
+    setOptionOrder(buildOptionOrder(base.map((x) => x.id), shuffle));
+
     setAnswers({});
     setMarked({});
     setRevealed({});
