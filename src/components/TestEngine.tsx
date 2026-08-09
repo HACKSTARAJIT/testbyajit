@@ -460,7 +460,7 @@ export function TestEngine({
         current={current + 1}
         total={sessionQs.length}
         progress={((current + 1) / sessionQs.length) * 100}
-        subtitle={mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}
+        subtitle={`${mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}${shuffle ? " · 🔀 Shuffled" : ""}`}
         right={<CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
       />
 
