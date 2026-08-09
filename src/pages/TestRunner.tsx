@@ -9,6 +9,8 @@ import { GraduationCap, Zap, ArrowLeft, Clock, ListChecks, Award, PlayCircle, Al
 import { TestEngine, type EngineQuestion, type EngineTest } from "@/components/TestEngine";
 import { loadTestWithQuestions } from "@/lib/testLoader";
 import { PreTestDashboard } from "@/components/PreTestDashboard";
+import { ShuffleModeSetting } from "@/components/test-ui/ShuffleModeSetting";
+
 
 type Mode = "practice" | "exam";
 
