@@ -311,7 +311,7 @@ export function PracticeRunner({
           meta={[subject, q.chapter, q.topic]}
           question={q.question_text}
         >
-          {LETTERS.map((L) => {
+          {orderFor(q.id).map((L, oi) => {
             const val = (q as any)[`option_${L.toLowerCase()}`] as string | null;
             if (!val) return null;
             const isRight = q.correct_answer === L;
@@ -322,7 +322,7 @@ export function PracticeRunner({
             return (
               <OptionCard
                 key={L}
-                letter={L}
+                letter={LETTERS[oi]}
                 text={val}
                 state={state as any}
                 disabled={revealed}
@@ -335,8 +335,9 @@ export function PracticeRunner({
         {revealed && (
           <AnswerFeedback
             correct={isCorrect}
-            correctOption={q.correct_answer}
-            yourOption={picked}
+            correctOption={q.correct_answer ? displayLetter(orderFor(q.id), q.correct_answer) : q.correct_answer}
+            yourOption={picked ? displayLetter(orderFor(q.id), picked) : picked}
+
             explanation={q.explanation}
             aiInsight={buildInsight({
               correct: isCorrect, topic: q.topic, chapter: q.chapter, subject,
