@@ -79,6 +79,7 @@ export default function TestRunner() {
         questions={questions}
         mode={mode}
         userId={user?.id}
+        shuffle={shuffle}
         onExit={() => navigate(-1)}
         resume={resume && resume.mode === mode ? {
           attemptId: resume.id,
@@ -89,6 +90,7 @@ export default function TestRunner() {
       />
     );
   }
+
 
   // Mode selection / intro
   return (
