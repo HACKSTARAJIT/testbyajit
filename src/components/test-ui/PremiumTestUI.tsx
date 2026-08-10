@@ -351,16 +351,18 @@ const NAV_STATUS_CLASS: Record<NavItemStatus, string> = {
   unvisited: "border-white/10 bg-white/5 text-muted-foreground",
 };
 
-const NAV_LEGEND: Array<[NavItemStatus, string]> = [
-  ["correct", "🟢 Answered / Correct"],
-  ["wrong", "🔴 Wrong"],
-  ["skipped", "🟡 Skipped / Review"],
-  ["unvisited", "⚪ Not Visited"],
+const NAV_LEGEND: Array<[string, string]> = [
+  ["bg-emerald-500", "Answered"],
+  ["bg-destructive", "Wrong"],
+  ["bg-amber-400", "Skipped"],
+  ["bg-muted-foreground", "Not Visited"],
 ];
 
+type NavFilter = "all" | "answered" | "review";
+
 /**
- * Universal Question Navigator — floating trigger + drawer.
- * Desktop/tablet: slides in from the left. Mobile: bottom sheet.
+ * Universal Question Navigator — trigger button + drawer.
+ * Desktop/tablet: slides in from the right. Mobile: bottom sheet.
  * Purely presentational; jumping is delegated to `onJump`.
  */
 export function QuestionNavigator({
@@ -374,7 +376,24 @@ export function QuestionNavigator({
   floating?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState<NavFilter>("all");
   const isMobile = useIsMobile();
+
+  const all = Array.from({ length: total }, (_, i) => i);
+  const answeredCount = all.filter((i) => ["answered", "correct", "wrong"].includes(statusFor(i))).length;
+  const reviewCount = all.filter((i) => ["marked", "skipped"].includes(statusFor(i))).length;
+  const visible = all.filter((i) => {
+    const st = statusFor(i);
+    if (filter === "answered") return ["answered", "correct", "wrong"].includes(st);
+    if (filter === "review") return ["marked", "skipped"].includes(st);
+    return true;
+  });
+
+  const filters: Array<[NavFilter, string]> = [
+    ["all", `All (${total})`],
+    ["answered", `Answered (${answeredCount})`],
+    ["review", `Review (${reviewCount})`],
+  ];
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -383,33 +402,51 @@ export function QuestionNavigator({
           type="button"
           aria-label="Open question navigator"
           className={cn(
-            "inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-card/70 px-4 text-sm font-semibold backdrop-blur-2xl transition-colors hover:border-primary/50 hover:text-primary",
-            floating
-              ? "fixed bottom-24 left-3 z-30 h-12 shadow-lg"
-              : "h-12 shrink-0",
+            "inline-flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 text-sm font-semibold text-foreground backdrop-blur-2xl transition-colors hover:border-primary hover:bg-primary/20",
+            floating ? "fixed bottom-24 left-3 z-30 h-11 shadow-lg" : "h-11 shrink-0",
             triggerClassName,
           )}
         >
-          <ListOrdered className="h-4 w-4" />
+          <ListOrdered className="h-4 w-4 text-primary" />
           <span className={floating ? "" : "hidden sm:inline"}>Questions</span>
+          <span className="text-xs font-bold tabular-nums text-muted-foreground">
+            {current + 1}/{total}
+          </span>
         </button>
       </SheetTrigger>
       <SheetContent
-        side={isMobile ? "bottom" : "left"}
+        side={isMobile ? "bottom" : "right"}
         className={cn(
           "border-white/10 bg-background/95 backdrop-blur-2xl",
-          isMobile ? "h-[80dvh] rounded-t-3xl" : "w-[320px] sm:max-w-sm",
+          isMobile ? "h-[80dvh] rounded-t-3xl" : "w-[340px] sm:max-w-sm",
         )}
       >
         <div className="flex h-full flex-col">
           <div className="pb-3 pr-8">
-            <h2 className="font-display text-base font-bold">📋 Question Navigator</h2>
-            <p className="text-xs text-muted-foreground">Question {current + 1} of {total}</p>
+            <h2 className="font-display text-base font-bold">Question Navigator</h2>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pb-3">
+            {filters.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                className={cn(
+                  "rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+                  filter === key
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/40",
+                )}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
           <div className="-mx-1 flex-1 overflow-y-auto px-1 py-2">
-            <div className="grid grid-cols-5 gap-2 sm:grid-cols-5">
-              {Array.from({ length: total }, (_, i) => {
+            <div className="grid grid-cols-5 gap-2">
+              {visible.map((i) => {
                 const st = statusFor(i);
                 return (
                   <button
@@ -426,12 +463,20 @@ export function QuestionNavigator({
                   </button>
                 );
               })}
+              {visible.length === 0 && (
+                <p className="col-span-5 py-6 text-center text-xs text-muted-foreground">
+                  No questions in this filter.
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="space-y-1 border-t border-white/10 pt-3 text-[11px] text-muted-foreground">
-            {NAV_LEGEND.map(([, label]) => (
-              <p key={label}>{label}</p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-white/10 pt-3 text-[11px] text-muted-foreground">
+            {NAV_LEGEND.map(([dot, label]) => (
+              <span key={label} className="flex items-center gap-1.5">
+                <span className={cn("h-2 w-2 rounded-full", dot)} />
+                {label}
+              </span>
             ))}
           </div>
         </div>
@@ -439,6 +484,7 @@ export function QuestionNavigator({
     </Sheet>
   );
 }
+
 
 export const NavIcons = { ArrowLeft, ArrowRight, Flag, Timer };
 
