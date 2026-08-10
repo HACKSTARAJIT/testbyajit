@@ -290,10 +290,28 @@ export function PracticeRunner({
         total={questions.length}
         progress={((idx + (revealed ? 1 : 0)) / questions.length) * 100}
         subtitle={shuffle ? "⚡ Practice Mode · 🔀 Shuffled" : "⚡ Practice Mode"}
+        stats={{
+          correct: stats.correct,
+          wrong: stats.wrong,
+          skipped: Math.max(0, idx - stats.attempted),
+          accuracy: stats.accuracy,
+          score: `${stats.correct}/${questions.length}`,
+        }}
+        right={
+          <div className="hidden xl:block">
+            <QuestionNavigator
+              total={questions.length}
+              current={idx}
+              statusFor={navStatus}
+              onJump={(i) => setIdx(i)}
+            />
+          </div>
+        }
       />
 
       <div className="test-shell-body space-y-4">
         <LivePerformancePanel
+          className="xl:hidden"
           stats={{
             correct: stats.correct,
             wrong: stats.wrong,
@@ -305,6 +323,7 @@ export function PracticeRunner({
             remaining: questions.length - (idx + (revealed ? 1 : 0)),
           }}
         />
+
 
         <QuestionCard
           key={q.id}
@@ -361,12 +380,15 @@ export function PracticeRunner({
       <FloatingAIStatus />
 
       <TestBottomNav>
-        <QuestionNavigator
-          total={questions.length}
-          current={idx}
-          statusFor={navStatus}
-          onJump={(i) => setIdx(i)}
-        />
+        <div className="xl:hidden">
+          <QuestionNavigator
+            total={questions.length}
+            current={idx}
+            statusFor={navStatus}
+            onJump={(i) => setIdx(i)}
+          />
+        </div>
+
         <Button variant="outline" className="h-12 flex-1 rounded-2xl" disabled={idx === 0} onClick={() => setIdx((i) => i - 1)}>
           Previous
         </Button>

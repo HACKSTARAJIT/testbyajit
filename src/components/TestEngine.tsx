@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   Clock, CheckCircle2, XCircle, ArrowLeft, ArrowRight, Trophy, Flag,
-  Target, RotateCcw, ListChecks, Sparkles, Info, Dice5, Brain,
+  Target, RotateCcw, ListChecks, Sparkles, Info, Dice5, Brain, Star,
 } from "lucide-react";
 import { recordAttempt } from "@/lib/revisionEngine";
 import {
@@ -461,11 +461,29 @@ export function TestEngine({
         total={sessionQs.length}
         progress={((current + 1) / sessionQs.length) * 100}
         subtitle={`${mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}${shuffle ? " · 🔀 Shuffled" : ""}`}
-        right={<CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
+        timer={<CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
+        stats={{
+          correct: stats.correct,
+          wrong: stats.incorrect,
+          skipped: stats.skipped,
+          accuracy: stats.accuracy,
+          score: stats.score,
+        }}
+        right={
+          <div className="hidden xl:block">
+            <QuestionNavigator
+              total={sessionQs.length}
+              current={current}
+              statusFor={navStatus}
+              onJump={goto}
+            />
+          </div>
+        }
       />
 
       <div className="test-shell-body space-y-4">
         <LivePerformancePanel
+          className="xl:hidden"
           stats={{
             correct: stats.correct,
             wrong: stats.incorrect,
@@ -478,28 +496,46 @@ export function TestEngine({
           }}
         />
 
+
         <QuestionCard
           key={q.id}
           index={current + 1}
           meta={[test.subjectName, test.test_part]}
           question={q.question_text}
           actions={
-            <button
-              type="button"
-              onClick={toggleGuess}
-              aria-pressed={!!guessArmed[q.id]}
-              aria-label="Toggle guess mode for this question"
-              title="Mark this answer as a guess (does not affect scoring)"
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
-                guessArmed[q.id]
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/50",
-              )}
-            >
-              <Dice5 className="h-3.5 w-3.5" /> Guess {guessArmed[q.id] ? "ON" : "OFF"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleGuess}
+                aria-pressed={!!guessArmed[q.id]}
+                aria-label="Toggle guess mode for this question"
+                title="Mark this answer as a guess (does not affect scoring)"
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                  guessArmed[q.id]
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/50",
+                )}
+              >
+                <Dice5 className="h-3.5 w-3.5" /> Guess {guessArmed[q.id] ? "ON" : "OFF"}
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleMark("review")}
+                aria-pressed={marked[q.id] === "review"}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                  marked[q.id] === "review"
+                    ? "text-amber-400"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Star className={cn("h-4 w-4", marked[q.id] === "review" && "fill-amber-400")} />
+                Mark for Review
+              </button>
+            </div>
           }
+
         >
           {marked[q.id] && (
             <p className="text-[11px] font-semibold text-amber-400">
@@ -554,14 +590,21 @@ export function TestEngine({
       <FloatingAIStatus />
 
       <TestBottomNav>
-        <QuestionNavigator
-          total={sessionQs.length}
-          current={current}
-          statusFor={navStatus}
-          onJump={goto}
-        />
-        <Button variant="outline" className="h-12 rounded-2xl" disabled={current === 0} onClick={() => setCurrent((c) => c - 1)}>
-          <ArrowLeft className="h-4 w-4" />
+        <div className="xl:hidden">
+          <QuestionNavigator
+            total={sessionQs.length}
+            current={current}
+            statusFor={navStatus}
+            onJump={goto}
+          />
+        </div>
+        <Button
+          variant="outline"
+          className="h-12 flex-1 rounded-2xl"
+          disabled={current === 0}
+          onClick={() => setCurrent((c) => c - 1)}
+        >
+          <ArrowLeft className="mr-1 h-4 w-4" /> Previous
         </Button>
 
         <Button
@@ -569,8 +612,9 @@ export function TestEngine({
           className={cn("h-12 flex-1 rounded-2xl", marked[q.id] === "review" && "border-amber-500/60 bg-amber-500/15 text-amber-400")}
           onClick={() => toggleMark("review")}
         >
-          <Flag className="mr-1 h-4 w-4" /> Review
+          <Flag className="mr-1 h-4 w-4" /> Review &amp; Mark
         </Button>
+
         {current < sessionQs.length - 1 ? (
           <Button className="h-12 flex-1 rounded-2xl bg-gradient-neon text-white" onClick={() => setCurrent((c) => c + 1)}>
             Next <ArrowRight className="ml-1 h-4 w-4" />
