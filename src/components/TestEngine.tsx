@@ -590,14 +590,21 @@ export function TestEngine({
       <FloatingAIStatus />
 
       <TestBottomNav>
-        <QuestionNavigator
-          total={sessionQs.length}
-          current={current}
-          statusFor={navStatus}
-          onJump={goto}
-        />
-        <Button variant="outline" className="h-12 rounded-2xl" disabled={current === 0} onClick={() => setCurrent((c) => c - 1)}>
-          <ArrowLeft className="h-4 w-4" />
+        <div className="xl:hidden">
+          <QuestionNavigator
+            total={sessionQs.length}
+            current={current}
+            statusFor={navStatus}
+            onJump={goto}
+          />
+        </div>
+        <Button
+          variant="outline"
+          className="h-12 flex-1 rounded-2xl"
+          disabled={current === 0}
+          onClick={() => setCurrent((c) => c - 1)}
+        >
+          <ArrowLeft className="mr-1 h-4 w-4" /> Previous
         </Button>
 
         <Button
@@ -605,8 +612,9 @@ export function TestEngine({
           className={cn("h-12 flex-1 rounded-2xl", marked[q.id] === "review" && "border-amber-500/60 bg-amber-500/15 text-amber-400")}
           onClick={() => toggleMark("review")}
         >
-          <Flag className="mr-1 h-4 w-4" /> Review
+          <Flag className="mr-1 h-4 w-4" /> Review &amp; Mark
         </Button>
+
         {current < sessionQs.length - 1 ? (
           <Button className="h-12 flex-1 rounded-2xl bg-gradient-neon text-white" onClick={() => setCurrent((c) => c + 1)}>
             Next <ArrowRight className="ml-1 h-4 w-4" />
