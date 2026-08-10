@@ -160,12 +160,21 @@ export function QuestionCard({
   const tags = (meta ?? []).filter(Boolean) as string[];
   return (
     <div className="test-glass animate-test-slide p-5 sm:p-7">
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-gradient-neon px-3 py-1 text-xs font-bold text-white shadow-sm">
+      <div className="mb-5 flex flex-wrap items-center gap-x-2 gap-y-2">
+        <span className="rounded-lg border border-primary/40 bg-primary/15 px-2.5 py-1 text-xs font-bold text-primary">
           Q{index}
         </span>
-        {tags.map((t) => <span key={t} className="test-chip">{t}</span>)}
-        {difficulty && <span className="test-chip">{difficultyStars(difficulty)}</span>}
+        {tags.map((t, i) => (
+          <span key={t} className="flex items-center gap-2 text-xs text-muted-foreground">
+            {i > 0 && <span className="opacity-40">›</span>}
+            {t}
+          </span>
+        ))}
+        {difficulty && (
+          <span className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400">
+            {difficultyStars(difficulty)}
+          </span>
+        )}
         {actions && <div className="ml-auto">{actions}</div>}
       </div>
       <p className="text-[19px] font-semibold leading-[1.75] sm:text-[21px]">{question}</p>
@@ -174,6 +183,7 @@ export function QuestionCard({
 
   );
 }
+
 
 export function difficultyStars(d?: string | null) {
   const map: Record<string, string> = {
