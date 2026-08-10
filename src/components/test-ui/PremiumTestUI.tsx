@@ -334,7 +334,7 @@ export function FloatingAIStatus({ text = "Watching your performance…" }: { te
 export function TestBottomNav({ children }: { children: ReactNode }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-background/80 p-3 backdrop-blur-2xl">
-      <div className="mx-auto flex max-w-4xl items-center gap-2">{children}</div>
+      <div className="mx-auto flex max-w-[1600px] items-center gap-2">{children}</div>
     </div>
   );
 }
