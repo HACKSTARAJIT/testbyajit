@@ -461,11 +461,29 @@ export function TestEngine({
         total={sessionQs.length}
         progress={((current + 1) / sessionQs.length) * 100}
         subtitle={`${mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}${shuffle ? " · 🔀 Shuffled" : ""}`}
-        right={<CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
+        timer={<CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
+        stats={{
+          correct: stats.correct,
+          wrong: stats.incorrect,
+          skipped: stats.skipped,
+          accuracy: stats.accuracy,
+          score: stats.score,
+        }}
+        right={
+          <div className="hidden xl:block">
+            <QuestionNavigator
+              total={sessionQs.length}
+              current={current}
+              statusFor={navStatus}
+              onJump={goto}
+            />
+          </div>
+        }
       />
 
       <div className="test-shell-body space-y-4">
         <LivePerformancePanel
+          className="xl:hidden"
           stats={{
             correct: stats.correct,
             wrong: stats.incorrect,
@@ -477,6 +495,7 @@ export function TestEngine({
             remaining: sessionQs.length - stats.attempted,
           }}
         />
+
 
         <QuestionCard
           key={q.id}
