@@ -45,31 +45,72 @@ export function CircularTimer({
 
 /* --------------------------------- Header --------------------------------- */
 export function TestHeader({
-  title, current, total, progress, right, subtitle,
+  title, current, total, progress, right, subtitle, timer, stats,
 }: {
   title: string; current: number; total: number; progress: number;
-  right?: ReactNode; subtitle?: string;
+  right?: ReactNode; subtitle?: string; timer?: ReactNode; stats?: LiveStats;
 }) {
   return (
-    <div className="sticky top-0 z-30 -mx-3 mb-4 px-3 pt-3 sm:-mx-5 sm:px-5">
-      <div className="test-glass-strong mx-auto max-w-4xl overflow-hidden p-4">
+    <div className="sticky top-0 z-30 -mx-3 mb-4 border-b border-white/10 bg-background/80 px-3 py-2.5 backdrop-blur-2xl sm:-mx-5 sm:px-5">
+      <div className="mx-auto flex max-w-[1600px] items-center gap-3">
+        {/* Brand */}
+        <div className="hidden items-center gap-2 pr-3 md:flex">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-neon text-[10px] font-black text-white">
+            360
+          </span>
+          <span className="text-sm font-bold tracking-tight">AJIT 360</span>
+        </div>
+        <div className="hidden h-8 w-px bg-white/10 md:block" />
 
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate font-display text-base font-bold">{title}</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Question {current} / {total}{subtitle ? ` · ${subtitle}` : ""}
-            </p>
+        {/* Test name */}
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate font-display text-sm font-bold sm:text-base">{title}</h1>
+          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+            Question {current} / {total}{subtitle ? ` · ${subtitle}` : ""}
+          </p>
+        </div>
+
+        {/* Timer */}
+        {timer && (
+          <div className="flex shrink-0 items-center gap-2 border-white/10 px-3 lg:border-x">
+            {timer}
+            <div className="hidden leading-tight lg:block">
+              <p className="text-[11px] text-muted-foreground">Time Left</p>
+            </div>
           </div>
-          {right}
-        </div>
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-gradient-neon transition-all duration-500"
-            style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
-          />
-        </div>
+        )}
+
+        {/* Inline stat strip (desktop) */}
+        {stats && (
+          <div className="hidden shrink-0 items-center gap-5 px-3 xl:flex">
+            <HeaderStat label="Correct" value={stats.correct} tone="text-emerald-400" />
+            <HeaderStat label="Wrong" value={stats.wrong} tone="text-destructive" />
+            <HeaderStat label="Skipped" value={stats.skipped} tone="text-amber-400" />
+            <HeaderStat label="Accuracy" value={`${stats.accuracy}%`} tone="text-foreground" />
+            {stats.score !== undefined && (
+              <HeaderStat label="Score" value={stats.score} tone="text-primary" />
+            )}
+          </div>
+        )}
+
+        {right && <div className="shrink-0">{right}</div>}
       </div>
+
+      <div className="mx-auto mt-2 h-1 max-w-[1600px] overflow-hidden rounded-full bg-white/10">
+        <div
+          className="h-full rounded-full bg-gradient-neon transition-all duration-500"
+          style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function HeaderStat({ label, value, tone }: { label: string; value: string | number; tone: string }) {
+  return (
+    <div className="text-center leading-tight">
+      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+      <p className={cn("text-sm font-bold tabular-nums", tone)}>{value}</p>
     </div>
   );
 }
@@ -81,7 +122,7 @@ export type LiveStats = {
   streak?: number; bestStreak?: number; remaining?: number;
 };
 
-export function LivePerformancePanel({ stats }: { stats: LiveStats }) {
+export function LivePerformancePanel({ stats, className }: { stats: LiveStats; className?: string }) {
   const cells: Array<[string, string | number, string]> = [
     ["Correct", stats.correct, "text-emerald-400"],
     ["Wrong", stats.wrong, "text-destructive"],
@@ -93,7 +134,7 @@ export function LivePerformancePanel({ stats }: { stats: LiveStats }) {
   if (stats.bestStreak !== undefined) cells.push(["Best", stats.bestStreak, "text-amber-400"]);
   if (stats.remaining !== undefined) cells.push(["Left", stats.remaining, "text-muted-foreground"]);
   return (
-    <div className="test-glass grid grid-cols-4 gap-1 p-3 text-center">
+    <div className={cn("test-glass grid grid-cols-4 gap-1 p-3 text-center", className)}>
       {cells.map(([label, value, tone]) => (
         <div key={label} className="rounded-xl px-1 py-1.5">
           <p className={cn("text-sm font-extrabold leading-none tabular-nums", tone)}>{value}</p>
@@ -103,6 +144,7 @@ export function LivePerformancePanel({ stats }: { stats: LiveStats }) {
     </div>
   );
 }
+
 
 /* ------------------------------ Question card ------------------------------ */
 export function QuestionCard({
