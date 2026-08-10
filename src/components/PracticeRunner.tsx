@@ -380,12 +380,15 @@ export function PracticeRunner({
       <FloatingAIStatus />
 
       <TestBottomNav>
-        <QuestionNavigator
-          total={questions.length}
-          current={idx}
-          statusFor={navStatus}
-          onJump={(i) => setIdx(i)}
-        />
+        <div className="xl:hidden">
+          <QuestionNavigator
+            total={questions.length}
+            current={idx}
+            statusFor={navStatus}
+            onJump={(i) => setIdx(i)}
+          />
+        </div>
+
         <Button variant="outline" className="h-12 flex-1 rounded-2xl" disabled={idx === 0} onClick={() => setIdx((i) => i - 1)}>
           Previous
         </Button>
