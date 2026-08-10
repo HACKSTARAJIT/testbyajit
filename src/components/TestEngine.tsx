@@ -503,22 +503,39 @@ export function TestEngine({
           meta={[test.subjectName, test.test_part]}
           question={q.question_text}
           actions={
-            <button
-              type="button"
-              onClick={toggleGuess}
-              aria-pressed={!!guessArmed[q.id]}
-              aria-label="Toggle guess mode for this question"
-              title="Mark this answer as a guess (does not affect scoring)"
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
-                guessArmed[q.id]
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/50",
-              )}
-            >
-              <Dice5 className="h-3.5 w-3.5" /> Guess {guessArmed[q.id] ? "ON" : "OFF"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleGuess}
+                aria-pressed={!!guessArmed[q.id]}
+                aria-label="Toggle guess mode for this question"
+                title="Mark this answer as a guess (does not affect scoring)"
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                  guessArmed[q.id]
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/50",
+                )}
+              >
+                <Dice5 className="h-3.5 w-3.5" /> Guess {guessArmed[q.id] ? "ON" : "OFF"}
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleMark("review")}
+                aria-pressed={marked[q.id] === "review"}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                  marked[q.id] === "review"
+                    ? "text-amber-400"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Star className={cn("h-4 w-4", marked[q.id] === "review" && "fill-amber-400")} />
+                Mark for Review
+              </button>
+            </div>
           }
+
         >
           {marked[q.id] && (
             <p className="text-[11px] font-semibold text-amber-400">
