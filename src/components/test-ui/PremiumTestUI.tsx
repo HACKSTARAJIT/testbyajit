@@ -218,8 +218,8 @@ export function OptionCard({
     >
       <span
         className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-sm font-bold",
-          state === "idle" && "border-white/15 bg-white/5 text-muted-foreground",
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-bold",
+          state === "idle" && "border-white/20 bg-white/5 text-muted-foreground",
           state === "dim" && "border-white/10 bg-white/5 text-muted-foreground",
           state === "selected" && "border-primary bg-primary text-primary-foreground",
           state === "correct" && "border-emerald-500 bg-emerald-500 text-white",
@@ -228,6 +228,7 @@ export function OptionCard({
       >
         {letter}
       </span>
+
       <span className="flex-1 text-[16px] leading-relaxed sm:text-[17px]">{text}</span>
       {state === "correct" && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />}
       {state === "wrong" && <XCircle className="h-5 w-5 shrink-0 text-destructive" />}
