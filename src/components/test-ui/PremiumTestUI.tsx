@@ -344,10 +344,10 @@ export type NavItemStatus = "answered" | "correct" | "wrong" | "marked" | "skipp
 
 const NAV_STATUS_CLASS: Record<NavItemStatus, string> = {
   correct: "border-emerald-500/60 bg-emerald-500/20 text-emerald-300",
-  answered: "border-primary/60 bg-primary/20 text-primary",
+  answered: "border-emerald-500/60 bg-emerald-500/20 text-emerald-300",
   wrong: "border-destructive/60 bg-destructive/20 text-destructive",
-  marked: "border-amber-500/60 bg-amber-500/20 text-amber-300",
-  skipped: "border-amber-500/40 bg-amber-500/10 text-amber-300",
+  marked: "border-purple-500/60 bg-purple-500/20 text-purple-300",
+  skipped: "border-amber-500/50 bg-amber-500/15 text-amber-300",
   unvisited: "border-white/10 bg-white/5 text-muted-foreground",
 };
 
@@ -355,10 +355,146 @@ const NAV_LEGEND: Array<[string, string]> = [
   ["bg-emerald-500", "Answered"],
   ["bg-destructive", "Wrong"],
   ["bg-amber-400", "Skipped"],
+  ["bg-purple-500", "Review"],
   ["bg-muted-foreground", "Not Visited"],
 ];
 
-type NavFilter = "all" | "answered" | "review";
+type NavFilter = "all" | "answered" | "unanswered" | "review" | "skipped";
+
+const ANSWERED_STATES: NavItemStatus[] = ["answered", "correct", "wrong"];
+
+function matchesFilter(st: NavItemStatus, filter: NavFilter) {
+  if (filter === "answered") return ANSWERED_STATES.includes(st);
+  if (filter === "unanswered") return st === "unvisited" || st === "skipped";
+  if (filter === "review") return st === "marked";
+  if (filter === "skipped") return st === "skipped";
+  return true;
+}
+
+/**
+ * Navigator body — filters + number grid + direct "Go to question".
+ * Used inline as the desktop right column and inside the mobile/focus drawer.
+ */
+export function NavigatorPanel({
+  total, current, statusFor, onJump, className, title = "Question Navigator",
+}: {
+  total: number;
+  current: number;
+  statusFor: (index: number) => NavItemStatus;
+  onJump: (index: number) => void;
+  className?: string;
+  title?: string;
+}) {
+  const [filter, setFilter] = useState<NavFilter>("all");
+  const [goTo, setGoTo] = useState("");
+
+  const all = Array.from({ length: total }, (_, i) => i);
+  const counts = {
+    all: total,
+    answered: all.filter((i) => ANSWERED_STATES.includes(statusFor(i))).length,
+    unanswered: all.filter((i) => ["unvisited", "skipped"].includes(statusFor(i))).length,
+    review: all.filter((i) => statusFor(i) === "marked").length,
+    skipped: all.filter((i) => statusFor(i) === "skipped").length,
+  };
+  const visible = all.filter((i) => matchesFilter(statusFor(i), filter));
+
+  const filters: Array<[NavFilter, string]> = [
+    ["all", `All ${counts.all}`],
+    ["answered", `Answered ${counts.answered}`],
+    ["unanswered", `Unanswered ${counts.unanswered}`],
+    ["review", `Review ${counts.review}`],
+    ["skipped", `Skipped ${counts.skipped}`],
+  ];
+
+  const jump = (n: number) => {
+    if (Number.isNaN(n)) return;
+    const i = Math.min(total, Math.max(1, n)) - 1;
+    onJump(i);
+  };
+
+  return (
+    <div className={cn("flex h-full min-h-0 flex-col", className)}>
+      <div className="flex items-center justify-between gap-2 pb-3 pr-8">
+        <h2 className="font-display text-sm font-bold">{title}</h2>
+        <span className="text-[11px] tabular-nums text-muted-foreground">{current + 1}/{total}</span>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5 pb-3">
+        {filters.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setFilter(key)}
+            className={cn(
+              "rounded-lg border px-2 py-1 text-[11px] font-semibold transition-colors",
+              filter === key
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/40",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1 py-2">
+        <div className="grid grid-cols-5 gap-2">
+          {visible.map((i) => {
+            const st = statusFor(i);
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onJump(i)}
+                className={cn(
+                  "flex h-10 items-center justify-center rounded-xl border text-sm font-bold transition-transform hover:scale-105",
+                  NAV_STATUS_CLASS[st],
+                  i === current && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                )}
+              >
+                {i + 1}
+              </button>
+            );
+          })}
+          {visible.length === 0 && (
+            <p className="col-span-5 py-6 text-center text-xs text-muted-foreground">
+              No questions in this filter.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <form
+        className="flex items-center gap-2 border-t border-white/10 pt-3"
+        onSubmit={(e) => { e.preventDefault(); jump(parseInt(goTo, 10)); setGoTo(""); }}
+      >
+        <input
+          value={goTo}
+          onChange={(e) => setGoTo(e.target.value.replace(/\D/g, ""))}
+          inputMode="numeric"
+          placeholder="Go to question"
+          aria-label="Go to question number"
+          className="h-9 min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-xs outline-none placeholder:text-muted-foreground focus:border-primary"
+        />
+        <button
+          type="submit"
+          className="h-9 shrink-0 rounded-xl border border-primary/50 bg-primary/15 px-3 text-xs font-semibold text-primary"
+        >
+          Go
+        </button>
+      </form>
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-white/10 pt-3 text-[10px] text-muted-foreground">
+        {NAV_LEGEND.map(([dot, label]) => (
+          <span key={label} className="flex items-center gap-1.5">
+            <span className={cn("h-2 w-2 rounded-full", dot)} />
+            {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Universal Question Navigator — trigger button + drawer.
@@ -376,24 +512,7 @@ export function QuestionNavigator({
   floating?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [filter, setFilter] = useState<NavFilter>("all");
   const isMobile = useIsMobile();
-
-  const all = Array.from({ length: total }, (_, i) => i);
-  const answeredCount = all.filter((i) => ["answered", "correct", "wrong"].includes(statusFor(i))).length;
-  const reviewCount = all.filter((i) => ["marked", "skipped"].includes(statusFor(i))).length;
-  const visible = all.filter((i) => {
-    const st = statusFor(i);
-    if (filter === "answered") return ["answered", "correct", "wrong"].includes(st);
-    if (filter === "review") return ["marked", "skipped"].includes(st);
-    return true;
-  });
-
-  const filters: Array<[NavFilter, string]> = [
-    ["all", `All (${total})`],
-    ["answered", `Answered (${answeredCount})`],
-    ["review", `Review (${reviewCount})`],
-  ];
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -418,72 +537,79 @@ export function QuestionNavigator({
         side={isMobile ? "bottom" : "right"}
         className={cn(
           "border-white/10 bg-background/95 backdrop-blur-2xl",
-          isMobile ? "h-[80dvh] rounded-t-3xl" : "w-[340px] sm:max-w-sm",
+          isMobile ? "h-[82dvh] rounded-t-3xl" : "w-[340px] sm:max-w-sm",
         )}
       >
-        <div className="flex h-full flex-col">
-          <div className="pb-3 pr-8">
-            <h2 className="font-display text-base font-bold">Question Navigator</h2>
-          </div>
-
-          <div className="flex flex-wrap gap-2 pb-3">
-            {filters.map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setFilter(key)}
-                className={cn(
-                  "rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
-                  filter === key
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/40",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="-mx-1 flex-1 overflow-y-auto px-1 py-2">
-            <div className="grid grid-cols-5 gap-2">
-              {visible.map((i) => {
-                const st = statusFor(i);
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => { onJump(i); setOpen(false); }}
-                    className={cn(
-                      "flex h-11 items-center justify-center rounded-xl border text-sm font-bold transition-transform hover:scale-105",
-                      NAV_STATUS_CLASS[st],
-                      i === current && "ring-2 ring-primary ring-offset-2 ring-offset-background",
-                    )}
-                  >
-                    {i + 1}
-                  </button>
-                );
-              })}
-              {visible.length === 0 && (
-                <p className="col-span-5 py-6 text-center text-xs text-muted-foreground">
-                  No questions in this filter.
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-white/10 pt-3 text-[11px] text-muted-foreground">
-            {NAV_LEGEND.map(([dot, label]) => (
-              <span key={label} className="flex items-center gap-1.5">
-                <span className={cn("h-2 w-2 rounded-full", dot)} />
-                {label}
-              </span>
-            ))}
-          </div>
-        </div>
+        <NavigatorPanel
+          total={total}
+          current={current}
+          statusFor={statusFor}
+          onJump={(i) => { onJump(i); setOpen(false); }}
+        />
       </SheetContent>
     </Sheet>
   );
 }
+
+/* ------------------------------ Focus mode -------------------------------- */
+/** Hides the app chrome (header/footer/menus) while a test is running. */
+export function useFocusMode() {
+  const [focus, setFocus] = useState(false);
+  useEffect(() => {
+    document.body.classList.toggle("test-focus", focus);
+    return () => document.body.classList.remove("test-focus");
+  }, [focus]);
+  return { focus, setFocus, toggle: () => setFocus((f) => !f) };
+}
+
+export function FocusModeButton({ focus, onToggle }: { focus: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={focus}
+      title={focus ? "Exit Focus Mode" : "Focus Mode"}
+      className={cn(
+        "inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors",
+        focus
+          ? "border-primary bg-primary/20 text-primary"
+          : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/40 hover:text-foreground",
+      )}
+    >
+      {focus ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+      <span className="hidden lg:inline">{focus ? "Exit Focus" : "Focus Mode"}</span>
+    </button>
+  );
+}
+
+/* ------------------------------- Workspace -------------------------------- */
+/**
+ * Two-column exam workspace: question column + persistent navigator column
+ * on xl screens. In focus mode (or on smaller screens) the sidebar collapses
+ * and the navigator is reached through the drawer trigger instead.
+ */
+export function TestWorkspace({
+  children, sidebar, showSidebar = true,
+}: { children: ReactNode; sidebar?: ReactNode; showSidebar?: boolean }) {
+  return (
+    <div
+      className={cn(
+        "mx-auto grid w-full items-start gap-5",
+        showSidebar && sidebar
+          ? "max-w-[1600px] xl:grid-cols-[minmax(0,1fr)_340px]"
+          : "max-w-4xl grid-cols-1",
+      )}
+    >
+      <div className="min-w-0 space-y-4">{children}</div>
+      {showSidebar && sidebar && (
+        <aside className="test-glass sticky top-[104px] hidden max-h-[calc(100dvh-11rem)] p-4 xl:block">
+          {sidebar}
+        </aside>
+      )}
+    </div>
+  );
+}
+
 
 
 export const NavIcons = { ArrowLeft, ArrowRight, Flag, Timer };
