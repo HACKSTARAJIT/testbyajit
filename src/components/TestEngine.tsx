@@ -106,6 +106,9 @@ export function TestEngine({
   const qStartTime = useRef<number>(Date.now());
   const attemptId = useRef<string | null>(resume?.attemptId ?? null);
   const savedWrong = useRef<Set<string>>(new Set());
+  const { focus, toggle: toggleFocus } = useFocusMode();
+
+
 
   const q = sessionQs[current];
   const orderFor = (id: string) => optionOrder[id] ?? [...OPTION_LETTERS];
