@@ -17,7 +17,8 @@ import {
   TestHeader, CircularTimer, LivePerformancePanel, QuestionCard, OptionCard,
   AnswerFeedback, FloatingAIStatus, TestBottomNav, AIAnalyzingLoader,
   ResultHero, ResultStatGrid, gradeFor, xpFor, buildInsight,
-  QuestionNavigator, type NavItemStatus,
+  QuestionNavigator, NavigatorPanel, TestWorkspace, FocusModeButton, useFocusMode,
+  type NavItemStatus,
 } from "@/components/test-ui/PremiumTestUI";
 
 
