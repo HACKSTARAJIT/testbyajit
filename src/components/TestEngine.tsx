@@ -598,13 +598,13 @@ export function TestEngine({
           />
         )}
 
-      </div>
+      </TestWorkspace>
 
 
       <FloatingAIStatus />
 
       <TestBottomNav>
-        <div className="xl:hidden">
+        <div className={cn(focus ? "block" : "xl:hidden")}>
           <QuestionNavigator
             total={sessionQs.length}
             current={current}
@@ -612,6 +612,7 @@ export function TestEngine({
             onJump={goto}
           />
         </div>
+
         <Button
           variant="outline"
           className="h-12 flex-1 rounded-2xl"
