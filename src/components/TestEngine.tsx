@@ -470,18 +470,31 @@ export function TestEngine({
           score: stats.score,
         }}
         right={
-          <div className="hidden xl:block">
-            <QuestionNavigator
-              total={sessionQs.length}
-              current={current}
-              statusFor={navStatus}
-              onJump={goto}
-            />
+          <div className="flex items-center gap-2">
+            <div className={cn(focus ? "block" : "hidden")}>
+              <QuestionNavigator
+                total={sessionQs.length}
+                current={current}
+                statusFor={navStatus}
+                onJump={goto}
+              />
+            </div>
+            <FocusModeButton focus={focus} onToggle={toggleFocus} />
           </div>
         }
       />
 
-      <div className="test-shell-body space-y-4">
+      <TestWorkspace
+        showSidebar={!focus}
+        sidebar={
+          <NavigatorPanel
+            total={sessionQs.length}
+            current={current}
+            statusFor={navStatus}
+            onJump={goto}
+          />
+        }
+      >
         <LivePerformancePanel
           className="xl:hidden"
           stats={{
@@ -495,6 +508,7 @@ export function TestEngine({
             remaining: sessionQs.length - stats.attempted,
           }}
         />
+
 
 
         <QuestionCard
