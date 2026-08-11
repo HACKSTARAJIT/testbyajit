@@ -17,7 +17,8 @@ import {
   TestHeader, CircularTimer, LivePerformancePanel, QuestionCard, OptionCard,
   AnswerFeedback, FloatingAIStatus, TestBottomNav, AIAnalyzingLoader,
   ResultHero, ResultStatGrid, gradeFor, xpFor, buildInsight,
-  QuestionNavigator, type NavItemStatus,
+  QuestionNavigator, NavigatorPanel, TestWorkspace, FocusModeButton, useFocusMode,
+  type NavItemStatus,
 } from "@/components/test-ui/PremiumTestUI";
 
 
@@ -105,6 +106,9 @@ export function TestEngine({
   const qStartTime = useRef<number>(Date.now());
   const attemptId = useRef<string | null>(resume?.attemptId ?? null);
   const savedWrong = useRef<Set<string>>(new Set());
+  const { focus, toggle: toggleFocus } = useFocusMode();
+
+
 
   const q = sessionQs[current];
   const orderFor = (id: string) => optionOrder[id] ?? [...OPTION_LETTERS];
@@ -470,18 +474,31 @@ export function TestEngine({
           score: stats.score,
         }}
         right={
-          <div className="hidden xl:block">
-            <QuestionNavigator
-              total={sessionQs.length}
-              current={current}
-              statusFor={navStatus}
-              onJump={goto}
-            />
+          <div className="flex items-center gap-2">
+            <div className={cn(focus ? "block" : "hidden")}>
+              <QuestionNavigator
+                total={sessionQs.length}
+                current={current}
+                statusFor={navStatus}
+                onJump={goto}
+              />
+            </div>
+            <FocusModeButton focus={focus} onToggle={toggleFocus} />
           </div>
         }
       />
 
-      <div className="test-shell-body space-y-4">
+      <TestWorkspace
+        showSidebar={!focus}
+        sidebar={
+          <NavigatorPanel
+            total={sessionQs.length}
+            current={current}
+            statusFor={navStatus}
+            onJump={goto}
+          />
+        }
+      >
         <LivePerformancePanel
           className="xl:hidden"
           stats={{
@@ -495,6 +512,7 @@ export function TestEngine({
             remaining: sessionQs.length - stats.attempted,
           }}
         />
+
 
 
         <QuestionCard
@@ -584,13 +602,13 @@ export function TestEngine({
           />
         )}
 
-      </div>
+      </TestWorkspace>
 
 
       <FloatingAIStatus />
 
       <TestBottomNav>
-        <div className="xl:hidden">
+        <div className={cn(focus ? "block" : "xl:hidden")}>
           <QuestionNavigator
             total={sessionQs.length}
             current={current}
@@ -598,6 +616,7 @@ export function TestEngine({
             onJump={goto}
           />
         </div>
+
         <Button
           variant="outline"
           className="h-12 flex-1 rounded-2xl"

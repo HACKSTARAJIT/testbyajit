@@ -14,7 +14,8 @@ import {
 import {
   TestHeader, LivePerformancePanel, QuestionCard, OptionCard, AnswerFeedback,
   FloatingAIStatus, TestBottomNav, AIAnalyzingLoader, ResultHero, ResultStatGrid,
-  gradeFor, xpFor, buildInsight, QuestionNavigator, type NavItemStatus,
+  gradeFor, xpFor, buildInsight, QuestionNavigator, NavigatorPanel, TestWorkspace,
+  FocusModeButton, useFocusMode, type NavItemStatus,
 } from "@/components/test-ui/PremiumTestUI";
 
 
@@ -57,6 +58,8 @@ export function PracticeRunner({
   const [aiError, setAiError] = useState("");
   const startedAt = useRef(Date.now());
   const fx = useFeedbackFX();
+  const { focus, toggle: toggleFocus } = useFocusMode();
+
 
   const orderFor = (id: string) => optionOrder[id] ?? [...OPTION_LETTERS];
 
@@ -298,18 +301,31 @@ export function PracticeRunner({
           score: `${stats.correct}/${questions.length}`,
         }}
         right={
-          <div className="hidden xl:block">
-            <QuestionNavigator
-              total={questions.length}
-              current={idx}
-              statusFor={navStatus}
-              onJump={(i) => setIdx(i)}
-            />
+          <div className="flex items-center gap-2">
+            <div className={focus ? "block" : "hidden"}>
+              <QuestionNavigator
+                total={questions.length}
+                current={idx}
+                statusFor={navStatus}
+                onJump={(i) => setIdx(i)}
+              />
+            </div>
+            <FocusModeButton focus={focus} onToggle={toggleFocus} />
           </div>
         }
       />
 
-      <div className="test-shell-body space-y-4">
+      <TestWorkspace
+        showSidebar={!focus}
+        sidebar={
+          <NavigatorPanel
+            total={questions.length}
+            current={idx}
+            statusFor={navStatus}
+            onJump={(i) => setIdx(i)}
+          />
+        }
+      >
         <LivePerformancePanel
           className="xl:hidden"
           stats={{
@@ -323,6 +339,7 @@ export function PracticeRunner({
             remaining: questions.length - (idx + (revealed ? 1 : 0)),
           }}
         />
+
 
 
         <QuestionCard
@@ -375,12 +392,13 @@ export function PracticeRunner({
             Select an option to see the answer instantly.
           </p>
         )}
-      </div>
+      </TestWorkspace>
 
       <FloatingAIStatus />
 
       <TestBottomNav>
-        <div className="xl:hidden">
+        <div className={focus ? "block" : "xl:hidden"}>
+
           <QuestionNavigator
             total={questions.length}
             current={idx}
