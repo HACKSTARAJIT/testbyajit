@@ -392,12 +392,13 @@ export function PracticeRunner({
             Select an option to see the answer instantly.
           </p>
         )}
-      </div>
+      </TestWorkspace>
 
       <FloatingAIStatus />
 
       <TestBottomNav>
-        <div className="xl:hidden">
+        <div className={focus ? "block" : "xl:hidden"}>
+
           <QuestionNavigator
             total={questions.length}
             current={idx}
