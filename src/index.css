@@ -147,6 +147,19 @@
   .test-shell-body {
     @apply mx-auto w-full max-w-4xl;
   }
+  /* Focus / full-screen mode: hide app chrome, keep only the test workspace. */
+  body.test-focus header,
+  body.test-focus footer,
+  body.test-focus [data-app-chrome] {
+    display: none !important;
+  }
+  body.test-focus main {
+    @apply py-0;
+  }
+  body.test-focus .test-shell {
+    min-height: 100dvh;
+  }
+
 
   .test-glass {
     @apply rounded-3xl border border-white/10 bg-card/60 backdrop-blur-2xl;
