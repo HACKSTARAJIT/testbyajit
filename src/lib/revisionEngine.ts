@@ -22,6 +22,11 @@ type ExistingWQ = {
   correct_revision_count: number;
   consecutive_correct: number;
   status: string;
+  total_attempts?: number | null;
+  total_correct?: number | null;
+  total_wrong?: number | null;
+  total_skipped?: number | null;
+  first_wrong_at?: string | null;
 };
 
 export type AttemptExtras = {
