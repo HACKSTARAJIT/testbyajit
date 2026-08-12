@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { APP_NAME } from "@/lib/brand";
 import { brandingUrl, kindOfPath, loadIntro, type AppIntroRow } from "@/lib/branding";
 import { LottiePlayer } from "@/components/LottiePlayer";
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,7 @@ export function IntroSplash() {
       {kind === "lottie" ? (
         <LottiePlayer src={url} className="h-full max-h-[70vh] w-full max-w-[90vw]" />
       ) : kind === "gif" ? (
-        <img src={url} alt="AJIT 360 intro" className="max-h-full max-w-full object-contain" />
+        <img src={url} alt={`${APP_NAME} intro`} className="max-h-full max-w-full object-contain" />
       ) : (
         <video
           src={url}

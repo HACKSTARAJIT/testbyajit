@@ -104,7 +104,7 @@ export default function AcademicIntelligence() {
           <div>
             <h2 className="text-lg font-bold leading-tight">Academic Intelligence Engine</h2>
             <p className="text-[11px] text-muted-foreground">
-              Permanent academic memory across every AJIT 360 module.
+              Permanent academic memory across every PRACTICE WITH AJIT module.
             </p>
           </div>
         </div>

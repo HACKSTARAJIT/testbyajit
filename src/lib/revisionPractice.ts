@@ -36,7 +36,7 @@ export type AttemptRow = {
   created_at: string;
 };
 
-/** Wrong + skipped questions collected inside AJIT 360 tests, for one chapter. */
+/** Wrong + skipped questions collected inside PRACTICE WITH AJIT tests, for one chapter. */
 export async function loadWrongQuestionPractice(
   userId: string,
   subjectId: string,

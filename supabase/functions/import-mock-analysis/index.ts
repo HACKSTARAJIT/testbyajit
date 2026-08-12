@@ -9,7 +9,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-const EXTRACTION_PROMPT = `You are a strict, format-agnostic JSON extractor for AJIT 360.
+const EXTRACTION_PROMPT = `You are a strict, format-agnostic JSON extractor for PRACTICE WITH AJIT.
 
 The user pastes a mock/practice test analysis produced by ANY AI system — Gemini, ChatGPT, Claude, DeepSeek, Perplexity, Copilot, Grok, Llama, etc. — in ANY structure, ANY headings, ANY language (English / Hindi / Hinglish / mixed).
 

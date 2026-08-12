@@ -13,6 +13,7 @@ import {
   AchievementsRow, DailyChallenge, QuickActions, GoalsPanel, RecentActivity, OnboardingCards, HomeSkeleton,
 } from "@/components/home/HomeSections";
 import FloatingAIButton from "@/components/home/FloatingAIButton";
+import { APP_NAME } from "@/lib/brand";
 
 const fmtSize = (bytes?: number | null) => {
   if (!bytes) return null;
@@ -45,7 +46,7 @@ export default function StudentDashboard() {
     setDownloading(false);
     if (!url) { toast.error("Download failed, try again"); return; }
     const a = document.createElement("a");
-    a.href = url; a.download = `ajit360-${release.version ?? "app"}.apk`;
+    a.href = url; a.download = `practice-with-ajit-${release.version ?? "app"}.apk`;
     document.body.appendChild(a); a.click(); a.remove();
   };
 
@@ -88,7 +89,7 @@ export default function StudentDashboard() {
               <Smartphone className="h-6 w-6" />
             </div>
             <div>
-              <p className="flex items-center gap-2 font-semibold">📱 AJIT 360 App</p>
+              <p className="flex items-center gap-2 font-semibold">📱 {APP_NAME} App</p>
               <p className="text-xs text-muted-foreground">
                 Version {release?.version ?? "1.0.0"}
                 {fmtSize(release?.file_size) && ` • ${fmtSize(release?.file_size)}`}

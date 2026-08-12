@@ -52,7 +52,7 @@ export default function SmartRevision() {
           <div>
             <p className="text-xl font-bold">❌ Wrong Questions</p>
             <p className="mt-1 text-xs text-white/85">
-              AJIT 360 App Tests में जो questions wrong या skip हुए
+              PRACTICE WITH AJIT App Tests में जो questions wrong या skip हुए
             </p>
           </div>
           <div className="relative">

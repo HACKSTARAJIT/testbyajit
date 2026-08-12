@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { GraduationCap, Loader2 } from "lucide-react";
 import { z } from "zod";
+import { APP_NAME } from "@/lib/brand";
 
 const schema = z.object({
   email: z.string().trim().email("Valid email required").max(255),
@@ -85,7 +86,7 @@ export default function Auth() {
           <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-hero">
             <GraduationCap className="h-7 w-7 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl font-display">AJIT 360</CardTitle>
+          <CardTitle className="text-2xl font-display">{APP_NAME}</CardTitle>
           <CardDescription>Learn • Practice • Analyze • Succeed</CardDescription>
         </CardHeader>
         <CardContent>

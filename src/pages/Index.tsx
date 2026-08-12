@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, BookOpen, ClipboardList, Trophy, ArrowRight } from "lucide-react";
+import { APP_NAME } from "@/lib/brand";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -26,7 +27,7 @@ const Index = () => {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-hero">
             <GraduationCap className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="text-lg font-bold font-display">AJIT 360</span>
+          <span className="text-lg font-bold font-display">{APP_NAME}</span>
         </div>
         <Button asChild><Link to="/auth">Login / Sign Up</Link></Button>
       </header>

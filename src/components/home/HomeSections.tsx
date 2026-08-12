@@ -12,6 +12,7 @@ import {
 import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
 import { useMemo } from "react";
 import type { HomeData } from "./useHomeData";
+import { APP_NAME } from "@/lib/brand";
 
 const greet = () => {
   const h = new Date().getHours();
@@ -37,7 +38,7 @@ export function HomeHero({ data, continueTo }: { data: HomeData; continueTo: { p
         <h1 className="mt-1 text-2xl font-bold leading-tight md:text-3xl">
           {name} <span className="inline-block animate-fade-in">👋</span>
         </h1>
-        <p className="mt-1 text-sm text-primary-foreground/85">Let's make today count on AJIT 360.</p>
+        <p className="mt-1 text-sm text-primary-foreground/85">Let's make today count on {APP_NAME}.</p>
 
         <div className="mt-5 grid grid-cols-2 gap-2.5 md:grid-cols-4">
           <GlassStat icon={Flame} label="Streak" value={`${data.streak}d`} sub={data.streak >= 3 ? "🔥 On fire" : "Keep going"} />

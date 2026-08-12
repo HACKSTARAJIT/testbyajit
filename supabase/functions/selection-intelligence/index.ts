@@ -1,4 +1,4 @@
-// AJIT 360 — Selection Intelligence
+// PRACTICE WITH AJIT — Selection Intelligence
 // Aggregates the student's real data (attempts, wrong questions, mocks, revision, activity,
 // exam target) and computes the 9 Selection Intelligence panels deterministically.
 // AI is only used to write the "Personal Selection Mentor" narrative — grounded in the
@@ -308,7 +308,7 @@ Deno.serve(async (req) => {
             model: "google/gemini-2.5-flash",
             messages: [
               { role: "system", content:
-                "You are AJIT 360's Personal Selection Mentor. Write in mixed Hindi + English (Hinglish), 5–7 sentences, warm, direct, WHY-focused. Never predict selection. Never invent numbers — use only the JSON provided. Return strict JSON {\"summary\": string, \"bullets\": string[]} with 3–5 bullets, each explaining WHY using a number from the input." },
+                "You are PRACTICE WITH AJIT's Personal Selection Mentor. Write in mixed Hindi + English (Hinglish), 5–7 sentences, warm, direct, WHY-focused. Never predict selection. Never invent numbers — use only the JSON provided. Return strict JSON {\"summary\": string, \"bullets\": string[]} with 3–5 bullets, each explaining WHY using a number from the input." },
               { role: "user", content: JSON.stringify(grounded) },
             ],
             response_format: { type: "json_object" },
