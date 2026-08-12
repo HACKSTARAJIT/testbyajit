@@ -1,4 +1,4 @@
-// Unified AI Service — routes every AJIT 360 AI call through Google Gemini (primary)
+// Unified AI Service — routes every PRACTICE WITH AJIT AI call through Google Gemini (primary)
 // with automatic silent failover to Groq → OpenRouter → NVIDIA NIM. New providers
 // can be registered by adding to the PROVIDERS array below.
 
@@ -206,7 +206,7 @@ const PROVIDERS: ProviderConfig[] = [
     envKey: "OPENROUTER_API_KEY",
     extraHeaders: () => ({
       "HTTP-Referer": "https://ajit360.lovable.app",
-      "X-Title": "AJIT 360",
+      "X-Title": "PRACTICE WITH AJIT",
     }),
     mapModel: (m) => m || "google/gemini-2.5-flash",
   },

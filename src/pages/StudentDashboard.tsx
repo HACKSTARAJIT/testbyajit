@@ -13,6 +13,7 @@ import {
   AchievementsRow, DailyChallenge, QuickActions, GoalsPanel, RecentActivity, OnboardingCards, HomeSkeleton,
 } from "@/components/home/HomeSections";
 import FloatingAIButton from "@/components/home/FloatingAIButton";
+import { APP_NAME } from "@/lib/brand";
 
 const fmtSize = (bytes?: number | null) => {
   if (!bytes) return null;

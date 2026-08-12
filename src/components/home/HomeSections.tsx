@@ -12,6 +12,7 @@ import {
 import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
 import { useMemo } from "react";
 import type { HomeData } from "./useHomeData";
+import { APP_NAME } from "@/lib/brand";
 
 const greet = () => {
   const h = new Date().getHours();

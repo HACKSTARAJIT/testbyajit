@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { GraduationCap, Loader2 } from "lucide-react";
 import { z } from "zod";
+import { APP_NAME } from "@/lib/brand";
 
 const schema = z.object({
   email: z.string().trim().email("Valid email required").max(255),
