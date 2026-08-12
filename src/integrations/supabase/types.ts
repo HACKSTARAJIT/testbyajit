@@ -2511,6 +2511,7 @@ export type Database = {
           created_at: string
           difficulty: string | null
           explanation: string | null
+          first_wrong_at: string | null
           id: string
           image_path: string | null
           is_guess: boolean
@@ -2518,6 +2519,7 @@ export type Database = {
           is_skipped: boolean
           last_attempt_at: string | null
           last_attempt_result: string | null
+          last_wrong_at: string | null
           mastered_at: string | null
           mastery_score: number
           mistake_type: string | null
@@ -2532,8 +2534,13 @@ export type Database = {
           status: string
           subject_id: string | null
           test_id: string | null
+          test_name: string | null
           test_part: string | null
           topic: string | null
+          total_attempts: number
+          total_correct: number
+          total_skipped: number
+          total_wrong: number
           updated_at: string
           user_id: string
           wrong_count: number
@@ -2546,6 +2553,7 @@ export type Database = {
           created_at?: string
           difficulty?: string | null
           explanation?: string | null
+          first_wrong_at?: string | null
           id?: string
           image_path?: string | null
           is_guess?: boolean
@@ -2553,6 +2561,7 @@ export type Database = {
           is_skipped?: boolean
           last_attempt_at?: string | null
           last_attempt_result?: string | null
+          last_wrong_at?: string | null
           mastered_at?: string | null
           mastery_score?: number
           mistake_type?: string | null
@@ -2567,8 +2576,13 @@ export type Database = {
           status?: string
           subject_id?: string | null
           test_id?: string | null
+          test_name?: string | null
           test_part?: string | null
           topic?: string | null
+          total_attempts?: number
+          total_correct?: number
+          total_skipped?: number
+          total_wrong?: number
           updated_at?: string
           user_id: string
           wrong_count?: number
@@ -2581,6 +2595,7 @@ export type Database = {
           created_at?: string
           difficulty?: string | null
           explanation?: string | null
+          first_wrong_at?: string | null
           id?: string
           image_path?: string | null
           is_guess?: boolean
@@ -2588,6 +2603,7 @@ export type Database = {
           is_skipped?: boolean
           last_attempt_at?: string | null
           last_attempt_result?: string | null
+          last_wrong_at?: string | null
           mastered_at?: string | null
           mastery_score?: number
           mistake_type?: string | null
@@ -2602,8 +2618,13 @@ export type Database = {
           status?: string
           subject_id?: string | null
           test_id?: string | null
+          test_name?: string | null
           test_part?: string | null
           topic?: string | null
+          total_attempts?: number
+          total_correct?: number
+          total_skipped?: number
+          total_wrong?: number
           updated_at?: string
           user_id?: string
           wrong_count?: number
