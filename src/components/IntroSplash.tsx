@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { APP_NAME } from "@/lib/brand";
 import { brandingUrl, kindOfPath, loadIntro, type AppIntroRow } from "@/lib/branding";
 import { LottiePlayer } from "@/components/LottiePlayer";
 import { Button } from "@/components/ui/button";
