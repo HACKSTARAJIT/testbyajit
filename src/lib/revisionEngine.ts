@@ -84,6 +84,12 @@ export async function recordAttempt(
           .from("wrong_questions")
           .update({
             wrong_count: wrongCount,
+            total_attempts: (prev.total_attempts ?? 0) + 1,
+            total_wrong: (prev.total_wrong ?? 0) + (attempted ? 1 : 0),
+            total_skipped: (prev.total_skipped ?? 0) + (attempted ? 0 : 1),
+            first_wrong_at: prev.first_wrong_at ?? now,
+            last_wrong_at: now,
+            test_name: test.title ?? null,
             consecutive_correct: 0,
             mastery_score: 0,
             last_attempt_result: attempted ? "wrong" : "skipped",
@@ -114,6 +120,13 @@ export async function recordAttempt(
           priority: "low",
           status: "pending",
           source: "auto",
+          test_name: test.title ?? null,
+          total_attempts: 1,
+          total_wrong: attempted ? 1 : 0,
+          total_skipped: attempted ? 0 : 1,
+          total_correct: 0,
+          first_wrong_at: now,
+          last_wrong_at: now,
           wrong_count: 1,
           consecutive_correct: 0,
           mastery_score: 0,
@@ -132,6 +145,8 @@ export async function recordAttempt(
         .from("wrong_questions")
         .update({
           correct_revision_count: (prev.correct_revision_count ?? 0) + 1,
+          total_attempts: (prev.total_attempts ?? 0) + 1,
+          total_correct: (prev.total_correct ?? 0) + 1,
           consecutive_correct: streak,
           mastery_score: Math.min(streak, MASTERY_STREAK),
           last_attempt_result: "correct",
@@ -156,6 +171,11 @@ export async function recordAttempt(
         priority: "low",
         status: "pending",
         source: "marked",
+        test_name: test.title ?? null,
+        total_attempts: 1,
+        total_correct: 1,
+        total_wrong: 0,
+        total_skipped: 0,
         wrong_count: 0,
         correct_revision_count: 1,
         consecutive_correct: 1,
@@ -261,6 +281,8 @@ export async function recordRevisionAttempt(
       const mastered = streak >= MASTERY_STREAK;
       await supabase.from("wrong_questions").update({
         correct_revision_count: (prev.correct_revision_count ?? 0) + 1,
+        total_attempts: (prev.total_attempts ?? 0) + 1,
+        total_correct: (prev.total_correct ?? 0) + 1,
         consecutive_correct: streak,
         mastery_score: Math.min(streak, MASTERY_STREAK),
         last_attempt_result: "correct",
@@ -272,6 +294,11 @@ export async function recordRevisionAttempt(
       const wrongCount = (prev.wrong_count ?? 1) + 1;
       await supabase.from("wrong_questions").update({
         wrong_count: wrongCount,
+        total_attempts: (prev.total_attempts ?? 0) + 1,
+        total_wrong: (prev.total_wrong ?? 0) + (chosen ? 1 : 0),
+        total_skipped: (prev.total_skipped ?? 0) + (chosen ? 0 : 1),
+        first_wrong_at: prev.first_wrong_at ?? now,
+        last_wrong_at: now,
         consecutive_correct: 0,
         mastery_score: 0,
         last_attempt_result: chosen ? "wrong" : "skipped",
