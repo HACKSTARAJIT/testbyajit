@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Sparkles, ShieldCheck, Cloud } from "lucide-react";
-import brandLogo from "@/assets/ajit360-logo.png";
+import { APP_NAME, APP_LOGO, APP_LOGO_ALT } from "@/lib/brand";
 
 const APP_VERSION = "2.0.0";
 
@@ -12,8 +12,8 @@ export default function About() {
       <Button variant="ghost" size="sm" asChild><Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> Back to Home</Link></Button>
 
       <div className="glass-card rounded-3xl p-8 text-center">
-        <img src={brandLogo} alt="AJIT 360 logo" width={96} height={96} loading="lazy" className="mx-auto h-24 w-24 drop-shadow" />
-        <h1 className="mt-4 text-3xl font-bold gradient-text">AJIT 360</h1>
+        <img src={APP_LOGO} alt={APP_LOGO_ALT} width={96} height={96} loading="lazy" className="mx-auto h-24 w-24 drop-shadow" />
+        <h1 className="mt-4 text-3xl font-bold gradient-text">{APP_NAME}</h1>
         <p className="mt-1 text-sm font-medium text-primary">Learn • Practice • Analyze • Succeed</p>
         <p className="mt-3 text-muted-foreground">Your Complete AI Exam Preparation Platform — read PDFs, attempt tests, and let AJIT AI auto-build your personalised revision from every mistake.</p>
       </div>
@@ -28,7 +28,7 @@ export default function About() {
         <CardContent className="space-y-2 p-6 text-sm">
           <Row label="Developer" value="Ajit Singh" />
           <Row label="Version" value={APP_VERSION} />
-          <Row label="Copyright" value={`© ${new Date().getFullYear()} AJIT 360`} />
+          <Row label="Copyright" value={`© ${new Date().getFullYear()} ${APP_NAME}`} />
         </CardContent>
       </Card>
 

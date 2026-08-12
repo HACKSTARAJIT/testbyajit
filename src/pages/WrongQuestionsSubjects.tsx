@@ -31,7 +31,7 @@ export default function WrongQuestionsSubjects() {
           <div className="rounded-2xl bg-white/20 p-3"><XCircle className="h-6 w-6" /></div>
           <div>
             <h1 className="font-display text-2xl font-bold">❌ Wrong Questions</h1>
-            <p className="text-sm text-white/85">AJIT 360 tests के Wrong / Skipped questions</p>
+            <p className="text-sm text-white/85">PRACTICE WITH AJIT tests के Wrong / Skipped questions</p>
           </div>
         </div>
       </div>

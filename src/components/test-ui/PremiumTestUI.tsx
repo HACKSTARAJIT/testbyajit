@@ -10,7 +10,7 @@ import {
 /**
  * Universal Premium Test UI kit.
  * Presentation only — no scoring, navigation, AI or data logic lives here.
- * Used by every test surface in AJIT 360 (TestEngine + PracticeRunner).
+ * Used by every test surface in PRACTICE WITH AJIT (TestEngine + PracticeRunner).
  */
 
 
@@ -58,7 +58,7 @@ export function TestHeader({
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-neon text-[10px] font-black text-white">
             360
           </span>
-          <span className="text-sm font-bold tracking-tight">AJIT 360</span>
+          <span className="text-sm font-bold tracking-tight">{APP_NAME}</span>
         </div>
         <div className="hidden h-8 w-px bg-white/10 md:block" />
 

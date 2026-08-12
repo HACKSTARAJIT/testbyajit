@@ -88,7 +88,7 @@ export default function StudentDashboard() {
               <Smartphone className="h-6 w-6" />
             </div>
             <div>
-              <p className="flex items-center gap-2 font-semibold">📱 AJIT 360 App</p>
+              <p className="flex items-center gap-2 font-semibold">📱 {APP_NAME} App</p>
               <p className="text-xs text-muted-foreground">
                 Version {release?.version ?? "1.0.0"}
                 {fmtSize(release?.file_size) && ` • ${fmtSize(release?.file_size)}`}

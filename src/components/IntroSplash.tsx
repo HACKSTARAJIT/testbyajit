@@ -59,7 +59,7 @@ export function IntroSplash() {
       {kind === "lottie" ? (
         <LottiePlayer src={url} className="h-full max-h-[70vh] w-full max-w-[90vw]" />
       ) : kind === "gif" ? (
-        <img src={url} alt="AJIT 360 intro" className="max-h-full max-w-full object-contain" />
+        <img src={url} alt={`${APP_NAME} intro`} className="max-h-full max-w-full object-contain" />
       ) : (
         <video
           src={url}
