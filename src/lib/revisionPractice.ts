@@ -50,6 +50,7 @@ export async function loadWrongQuestionPractice(
     .select("question_id, question_text, correct_option, explanation, selected_option, wrong_count")
     .eq("user_id", userId)
     .eq("status", "pending")
+    .is("source_report_id", null)
     .filter("subject_id", realSubject ? "eq" : "is", realSubject as any)
     .filter("chapter_id", realChapter ? "eq" : "is", realChapter as any);
 
