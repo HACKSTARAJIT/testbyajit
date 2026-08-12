@@ -61,6 +61,7 @@ export default function WrongQuestions() {
       .from("wrong_questions")
       .select("*, tests(title), subjects(name), chapters(name)")
       .eq("user_id", user.id)
+      .is("source_report_id", null)
       .order("created_at", { ascending: false });
     const list = (data as any as WQ[]) ?? [];
     setRows(list);
