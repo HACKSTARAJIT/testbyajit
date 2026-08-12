@@ -55,7 +55,7 @@ export async function recordAttempt(
   const qIds = questions.map((q) => q.id);
   const { data: existingRows } = await supabase
     .from("wrong_questions")
-    .select("id, question_id, wrong_count, correct_revision_count, consecutive_correct, status")
+    .select("id, question_id, wrong_count, correct_revision_count, consecutive_correct, status, total_attempts, total_correct, total_wrong, total_skipped, first_wrong_at")
     .eq("user_id", userId)
     .in("question_id", qIds);
 
@@ -240,7 +240,7 @@ export async function recordRevisionAttempt(
   const qIds = questions.map((q) => q.id);
   const { data: rows } = await supabase
     .from("wrong_questions")
-    .select("id, question_id, test_id, wrong_count, correct_revision_count, consecutive_correct, status")
+    .select("id, question_id, test_id, wrong_count, correct_revision_count, consecutive_correct, status, total_attempts, total_correct, total_wrong, total_skipped, first_wrong_at")
     .eq("user_id", userId)
     .in("question_id", qIds);
 
