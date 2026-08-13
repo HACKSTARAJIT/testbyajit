@@ -5,7 +5,9 @@
  * To rebrand or swap the logo later, change ONLY this file
  * (plus index.html + public/manifest.webmanifest for static metadata).
  */
-import brandLogo from "@/assets/ajit360-logo.png";
+import brandLogoAsset from "@/assets/practice-with-ajit-logo.png.asset.json";
+
+const brandLogo = brandLogoAsset.url;
 
 /** Official, full brand name — always use this exact capitalization. */
 export const APP_NAME = "PRACTICE WITH AJIT";
