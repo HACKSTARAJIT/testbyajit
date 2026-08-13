@@ -2,8 +2,8 @@ import { ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import {
 import { APP_NAME } from "@/lib/brand";
+import {
   Brain, CheckCircle2, XCircle, Lightbulb, Zap, Sparkles, ChevronDown,
   ArrowLeft, ArrowRight, Flag, Timer, ListOrdered, Maximize2, Minimize2,
 } from "lucide-react";
