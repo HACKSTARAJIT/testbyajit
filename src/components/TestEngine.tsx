@@ -9,6 +9,7 @@ import {
   Target, RotateCcw, ListChecks, Sparkles, Info, Dice5, Brain, Star,
 } from "lucide-react";
 import { recordAttempt } from "@/lib/revisionEngine";
+import { TopAccuracyRanking } from "@/components/test-ui/TopAccuracyRanking";
 import {
   shuffleArray, buildOptionOrder, displayLetter, OPTION_LETTERS, type OptionLetter,
 } from "@/lib/shuffleMode";
