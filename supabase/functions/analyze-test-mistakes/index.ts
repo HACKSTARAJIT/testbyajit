@@ -213,10 +213,48 @@ Deno.serve(async (req) => {
         alert: `⚠️ ${r.topic} पिछले ${r.tests} tests में weak Topic रहा है (कुल ${r.wrong} गलत/छूटे)।`,
       }));
 
+    // ---- 🔥 Repeat Mistake Detection (same QUESTION id, App Test history only) ----
+    const { data: wqHistory } = await admin
+      .from("wrong_questions")
+      .select("question_id,total_attempts,total_wrong,total_correct,total_skipped,wrong_count,consecutive_correct,status,last_attempt_result,last_attempt_at")
+      .eq("user_id", userId)
+      .is("source_report_id", null)
+      .in("question_id", perQ.map((q) => q.id));
+
+    const repeatQuestions = (wqHistory ?? [])
+      .map((r: any) => {
+        const bad = (Number(r.total_wrong ?? 0) + Number(r.total_skipped ?? 0)) || Number(r.wrong_count ?? 0);
+        const streak = Number(r.consecutive_correct ?? 0);
+        const q = perQ.find((p) => p.id === r.question_id);
+        let severity: string | null = null;
+        if (bad >= 2) {
+          if (r.status === "mastered" || streak >= 2) severity = "resolved";
+          else if (streak === 1) severity = "improving";
+          else if (bad >= 4) severity = "critical";
+          else if (bad === 3) severity = "repeated";
+          else severity = "emerging";
+        }
+        return severity && q
+          ? {
+              question_index: q.index,
+              subject: q.subject, chapter: q.chapter, topic: q.topic ?? q.concept ?? q.chapter,
+              attempts: Number(r.total_attempts ?? bad), wrong: Number(r.total_wrong ?? bad),
+              skipped: Number(r.total_skipped ?? 0), correct: Number(r.total_correct ?? 0),
+              consecutive_correct: streak, last_result: r.last_attempt_result ?? null,
+              last_at: r.last_attempt_at ?? null, severity,
+              status_in_this_test: q.status,
+            }
+          : null;
+      })
+      .filter(Boolean)
+      .slice(0, 20);
+
     const historySummary = {
       recent_accuracy_trend: (pastAttempts ?? []).slice(0, 8).map((a: any) => a.accuracy).reverse(),
       previous_mistake_dna: dnaRow?.distribution ?? null,
       repeated_weak_topics: repeatedWeaknesses,
+      // वही प्रश्न जो पहले भी गलत/छूटे थे — सिर्फ़ App Test इतिहास से
+      repeat_question_evidence: repeatQuestions,
       // सिर्फ़ इसी subject का इतिहास — दूसरे विषय कभी report में न आएँ
       previous_topic_breakdowns: (pastReports ?? []).slice(0, 5).map((r: any) => ({
         at: r.created_at,
@@ -296,6 +334,15 @@ ${MISTAKE_CATEGORIES.join(", ")}.
 
 recommendations सिर्फ़ इसी test + ai_memory से निकलें (जैसे "Triangle Similarity आज 20 मिनट revise करो")।
 repeated_weakness_alerts में payload के repeated_weak_topics को ही हिंदी वाक्यों में लिखो।
+
+🔥 REPEAT MISTAKE EVIDENCE:
+payload के repeat_question_evidence में वे प्रश्न हैं जो पहले भी गलत/छूटे थे (severity: emerging/repeated/critical/improving/resolved)।
+जहाँ यह evidence मौजूद है वहाँ insight में साफ़ लिखो कि यह गलती दोहराई गई है
+(जैसे "यह प्रश्न पहले भी गलत हुआ था और इस attempt में फिर गलत हुआ" या
+"Triangles आपकी पिछली 3 attempts में लगातार कमजोर रहा है")।
+severity improving/resolved हो तो सुधार को स्वीकार करो।
+evidence न हो तो repeat mistake का दावा बिलकुल मत करो; कारण अनुमान से मत गढ़ो, ज़रूरत पड़े तो लिखो:
+"इस गलती के कारण का निष्कर्ष निकालने के लिए अभी पर्याप्त डेटा उपलब्ध नहीं है।"
 
 JSON की अपेक्षित संरचना (keys अंग्रेज़ी, values हिंदी):
 ${JSON.stringify({
@@ -485,6 +532,8 @@ ${JSON.stringify({
       weak_topics: (parsed.overall?.weak_topics ?? hr.weak_topics ?? []).slice(0, 10),
       strong_topics: (parsed.overall?.strong_topics ?? hr.strong_topics ?? []).slice(0, 10),
       repeated_mistakes: (hr.repeated_mistakes ?? []).slice(0, 10),
+      // 🔥 Repeat Mistake snapshot — append-only, पुराना record कभी delete नहीं होता
+      repeat_mistake_evidence: repeatQuestions,
       careless_mistakes: (hr.careless_mistakes ?? []).slice(0, 10),
       conceptual_mistakes: (hr.conceptual_mistakes ?? []).slice(0, 10),
       guess_behaviour: guessStats,
