@@ -335,6 +335,10 @@ export function TestEngine({
 
         {userId && <TopAccuracyRanking testId={test.id} />}
 
+        {userId && (
+          <RepeatMistakePanel userId={userId} questionIds={sessionQs.map((x) => x.id)} />
+        )}
+
 
 
         {guessStats.total > 0 && (
