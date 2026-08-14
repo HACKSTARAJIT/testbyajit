@@ -335,6 +335,15 @@ ${MISTAKE_CATEGORIES.join(", ")}.
 recommendations सिर्फ़ इसी test + ai_memory से निकलें (जैसे "Triangle Similarity आज 20 मिनट revise करो")।
 repeated_weakness_alerts में payload के repeated_weak_topics को ही हिंदी वाक्यों में लिखो।
 
+🔥 REPEAT MISTAKE EVIDENCE:
+payload के repeat_question_evidence में वे प्रश्न हैं जो पहले भी गलत/छूटे थे (severity: emerging/repeated/critical/improving/resolved)।
+जहाँ यह evidence मौजूद है वहाँ insight में साफ़ लिखो कि यह गलती दोहराई गई है
+(जैसे "यह प्रश्न पहले भी गलत हुआ था और इस attempt में फिर गलत हुआ" या
+"Triangles आपकी पिछली 3 attempts में लगातार कमजोर रहा है")।
+severity improving/resolved हो तो सुधार को स्वीकार करो।
+evidence न हो तो repeat mistake का दावा बिलकुल मत करो; कारण अनुमान से मत गढ़ो, ज़रूरत पड़े तो लिखो:
+"इस गलती के कारण का निष्कर्ष निकालने के लिए अभी पर्याप्त डेटा उपलब्ध नहीं है।"
+
 JSON की अपेक्षित संरचना (keys अंग्रेज़ी, values हिंदी):
 ${JSON.stringify({
       overall: { performance_grade: "", headline: "", strong_chapters: [], weak_chapters: [], strong_topics: [], weak_topics: [], most_repeated_mistake: "", most_expensive_mistake: "" },
