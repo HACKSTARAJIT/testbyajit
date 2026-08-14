@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { recordAttempt } from "@/lib/revisionEngine";
 import { TopAccuracyRanking } from "@/components/test-ui/TopAccuracyRanking";
+import { RepeatMistakePanel } from "@/components/test-ui/RepeatMistakePanel";
 import {
   shuffleArray, buildOptionOrder, displayLetter, OPTION_LETTERS, type OptionLetter,
 } from "@/lib/shuffleMode";
