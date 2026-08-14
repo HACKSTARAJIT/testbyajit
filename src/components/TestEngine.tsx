@@ -9,6 +9,7 @@ import {
   Target, RotateCcw, ListChecks, Sparkles, Info, Dice5, Brain, Star,
 } from "lucide-react";
 import { recordAttempt } from "@/lib/revisionEngine";
+import { TopAccuracyRanking } from "@/components/test-ui/TopAccuracyRanking";
 import {
   shuffleArray, buildOptionOrder, displayLetter, OPTION_LETTERS, type OptionLetter,
 } from "@/lib/shuffleMode";
@@ -331,6 +332,10 @@ export function TestEngine({
             { label: "Grade", value: gradeFor(result.accuracy) },
           ]}
         />
+
+        {userId && <TopAccuracyRanking testId={test.id} />}
+
+
 
         {guessStats.total > 0 && (
           <div className="rounded-3xl border border-primary/20 bg-gradient-to-br from-card to-primary/5 p-5 shadow-md">

@@ -2672,6 +2672,16 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_test_accuracy_leaderboard: {
+        Args: { _test_id: string }
+        Returns: {
+          accuracy: number
+          display_name: string
+          is_me: boolean
+          rank: number
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
