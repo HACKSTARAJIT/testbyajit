@@ -172,6 +172,14 @@ export default function WrongQuestions() {
           {r.status === "revised" && <Badge>Revised</Badge>}
           {r.status === "mastered" && <Badge className="bg-green-600">Mastered</Badge>}
           <Badge variant="outline">Mastery {Math.min(r.mastery_score ?? 0, 2)}/2</Badge>
+          {(() => {
+            const any = r as any;
+            const bad = (any.total_wrong ?? 0) + (any.total_skipped ?? 0) || (r.wrong_count ?? 0);
+            const sev = severityFor({ bad, consecutiveCorrect: r.consecutive_correct ?? 0, status: r.status });
+            if (sev === "none") return null;
+            const meta = SEVERITY_META[sev];
+            return <Badge variant="outline" className={meta.tone}>{meta.icon} {meta.label}</Badge>;
+          })()}
           {r.last_attempt_result && (
             <Badge variant="outline" className="capitalize">Last: {r.last_attempt_result}</Badge>
           )}
