@@ -332,6 +332,10 @@ export function TestEngine({
           ]}
         />
 
+        {userId && <TopAccuracyRanking testId={test.id} />}
+
+
+
         {guessStats.total > 0 && (
           <div className="rounded-3xl border border-primary/20 bg-gradient-to-br from-card to-primary/5 p-5 shadow-md">
             <div className="mb-3 flex items-center gap-2">
