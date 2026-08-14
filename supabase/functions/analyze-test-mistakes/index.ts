@@ -532,6 +532,8 @@ ${JSON.stringify({
       weak_topics: (parsed.overall?.weak_topics ?? hr.weak_topics ?? []).slice(0, 10),
       strong_topics: (parsed.overall?.strong_topics ?? hr.strong_topics ?? []).slice(0, 10),
       repeated_mistakes: (hr.repeated_mistakes ?? []).slice(0, 10),
+      // 🔥 Repeat Mistake snapshot — append-only, पुराना record कभी delete नहीं होता
+      repeat_mistake_evidence: repeatQuestions,
       careless_mistakes: (hr.careless_mistakes ?? []).slice(0, 10),
       conceptual_mistakes: (hr.conceptual_mistakes ?? []).slice(0, 10),
       guess_behaviour: guessStats,
