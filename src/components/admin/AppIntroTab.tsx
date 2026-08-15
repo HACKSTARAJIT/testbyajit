@@ -174,10 +174,37 @@ export function AppIntroTab() {
         </div>
 
         {showPreview && previewUrl && (
-          <div className="overflow-hidden rounded-2xl border bg-muted/30 p-3">
+          <div className="space-y-2 overflow-hidden rounded-2xl border bg-muted/30 p-3">
             {kind === "lottie" ? <LottiePlayer src={previewUrl} className="mx-auto h-56" />
               : kind === "gif" ? <img src={previewUrl} alt="Intro preview" className="mx-auto max-h-64" />
-              : <video src={previewUrl} controls autoPlay muted playsInline className="mx-auto max-h-64" />}
+              : (
+                <>
+                  <video
+                    ref={previewRef}
+                    src={previewUrl}
+                    controls
+                    autoPlay
+                    muted={previewMuted}
+                    playsInline
+                    className="mx-auto max-h-64"
+                  />
+                  <div className="flex justify-center">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const v = previewRef.current;
+                        const next = !previewMuted;
+                        setPreviewMuted(next);
+                        if (v) { v.muted = next; if (!next) { v.volume = 1; v.play().catch(() => {}); } }
+                      }}
+                    >
+                      {previewMuted ? <VolumeX className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
+                      {previewMuted ? "🔇 Sound Off" : "🔊 Sound On"}
+                    </Button>
+                  </div>
+                </>
+              )}
           </div>
         )}
       </CardContent>
