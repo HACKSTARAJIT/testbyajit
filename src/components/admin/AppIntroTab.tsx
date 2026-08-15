@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Trash2, Upload, Eye } from "lucide-react";
+import { Loader2, Trash2, Upload, Eye, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import {
   brandingUrl, detectKind, kindOfPath, loadIntro, removeBranding, uploadBranding,
