@@ -1039,6 +1039,96 @@ export type Database = {
           },
         ]
       }
+      mock_mistake_ai_memory: {
+        Row: {
+          advice: string | null
+          area: string | null
+          evidence: Json | null
+          first_seen_at: string
+          id: string
+          kind: string | null
+          last_seen_at: string
+          occurrences: number
+          pattern_key: string
+          severity: string | null
+          subject: string | null
+          summary: string | null
+          user_id: string
+        }
+        Insert: {
+          advice?: string | null
+          area?: string | null
+          evidence?: Json | null
+          first_seen_at?: string
+          id?: string
+          kind?: string | null
+          last_seen_at?: string
+          occurrences?: number
+          pattern_key: string
+          severity?: string | null
+          subject?: string | null
+          summary?: string | null
+          user_id: string
+        }
+        Update: {
+          advice?: string | null
+          area?: string | null
+          evidence?: Json | null
+          first_seen_at?: string
+          id?: string
+          kind?: string | null
+          last_seen_at?: string
+          occurrences?: number
+          pattern_key?: string
+          severity?: string | null
+          subject?: string | null
+          summary?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mock_mistake_intelligence: {
+        Row: {
+          created_at: string
+          error: string | null
+          evidence: Json | null
+          generated_at: string | null
+          id: string
+          questions_analyzed: number
+          report: Json | null
+          signature: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          evidence?: Json | null
+          generated_at?: string | null
+          id?: string
+          questions_analyzed?: number
+          report?: Json | null
+          signature?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          evidence?: Json | null
+          generated_at?: string | null
+          id?: string
+          questions_analyzed?: number
+          report?: Json | null
+          signature?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mock_mistake_mocks: {
         Row: {
           created_at: string
