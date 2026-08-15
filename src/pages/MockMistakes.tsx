@@ -43,6 +43,20 @@ export default function MockMistakes() {
         </div>
       </div>
 
+      <button
+        onClick={() => navigate("/mock-mistakes/intelligence")}
+        className="btn-ripple glass-card flex w-full items-center gap-4 rounded-2xl p-4 text-left transition-transform hover:scale-[1.01]"
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-primary text-2xl">🧠</div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold">AJIT AI Intelligence</p>
+          <p className="text-xs text-muted-foreground">
+            आपकी असली गलतियों का गहरा विश्लेषण + व्यक्तिगत सलाह
+          </p>
+        </div>
+        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      </button>
+
       {loading ? (
         <div className="space-y-3">{[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}</div>
       ) : (
