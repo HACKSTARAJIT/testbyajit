@@ -5,13 +5,41 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Trash2, Upload, Eye } from "lucide-react";
+import { Loader2, Trash2, Upload, Eye, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import {
   brandingUrl, detectKind, kindOfPath, loadIntro, removeBranding, uploadBranding,
   type AppIntroRow,
 } from "@/lib/branding";
 import { LottiePlayer } from "@/components/LottiePlayer";
+
+/** Detect whether a video file actually carries an audio track (best-effort, browser APIs). */
+async function hasAudioTrack(file: File): Promise<boolean | null> {
+  if (!file.type.startsWith("video/")) return null;
+  const url = URL.createObjectURL(file);
+  try {
+    return await new Promise<boolean | null>((resolve) => {
+      const v = document.createElement("video");
+      v.preload = "metadata";
+      v.muted = true;
+      v.src = url;
+      const done = (r: boolean | null) => resolve(r);
+      v.onerror = () => done(null);
+      v.onloadeddata = () => {
+        const anyV = v as any;
+        if (typeof anyV.mozHasAudio === "boolean") return done(anyV.mozHasAudio);
+        if (typeof anyV.webkitAudioDecodedByteCount === "number")
+          return done(anyV.webkitAudioDecodedByteCount > 0);
+        if (anyV.audioTracks) return done(anyV.audioTracks.length > 0);
+        done(null);
+      };
+      window.setTimeout(() => done(null), 8000);
+      v.play().catch(() => {});
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 
 export function AppIntroTab() {
   const [row, setRow] = useState<AppIntroRow | null>(null);
@@ -22,7 +50,10 @@ export function AppIntroTab() {
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [previewMuted, setPreviewMuted] = useState(false);
+  const [audioNote, setAudioNote] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<HTMLVideoElement>(null);
 
   const load = async () => {
     const r = await loadIntro();
@@ -35,6 +66,15 @@ export function AppIntroTab() {
     }
   };
   useEffect(() => { load(); }, []);
+
+  const onPickFile = async (f: File | null) => {
+    setFile(f);
+    setAudioNote(null);
+    if (!f) return;
+    const has = await hasAudioTrack(f);
+    if (has === false) setAudioNote("इस वीडियो में ऑडियो ट्रैक उपलब्ध नहीं है।");
+  };
+
 
   const save = async () => {
     setBusy(true);
@@ -99,7 +139,8 @@ export function AppIntroTab() {
         <div>
           <Label>Intro file</Label>
           <Input ref={inputRef} type="file" accept="video/mp4,video/webm,image/gif,image/webp,application/json,.json"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            onChange={(e) => onPickFile(e.target.files?.[0] ?? null)} />
+          {audioNote && <p className="mt-1 text-xs text-destructive">{audioNote}</p>}
           {row?.file_path && <p className="mt-1 text-xs text-muted-foreground">Current: {row.file_path.split("/").pop()} ({kind})</p>}
         </div>
 
@@ -133,10 +174,37 @@ export function AppIntroTab() {
         </div>
 
         {showPreview && previewUrl && (
-          <div className="overflow-hidden rounded-2xl border bg-muted/30 p-3">
+          <div className="space-y-2 overflow-hidden rounded-2xl border bg-muted/30 p-3">
             {kind === "lottie" ? <LottiePlayer src={previewUrl} className="mx-auto h-56" />
               : kind === "gif" ? <img src={previewUrl} alt="Intro preview" className="mx-auto max-h-64" />
-              : <video src={previewUrl} controls autoPlay muted playsInline className="mx-auto max-h-64" />}
+              : (
+                <>
+                  <video
+                    ref={previewRef}
+                    src={previewUrl}
+                    controls
+                    autoPlay
+                    muted={previewMuted}
+                    playsInline
+                    className="mx-auto max-h-64"
+                  />
+                  <div className="flex justify-center">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const v = previewRef.current;
+                        const next = !previewMuted;
+                        setPreviewMuted(next);
+                        if (v) { v.muted = next; if (!next) { v.volume = 1; v.play().catch(() => {}); } }
+                      }}
+                    >
+                      {previewMuted ? <VolumeX className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
+                      {previewMuted ? "🔇 Sound Off" : "🔊 Sound On"}
+                    </Button>
+                  </div>
+                </>
+              )}
           </div>
         )}
       </CardContent>

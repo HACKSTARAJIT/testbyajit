@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { APP_NAME } from "@/lib/brand";
 import { brandingUrl, kindOfPath, loadIntro, type AppIntroRow } from "@/lib/branding";
 import { LottiePlayer } from "@/components/LottiePlayer";
 import { Button } from "@/components/ui/button";
+import { Volume2 } from "lucide-react";
 
 const SEEN_KEY = "ajit360-intro-played";
 
@@ -14,6 +15,8 @@ export function IntroSplash() {
   const [intro, setIntro] = useState<AppIntroRow | null>(null);
   const [url, setUrl] = useState<string | null>(null);
   const [show, setShow] = useState(() => !sessionStorage.getItem(SEEN_KEY));
+  const [needsSoundTap, setNeedsSoundTap] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (!show) return;
@@ -47,6 +50,34 @@ export function IntroSplash() {
     return () => window.clearTimeout(t);
   }, [url, intro]);
 
+  /** Try sound-on autoplay first; fall back to muted autoplay + "Tap for Sound". */
+  const handleVideoRef = (el: HTMLVideoElement | null) => {
+    (videoRef as any).current = el;
+    if (!el || el.dataset.introInit === "1") return;
+    el.dataset.introInit = "1";
+    el.muted = false;
+    el.volume = 1;
+    el.play()
+      .then(() => setNeedsSoundTap(false))
+      .catch(() => {
+        el.muted = true;
+        setNeedsSoundTap(true);
+        el.play().catch(() => {
+          /* browser refused entirely – intro still ends on timer */
+        });
+      });
+  };
+
+  const enableSound = () => {
+    const el = videoRef.current;
+    if (!el) return;
+    el.muted = false;
+    el.volume = 1;
+    // Do not restart: resume from current position if paused.
+    if (el.paused) el.play().catch(() => {});
+    setNeedsSoundTap(false);
+  };
+
   function finish() {
     sessionStorage.setItem(SEEN_KEY, "1");
     setShow(false);
@@ -63,14 +94,26 @@ export function IntroSplash() {
         <img src={url} alt={`${APP_NAME} intro`} className="max-h-full max-w-full object-contain" />
       ) : (
         <video
+          ref={handleVideoRef}
           src={url}
           autoPlay
-          muted
           playsInline
           onEnded={finish}
           className="max-h-full max-w-full object-contain"
         />
       )}
+
+      {kind === "video" && needsSoundTap && (
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={enableSound}
+          className="absolute bottom-8 left-6 rounded-full shadow-lg backdrop-blur"
+        >
+          <Volume2 className="mr-2 h-4 w-4" /> Tap for Sound
+        </Button>
+      )}
+
       {intro.skip_enabled && (
         <Button
           size="sm"
