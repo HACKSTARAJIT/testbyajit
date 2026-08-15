@@ -13,6 +13,34 @@ import {
 } from "@/lib/branding";
 import { LottiePlayer } from "@/components/LottiePlayer";
 
+/** Detect whether a video file actually carries an audio track (best-effort, browser APIs). */
+async function hasAudioTrack(file: File): Promise<boolean | null> {
+  if (!file.type.startsWith("video/")) return null;
+  const url = URL.createObjectURL(file);
+  try {
+    return await new Promise<boolean | null>((resolve) => {
+      const v = document.createElement("video");
+      v.preload = "metadata";
+      v.muted = true;
+      v.src = url;
+      const done = (r: boolean | null) => resolve(r);
+      v.onerror = () => done(null);
+      v.onloadeddata = () => {
+        const anyV = v as any;
+        if (typeof anyV.mozHasAudio === "boolean") return done(anyV.mozHasAudio);
+        if (typeof anyV.webkitAudioDecodedByteCount === "number")
+          return done(anyV.webkitAudioDecodedByteCount > 0);
+        if (anyV.audioTracks) return done(anyV.audioTracks.length > 0);
+        done(null);
+      };
+      window.setTimeout(() => done(null), 8000);
+      v.play().catch(() => {});
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export function AppIntroTab() {
   const [row, setRow] = useState<AppIntroRow | null>(null);
   const [enabled, setEnabled] = useState(true);
@@ -22,7 +50,10 @@ export function AppIntroTab() {
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [previewMuted, setPreviewMuted] = useState(false);
+  const [audioNote, setAudioNote] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<HTMLVideoElement>(null);
 
   const load = async () => {
     const r = await loadIntro();
@@ -35,6 +66,15 @@ export function AppIntroTab() {
     }
   };
   useEffect(() => { load(); }, []);
+
+  const onPickFile = async (f: File | null) => {
+    setFile(f);
+    setAudioNote(null);
+    if (!f) return;
+    const has = await hasAudioTrack(f);
+    if (has === false) setAudioNote("इस वीडियो में ऑडियो ट्रैक उपलब्ध नहीं है।");
+  };
+
 
   const save = async () => {
     setBusy(true);
