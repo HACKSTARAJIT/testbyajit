@@ -139,7 +139,8 @@ export function AppIntroTab() {
         <div>
           <Label>Intro file</Label>
           <Input ref={inputRef} type="file" accept="video/mp4,video/webm,image/gif,image/webp,application/json,.json"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            onChange={(e) => onPickFile(e.target.files?.[0] ?? null)} />
+          {audioNote && <p className="mt-1 text-xs text-destructive">{audioNote}</p>}
           {row?.file_path && <p className="mt-1 text-xs text-muted-foreground">Current: {row.file_path.split("/").pop()} ({kind})</p>}
         </div>
 
