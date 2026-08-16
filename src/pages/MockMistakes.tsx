@@ -57,6 +57,20 @@ export default function MockMistakes() {
         <ChevronRight className="h-5 w-5 text-muted-foreground" />
       </button>
 
+      <button
+        onClick={() => navigate("/mock-mistakes/action-plan")}
+        className="btn-ripple glass-card -mt-1 flex w-full items-center gap-4 rounded-2xl border border-primary/25 p-4 text-left transition-transform hover:scale-[1.01]"
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-primary text-2xl">🎯</div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold">ACTION PLAN</p>
+          <p className="text-xs text-muted-foreground">
+            अब मुझे क्या करना चाहिए? — आपकी गलतियों से बना अगला कदम
+          </p>
+        </div>
+        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      </button>
+
       {loading ? (
         <div className="space-y-3">{[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}</div>
       ) : (

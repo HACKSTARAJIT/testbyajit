@@ -1039,6 +1039,72 @@ export type Database = {
           },
         ]
       }
+      mock_mistake_action_completions: {
+        Row: {
+          action_key: string
+          completed_at: string
+          id: string
+          snapshot: Json
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          action_key: string
+          completed_at?: string
+          id?: string
+          snapshot?: Json
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          action_key?: string
+          completed_at?: string
+          id?: string
+          snapshot?: Json
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mock_mistake_action_plans: {
+        Row: {
+          created_at: string
+          error: string | null
+          evidence: Json | null
+          generated_at: string | null
+          id: string
+          plan: Json | null
+          questions_analyzed: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          evidence?: Json | null
+          generated_at?: string | null
+          id?: string
+          plan?: Json | null
+          questions_analyzed?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          evidence?: Json | null
+          generated_at?: string | null
+          id?: string
+          plan?: Json | null
+          questions_analyzed?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mock_mistake_ai_memory: {
         Row: {
           advice: string | null
