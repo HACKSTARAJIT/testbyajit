@@ -199,5 +199,3 @@ export default function MockMistakesActionPlan() {
     </div>
   );
 }
-
-export { findAction };
