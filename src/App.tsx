@@ -40,6 +40,8 @@ const MockAutoTest = lazy(() => import("./pages/MockAutoTest.tsx"));
 const MockMistakes = lazy(() => import("./pages/MockMistakes.tsx"));
 const MockMistakesSubject = lazy(() => import("./pages/MockMistakesSubject.tsx"));
 const MockMistakesIntelligence = lazy(() => import("./pages/MockMistakesIntelligence.tsx"));
+const MockMistakesActionPlan = lazy(() => import("./pages/MockMistakesActionPlan.tsx"));
+const MockMistakesActionPractice = lazy(() => import("./pages/MockMistakesActionPractice.tsx"));
 const MockMistakesMock = lazy(() => import("./pages/MockMistakesMock.tsx"));
 const MockMistakesTest = lazy(() => import("./pages/MockMistakesTest.tsx"));
 const MockMistakesTopicTest = lazy(() => import("./pages/MockMistakesTopicTest.tsx"));
@@ -120,6 +122,8 @@ const App = () => (
             <Route path="/mock-revision-hub" element={withLayout(<MockRevisionHub />)} />
             <Route path="/mock-mistakes" element={withLayout(<MockMistakes />)} />
             <Route path="/mock-mistakes/intelligence" element={withLayout(<MockMistakesIntelligence />)} />
+            <Route path="/mock-mistakes/action-plan" element={withLayout(<MockMistakesActionPlan />)} />
+            <Route path="/mock-mistakes/action-plan/:actionKey" element={withLayout(<MockMistakesActionPractice />)} />
             <Route path="/mock-mistakes/:subject" element={withLayout(<MockMistakesSubject />)} />
             <Route path="/mock-mistakes/:subject/:mockId" element={withLayout(<MockMistakesMock />)} />
             <Route path="/mock-mistakes/:subject/:mockId/test" element={withLayout(<MockMistakesTest />)} />
