@@ -151,6 +151,26 @@ export default function MockMistakesSubject() {
     load();
   };
 
+  const busy = mocks.some((m) => m.organize_status === "processing");
+  const busyMock = mocks.find((m) => m.organize_status === "processing");
+
+  const normalize = async () => {
+    if (!user || busy) return;
+    setMocks((prev) => prev.map((x) => ({
+      ...x, organize_status: "processing", organize_message: "Preparing...", organize_progress: 0,
+    })));
+    const { error } = await supabase.functions.invoke("ai-organize-mock", {
+      body: { mode: "normalize", subject: subjectName },
+    });
+    if (error) {
+      toast({ title: "Normalize failed", description: error.message, variant: "destructive" });
+      load();
+      return;
+    }
+    toast({ title: "🧠 Normalize & Reorganize started", description: "Background me chal raha hai — questions safe hain, sirf classification update hogi." });
+    load();
+  };
+
   return (
     <div className="space-y-5 animate-fade-in">
       <Button variant="ghost" size="sm" onClick={() => navigate("/mock-mistakes")}>
