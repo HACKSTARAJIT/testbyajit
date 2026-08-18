@@ -2,11 +2,11 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { unifiedFetch } from "../_shared/unifiedAI.ts";
 import {
-  canonicalize,
   taxonomyFromRows,
   taxonomyPrompt,
   type Taxonomy,
 } from "../_shared/taxonomy.ts";
+import { hierarchyPrompt, placeInHierarchy } from "../_shared/hierarchy.ts";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -68,11 +68,16 @@ function buildPrompt(subject: string, tax: Taxonomy, payload: unknown) {
 
 You are ONLY a librarian: never rewrite, never generate, never answer, never modify any question. You only assign classification labels.
 
-EXISTING CANONICAL CATEGORIES for this student (Chapter: topics):
+CANONICAL HIERARCHY for this subject (Chapter: allowed topics) — ALWAYS prefer these:
+${hierarchyPrompt(subject)}
+
+CATEGORIES ALREADY USED by this student (Chapter: topics):
 ${taxonomyPrompt(tax)}
 
 RULES (very important):
-1. FIRST try to reuse an existing canonical Chapter and Topic above. Only invent a new one when the concept is genuinely different.
+1. Output a real 3-level hierarchy: broad "chapter" (from the canonical hierarchy above), specific "topic" inside that chapter, and an optional narrower "subtopic".
+1b. NEVER put a topic-level concept in "chapter". Examples: "Ancient History" -> chapter "History", topic "Ancient History". "Indian Geography" -> chapter "Geography", topic "Indian Geography". "Physics" -> chapter "Science & Technology", topic "Physics". "3D Mensuration" -> chapter "Mensuration", topic "3D Mensuration". "Idioms & Phrases" -> chapter "Vocabulary", topic "Idioms & Phrases". "Boats & Streams" -> chapter "Arithmetic", topic "Boats & Streams".
+1c. Only invent a new chapter when the concept genuinely fits none of the canonical chapters — this must be rare.
 2. Never output combined names like "Current Affairs / Science & Technology" or "Science (Physics)". Choose ONE Chapter and put the finer concept in topic/subtopic.
 3. Same meaning = same category ("Art and Culture" -> "Art & Culture", "Triangles"/"Triangle Problems" -> "Triangles").
 4. Keep a real hierarchy: subject > chapter > topic > subtopic. Do not mix levels.
@@ -149,7 +154,7 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     // MODE: normalize & reorganize an entire subject (one-time cleanup)
     // ------------------------------------------------------------------
-    if (body?.mode === "normalize") {
+    if (body?.mode === "normalize" || body?.mode === "rebuild") {
       const subject = typeof body.subject === "string" ? body.subject : "";
       if (!subject) return json({ error: "subject required" }, 400);
 
@@ -189,19 +194,19 @@ Deno.serve(async (req) => {
       const work = async () => {
         let done = 0;
         try {
-          await setStatus({ organize_message: "Analyzing existing classifications..." });
+          await setStatus({ organize_message: "Analyzing questions..." });
           // Pass 1 — deterministic merge of equivalent / combined names.
           const tax = taxonomyFromRows([]);
-          await setStatus({ organize_message: "Finding duplicate categories..." });
+          await setStatus({ organize_message: "Building canonical hierarchy..." });
           const merged = rows.map((r) => ({
             row: r,
-            canon: canonicalize(
+            canon: placeInHierarchy(
               { subject, chapter: r.ai_chapter, topic: r.ai_topic, subtopic: r.ai_subtopic },
               subject,
               tax,
             ),
           }));
-          await setStatus({ organize_message: "Merging equivalent categories..." });
+          await setStatus({ organize_message: "Merging duplicates..." });
           for (const m of merged) {
             const r = m.row;
             if (
@@ -218,12 +223,12 @@ Deno.serve(async (req) => {
           }
 
           // Pass 2 — AI re-check every question against the canonical taxonomy.
-          await setStatus({ organize_message: "Reclassifying questions..." });
+          await setStatus({ organize_message: "Assigning Chapters & Topics..." });
           for (let i = 0; i < rows.length; i += BATCH) {
             const batch = rows.slice(i, i + BATCH);
             await setStatus({
               organize_progress: done,
-              organize_message: `Reclassifying questions... ${Math.min(done + 1, rows.length)} / ${rows.length}`,
+              organize_message: `Assigning Chapters & Topics... ${Math.min(done + 1, rows.length)} / ${rows.length}`,
             });
             const byIndex = await classifyBatch(subject, tax, batch);
             for (let k = 0; k < batch.length; k++) {
@@ -231,7 +236,7 @@ Deno.serve(async (req) => {
               const ai = byIndex.get(k);
               const prev = merged.find((m) => m.row.id === q.id)!.canon;
               const canon = ai
-                ? canonicalize(
+                ? placeInHierarchy(
                     { subject, chapter: ai.chapter, topic: ai.topic, subtopic: ai.subtopic },
                     subject,
                     tax,
@@ -249,7 +254,7 @@ Deno.serve(async (req) => {
             }
           }
 
-          await setStatus({ organize_message: "Building canonical hierarchy...", organize_progress: done });
+          await setStatus({ organize_message: "Verifying questions...", organize_progress: done });
           await setStatus({ organize_message: "Saving..." });
           await setStatus({
             organize_status: "organized",
@@ -276,7 +281,7 @@ Deno.serve(async (req) => {
       } else {
         work();
       }
-      return json({ ok: true, queued: rows.length, mode: "normalize" });
+      return json({ ok: true, queued: rows.length, mode: "rebuild" });
     }
 
     // ------------------------------------------------------------------
@@ -340,7 +345,7 @@ Deno.serve(async (req) => {
           for (let k = 0; k < batch.length; k++) {
             const q = batch[k];
             const ai = byIndex.get(k) ?? {};
-            const canon = canonicalize(
+            const canon = placeInHierarchy(
               {
                 subject: ai.subject ?? mock.subject,
                 chapter: ai.chapter ?? q.chapter,

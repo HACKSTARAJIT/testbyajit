@@ -160,14 +160,14 @@ export default function MockMistakesSubject() {
       ...x, organize_status: "processing", organize_message: "Preparing...", organize_progress: 0,
     })));
     const { error } = await supabase.functions.invoke("ai-organize-mock", {
-      body: { mode: "normalize", subject: subjectName },
+      body: { mode: "rebuild", subject: subjectName },
     });
     if (error) {
-      toast({ title: "Normalize failed", description: error.message, variant: "destructive" });
+      toast({ title: "Rebuild failed", description: error.message, variant: "destructive" });
       load();
       return;
     }
-    toast({ title: "🧠 Normalize & Reorganize started", description: "Background me chal raha hai — questions safe hain, sirf classification update hogi." });
+    toast({ title: "🧠 Rebuild AI Hierarchy started", description: "Background me chal raha hai — questions, practice history aur mastery safe hain, sirf classification update hogi." });
     load();
   };
 
@@ -280,9 +280,9 @@ export default function MockMistakesSubject() {
         <TabsContent value="chapters" className="mt-4 space-y-4">
           {chapters.length > 0 && (
             <div className="glass-card space-y-2 rounded-2xl p-4">
-              <p className="text-sm font-semibold">🧠 Normalize & Reorganize</p>
+              <p className="text-sm font-semibold">🧠 Rebuild AI Hierarchy</p>
               <p className="text-xs text-muted-foreground">
-                Duplicate/overlapping chapters ko merge karke ek clean canonical hierarchy banata hai. Aapke questions, practice history aur mastery bilkul safe rehte hain — sirf classification update hoti hai.
+                सभी वास्तविक Mock Mistake questions को दोबारा समझकर Subject → Chapter → Topic → Sub-topic hierarchy में व्यवस्थित करें। प्रश्न, अभ्यास इतिहास और Mastery data सुरक्षित रहेंगे।
               </p>
               {busy ? (
                 <div className="space-y-1.5 pt-1">
@@ -290,11 +290,11 @@ export default function MockMistakesSubject() {
                     value={Math.round(((busyMock?.organize_progress ?? 0) / (busyMock?.organize_total || 1)) * 100)}
                     className="h-2"
                   />
-                  <p className="text-xs text-muted-foreground">{busyMock?.organize_message ?? "Analyzing..."}</p>
+                  <p className="text-xs text-muted-foreground">{busyMock?.organize_message ?? "Analyzing questions..."}</p>
                 </div>
               ) : (
                 <Button variant="secondary" className="w-full rounded-xl" onClick={normalize}>
-                  <Brain className="mr-1 h-4 w-4" /> Normalize & Reorganize
+                  <Brain className="mr-1 h-4 w-4" /> Rebuild AI Hierarchy
                 </Button>
               )}
             </div>
@@ -314,44 +314,72 @@ export default function MockMistakesSubject() {
                   <AccordionTrigger className="hover:no-underline">
                     <div className="min-w-0 text-left">
                       <p className="truncate font-semibold">{c.chapter}</p>
-                      <p className="text-xs text-muted-foreground">{c.topics.length} topic tests · {c.total} questions</p>
+                      <p className="text-xs text-muted-foreground">{c.topics.length} topics · {c.total} questions</p>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-3 pb-4">
-                    {c.topics.map((t) => {
-                      const key = topicSourceKey(subjectName, c.chapter, t.topic);
-                      const s = topicStats[key];
-                      const route = `/mock-mistakes/${encodeURIComponent(subjectName)}/topic/${topicRouteKey(c.chapter, t.topic)}`;
-                      return (
-                        <div key={t.topic} className="rounded-2xl bg-muted/40 p-4">
-                          <p className="font-semibold">{t.topic}</p>
-                          <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                            <span>📄 Questions: <b className="text-foreground">{t.questions.length}</b></span>
-                            <span>🔁 Practices: <b className="text-foreground">{s?.attempts ?? 0}</b></span>
-                            <span>🎯 Best Accuracy: <b className="text-foreground">{s ? `${s.bestAccuracy}%` : "—"}</b></span>
-                            <span>🕒 Last: <b className="text-foreground">{s?.lastAt ? new Date(s.lastAt).toLocaleDateString() : "—"}</b></span>
-                          </div>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <Button
-                              size="sm"
-                              className="flex-1 rounded-xl"
-                              onClick={() => navigate(route, { state: { autostart: true } })}
-                            >
-                              <Play className="mr-1 h-3.5 w-3.5" />
-                              {s?.attempts ? "Retake" : "Start Practice"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              className="flex-1 rounded-xl"
-                              onClick={() => navigate(route)}
-                            >
-                              <HistoryIcon className="mr-1 h-3.5 w-3.5" /> View History
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    <Accordion type="multiple" className="space-y-3">
+                      {c.topics.map((t) => {
+                        const key = topicSourceKey(subjectName, c.chapter, t.topic);
+                        const s = topicStats[key];
+                        const route = `/mock-mistakes/${encodeURIComponent(subjectName)}/topic/${topicRouteKey(c.chapter, t.topic)}`;
+                        return (
+                          <AccordionItem
+                            key={t.topic}
+                            value={`${c.chapter}|||${t.topic}`}
+                            className="rounded-2xl border-0 bg-muted/40 px-4"
+                          >
+                            <AccordionTrigger className="hover:no-underline">
+                              <div className="min-w-0 text-left">
+                                <p className="truncate font-semibold">{t.topic}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {t.subtopics.length > 0 ? `${t.subtopics.length} sub-topics · ` : ""}
+                                  {t.questions.length} questions
+                                </p>
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="space-y-3 pb-4">
+                              <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                                <span>📄 Questions: <b className="text-foreground">{t.questions.length}</b></span>
+                                <span>🔁 Practices: <b className="text-foreground">{s?.attempts ?? 0}</b></span>
+                                <span>🎯 Best Accuracy: <b className="text-foreground">{s ? `${s.bestAccuracy}%` : "—"}</b></span>
+                                <span>🕒 Last: <b className="text-foreground">{s?.lastAt ? new Date(s.lastAt).toLocaleDateString() : "—"}</b></span>
+                              </div>
+
+                              {t.subtopics.length > 0 && (
+                                <div className="space-y-1.5 rounded-xl bg-background/40 p-3">
+                                  {t.subtopics.map((st) => (
+                                    <div key={st.subtopic} className="flex items-center justify-between gap-3 text-xs">
+                                      <span className="min-w-0 truncate">↳ {st.subtopic}</span>
+                                      <b className="shrink-0 text-foreground">{st.questions.length}</b>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  size="sm"
+                                  className="flex-1 rounded-xl"
+                                  onClick={() => navigate(route, { state: { autostart: true } })}
+                                >
+                                  <Play className="mr-1 h-3.5 w-3.5" />
+                                  {s?.attempts ? "Retake" : "Start Practice"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="flex-1 rounded-xl"
+                                  onClick={() => navigate(route)}
+                                >
+                                  <HistoryIcon className="mr-1 h-3.5 w-3.5" /> View History
+                                </Button>
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        );
+                      })}
+                    </Accordion>
                   </AccordionContent>
                 </AccordionItem>
               ))}
