@@ -280,9 +280,9 @@ export default function MockMistakesSubject() {
         <TabsContent value="chapters" className="mt-4 space-y-4">
           {chapters.length > 0 && (
             <div className="glass-card space-y-2 rounded-2xl p-4">
-              <p className="text-sm font-semibold">🧠 Normalize & Reorganize</p>
+              <p className="text-sm font-semibold">🧠 Rebuild AI Hierarchy</p>
               <p className="text-xs text-muted-foreground">
-                Duplicate/overlapping chapters ko merge karke ek clean canonical hierarchy banata hai. Aapke questions, practice history aur mastery bilkul safe rehte hain — sirf classification update hoti hai.
+                सभी वास्तविक Mock Mistake questions को दोबारा समझकर Subject → Chapter → Topic → Sub-topic hierarchy में व्यवस्थित करें। प्रश्न, अभ्यास इतिहास और Mastery data सुरक्षित रहेंगे।
               </p>
               {busy ? (
                 <div className="space-y-1.5 pt-1">
@@ -290,11 +290,11 @@ export default function MockMistakesSubject() {
                     value={Math.round(((busyMock?.organize_progress ?? 0) / (busyMock?.organize_total || 1)) * 100)}
                     className="h-2"
                   />
-                  <p className="text-xs text-muted-foreground">{busyMock?.organize_message ?? "Analyzing..."}</p>
+                  <p className="text-xs text-muted-foreground">{busyMock?.organize_message ?? "Analyzing questions..."}</p>
                 </div>
               ) : (
                 <Button variant="secondary" className="w-full rounded-xl" onClick={normalize}>
-                  <Brain className="mr-1 h-4 w-4" /> Normalize & Reorganize
+                  <Brain className="mr-1 h-4 w-4" /> Rebuild AI Hierarchy
                 </Button>
               )}
             </div>
