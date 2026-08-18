@@ -160,14 +160,14 @@ export default function MockMistakesSubject() {
       ...x, organize_status: "processing", organize_message: "Preparing...", organize_progress: 0,
     })));
     const { error } = await supabase.functions.invoke("ai-organize-mock", {
-      body: { mode: "normalize", subject: subjectName },
+      body: { mode: "rebuild", subject: subjectName },
     });
     if (error) {
-      toast({ title: "Normalize failed", description: error.message, variant: "destructive" });
+      toast({ title: "Rebuild failed", description: error.message, variant: "destructive" });
       load();
       return;
     }
-    toast({ title: "🧠 Normalize & Reorganize started", description: "Background me chal raha hai — questions safe hain, sirf classification update hogi." });
+    toast({ title: "🧠 Rebuild AI Hierarchy started", description: "Background me chal raha hai — questions, practice history aur mastery safe hain, sirf classification update hogi." });
     load();
   };
 
