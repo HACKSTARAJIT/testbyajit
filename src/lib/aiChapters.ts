@@ -31,7 +31,8 @@ export type AIQuestion = {
   created_at: string;
 };
 
-export type TopicNode = { topic: string; questions: AIQuestion[] };
+export type SubtopicNode = { subtopic: string; questions: AIQuestion[] };
+export type TopicNode = { topic: string; questions: AIQuestion[]; subtopics: SubtopicNode[] };
 export type ChapterNode = { chapter: string; total: number; topics: TopicNode[] };
 
 /** Load the AI-classified question repository for one subject, grouped Chapter → Topic. */
