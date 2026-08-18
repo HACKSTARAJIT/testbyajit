@@ -75,7 +75,19 @@ export async function loadAIChapters(userId: string, subject: string): Promise<{
   const chapters: ChapterNode[] = [...map.entries()]
     .map(([chapter, topics]) => {
       const nodes = [...topics.entries()]
-        .map(([topic, questions]) => ({ topic, questions }))
+        .map(([topic, questions]) => {
+          const subMap = new Map<string, AIQuestion[]>();
+          for (const q of questions) {
+            const key = (q.ai_subtopic || "").trim();
+            if (!key) continue;
+            if (!subMap.has(key)) subMap.set(key, []);
+            subMap.get(key)!.push(q);
+          }
+          const subtopics: SubtopicNode[] = [...subMap.entries()]
+            .map(([subtopic, qs]) => ({ subtopic, questions: qs }))
+            .sort((a, b) => b.questions.length - a.questions.length);
+          return { topic, questions, subtopics };
+        })
         .sort((a, b) => b.questions.length - a.questions.length);
       return {
         chapter,
