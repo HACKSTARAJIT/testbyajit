@@ -965,6 +965,171 @@ export type Database = {
         }
         Relationships: []
       }
+      mock_classification_job_items: {
+        Row: {
+          ai_chapter: string | null
+          ai_subject: string | null
+          ai_subtopic: string | null
+          ai_topic: string | null
+          attempts: number
+          claimed_at: string | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          job_id: string
+          provider: string | null
+          question_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_chapter?: string | null
+          ai_subject?: string | null
+          ai_subtopic?: string | null
+          ai_topic?: string | null
+          attempts?: number
+          claimed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_id: string
+          provider?: string | null
+          question_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_chapter?: string | null
+          ai_subject?: string | null
+          ai_subtopic?: string | null
+          ai_topic?: string | null
+          attempts?: number
+          claimed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_id?: string
+          provider?: string | null
+          question_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mock_classification_job_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "mock_classification_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mock_classification_job_items_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "mock_mistake_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mock_classification_jobs: {
+        Row: {
+          completed_at: string | null
+          completed_questions: number
+          created_at: string
+          current_question: number
+          current_question_id: string | null
+          error_message: string | null
+          failed_questions: number
+          heartbeat_at: string | null
+          hierarchy_version: string
+          id: string
+          lease_expires_at: string | null
+          lease_token: string | null
+          mock_id: string | null
+          retry_count: number
+          scope_key: string
+          scope_type: string
+          skipped_questions: number
+          started_at: string | null
+          status: string
+          subject: string
+          total_questions: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_questions?: number
+          created_at?: string
+          current_question?: number
+          current_question_id?: string | null
+          error_message?: string | null
+          failed_questions?: number
+          heartbeat_at?: string | null
+          hierarchy_version: string
+          id?: string
+          lease_expires_at?: string | null
+          lease_token?: string | null
+          mock_id?: string | null
+          retry_count?: number
+          scope_key: string
+          scope_type: string
+          skipped_questions?: number
+          started_at?: string | null
+          status?: string
+          subject: string
+          total_questions?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_questions?: number
+          created_at?: string
+          current_question?: number
+          current_question_id?: string | null
+          error_message?: string | null
+          failed_questions?: number
+          heartbeat_at?: string | null
+          hierarchy_version?: string
+          id?: string
+          lease_expires_at?: string | null
+          lease_token?: string | null
+          mock_id?: string | null
+          retry_count?: number
+          scope_key?: string
+          scope_type?: string
+          skipped_questions?: number
+          started_at?: string | null
+          status?: string
+          subject?: string
+          total_questions?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mock_classification_jobs_current_question_id_fkey"
+            columns: ["current_question_id"]
+            isOneToOne: false
+            referencedRelation: "mock_mistake_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mock_classification_jobs_mock_id_fkey"
+            columns: ["mock_id"]
+            isOneToOne: false
+            referencedRelation: "mock_mistake_mocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mock_generated_questions: {
         Row: {
           chapter: string | null
@@ -1249,6 +1414,7 @@ export type Database = {
           chapter: string | null
           classification_id: string | null
           classification_status: string
+          classification_version: string | null
           classified_at: string | null
           correct_answer: string | null
           correct_count: number
@@ -1280,6 +1446,7 @@ export type Database = {
           chapter?: string | null
           classification_id?: string | null
           classification_status?: string
+          classification_version?: string | null
           classified_at?: string | null
           correct_answer?: string | null
           correct_count?: number
@@ -1311,6 +1478,7 @@ export type Database = {
           chapter?: string | null
           classification_id?: string | null
           classification_status?: string
+          classification_version?: string | null
           classified_at?: string | null
           correct_answer?: string | null
           correct_count?: number
@@ -2827,6 +2995,37 @@ export type Database = {
           email: string
           user_id: string
         }[]
+      }
+      claim_mock_classification_job: {
+        Args: { _job_id: string; _lease_seconds?: number; _lease_token: string }
+        Returns: boolean
+      }
+      complete_mock_classification_item: {
+        Args: {
+          _ai_chapter: string
+          _ai_subject: string
+          _ai_subtopic: string
+          _ai_topic: string
+          _hierarchy_version: string
+          _item_id: string
+          _job_id: string
+          _lease_token: string
+          _provider?: string
+        }
+        Returns: boolean
+      }
+      fail_mock_classification_item: {
+        Args: {
+          _error_message: string
+          _item_id: string
+          _job_id: string
+          _lease_token: string
+        }
+        Returns: boolean
+      }
+      finalize_mock_classification_job: {
+        Args: { _job_id: string; _lease_token: string }
+        Returns: string
       }
       get_test_accuracy_leaderboard: {
         Args: { _test_id: string }
