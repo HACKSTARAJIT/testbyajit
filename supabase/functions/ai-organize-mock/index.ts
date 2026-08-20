@@ -1,12 +1,48 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { unifiedFetch } from "../_shared/unifiedAI.ts";
-import {
-  taxonomyFromRows,
-  taxonomyPrompt,
-  type Taxonomy,
-} from "../_shared/taxonomy.ts";
+import { taxonomyFromRows, taxonomyPrompt, type Taxonomy } from "../_shared/taxonomy.ts";
 import { hierarchyPrompt, placeInHierarchy } from "../_shared/hierarchy.ts";
+
+const HIERARCHY_VERSION = "canonical-v2";
+const BATCH_SIZE = 5;
+const LEASE_SECONDS = 90;
+const STALE_MS = 3 * 60 * 1000;
+const MAX_CHAIN_HOPS = 8;
+
+type Admin = ReturnType<typeof createClient>;
+type Job = {
+  id: string;
+  user_id: string;
+  scope_type: "mock" | "subject";
+  scope_key: string;
+  mock_id: string | null;
+  subject: string;
+  hierarchy_version: string;
+  total_questions: number;
+  completed_questions: number;
+  failed_questions: number;
+  skipped_questions: number;
+  current_question: number;
+  status: string;
+  heartbeat_at: string | null;
+  lease_expires_at: string | null;
+};
+
+type Question = {
+  id: string;
+  mock_id: string;
+  question_text: string;
+  option_a: string | null;
+  option_b: string | null;
+  option_c: string | null;
+  option_d: string | null;
+  chapter: string | null;
+  topic: string | null;
+  ai_chapter: string | null;
+  ai_topic: string | null;
+  ai_subtopic: string | null;
+};
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -15,393 +51,298 @@ function json(body: unknown, status = 200) {
   });
 }
 
-type Row = {
-  id: string;
-  question_text: string;
-  option_a: string | null;
-  option_b: string | null;
-  option_c: string | null;
-  option_d: string | null;
-  correct_answer: string | null;
-  chapter: string | null;
-  topic: string | null;
-  ai_chapter?: string | null;
-  ai_topic?: string | null;
-  ai_subtopic?: string | null;
-};
+function adminClient() {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("Backend configuration is incomplete");
+  return createClient(url, key);
+}
 
-const BATCH = 8;
+async function authenticatedUser(req: Request) {
+  const header = req.headers.get("Authorization");
+  if (!header?.startsWith("Bearer ")) return null;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (serviceKey && header === `Bearer ${serviceKey}`) return { internal: true, userId: null };
+  const url = Deno.env.get("SUPABASE_URL");
+  const anon = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!url || !anon) return null;
+  const client = createClient(url, anon, { global: { headers: { Authorization: header } } });
+  const token = header.slice(7);
+  const { data, error } = await client.auth.getClaims(token);
+  const subject = data?.claims?.sub;
+  return error || typeof subject !== "string" ? null : { internal: false, userId: subject };
+}
 
-function parseJsonArray(text: string): any[] {
+function parseObject(text: string): Record<string, unknown> | null {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const raw = (fenced ? fenced[1] : text).trim();
-  const start = raw.indexOf("[");
-  const end = raw.lastIndexOf("]");
-  if (start === -1 || end === -1) return [];
+  const raw = (fenced?.[1] ?? text).trim();
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
   try {
-    const parsed = JSON.parse(raw.slice(start, end + 1));
-    return Array.isArray(parsed) ? parsed : [];
+    const value = JSON.parse(raw.slice(start, end + 1));
+    return value && typeof value === "object" && !Array.isArray(value) ? value : null;
   } catch {
-    return [];
+    return null;
   }
 }
 
-/** Load the canonical taxonomy already present for one user + subject. */
-async function loadTaxonomy(admin: any, userId: string, subject: string): Promise<Taxonomy> {
-  const { data: mocks } = await admin
-    .from("mock_mistake_mocks")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("subject", subject);
-  const ids = (mocks ?? []).map((m: any) => m.id);
+async function loadTaxonomy(admin: Admin, userId: string, subject: string): Promise<Taxonomy> {
+  const { data: mocks } = await admin.from("mock_mistake_mocks").select("id").eq("user_id", userId).eq("subject", subject);
+  const ids = (mocks ?? []).map((m: { id: string }) => m.id);
   if (!ids.length) return taxonomyFromRows([]);
-  const { data } = await admin
-    .from("mock_mistake_questions")
-    .select("ai_chapter, ai_topic")
-    .in("mock_id", ids)
-    .not("classification_id", "is", null);
-  return taxonomyFromRows((data ?? []) as any[]);
+  const { data } = await admin.from("mock_mistake_questions").select("ai_chapter, ai_topic").in("mock_id", ids).eq("classification_version", HIERARCHY_VERSION);
+  return taxonomyFromRows((data ?? []) as Array<{ ai_chapter?: string | null; ai_topic?: string | null }>);
 }
 
-function buildPrompt(subject: string, tax: Taxonomy, payload: unknown) {
-  return `Exam subject: ${subject}
+function classificationPrompt(subject: string, taxonomy: Taxonomy, question: Question) {
+  return `Classify exactly one imported mock-mistake question. Never solve, rewrite, or invent content.
 
-You are ONLY a librarian: never rewrite, never generate, never answer, never modify any question. You only assign classification labels.
+SUBJECT: ${subject}
+CANONICAL HIERARCHY:\n${hierarchyPrompt(subject)}
+EXISTING CATEGORIES TO REUSE:\n${taxonomyPrompt(taxonomy)}
 
-CANONICAL HIERARCHY for this subject (Chapter: allowed topics) — ALWAYS prefer these:
-${hierarchyPrompt(subject)}
+Rules:
+1. Broad area is chapter; specific area is topic; narrower concept is optional subtopic.
+2. Never combine categories. Same meaning must reuse the same category.
+3. Prefer the canonical hierarchy. If content is genuinely unclear use chapter "Unclassified", topic "General".
+4. Return one strict JSON object only: {"subject":"...","chapter":"...","topic":"...","subtopic":""}.
 
-CATEGORIES ALREADY USED by this student (Chapter: topics):
-${taxonomyPrompt(tax)}
-
-RULES (very important):
-1. Output a real 3-level hierarchy: broad "chapter" (from the canonical hierarchy above), specific "topic" inside that chapter, and an optional narrower "subtopic".
-1b. NEVER put a topic-level concept in "chapter". Examples: "Ancient History" -> chapter "History", topic "Ancient History". "Indian Geography" -> chapter "Geography", topic "Indian Geography". "Physics" -> chapter "Science & Technology", topic "Physics". "3D Mensuration" -> chapter "Mensuration", topic "3D Mensuration". "Idioms & Phrases" -> chapter "Vocabulary", topic "Idioms & Phrases". "Boats & Streams" -> chapter "Arithmetic", topic "Boats & Streams".
-1c. Only invent a new chapter when the concept genuinely fits none of the canonical chapters — this must be rare.
-2. Never output combined names like "Current Affairs / Science & Technology" or "Science (Physics)". Choose ONE Chapter and put the finer concept in topic/subtopic.
-3. Same meaning = same category ("Art and Culture" -> "Art & Culture", "Triangles"/"Triangle Problems" -> "Triangles").
-4. Keep a real hierarchy: subject > chapter > topic > subtopic. Do not mix levels.
-5. Classify from the actual question content, not from the mock name or hints.
-6. If the question is not clear enough, use chapter "Unclassified" and topic "General". Never invent.
-7. Use consistent naming: "&" (not "and"), Title Case, singular/standard exam terminology.
-
-Return ONLY a JSON array, one object per input item:
-[{"i":0,"subject":"...","chapter":"...","topic":"...","subtopic":""}]
-subtopic may be "" if unclear. No extra text.
-
-QUESTIONS:
-${JSON.stringify(payload)}`;
+QUESTION:\n${JSON.stringify({
+    text: question.question_text.slice(0, 1600),
+    options: [question.option_a, question.option_b, question.option_c, question.option_d].filter(Boolean),
+    current_chapter: question.ai_chapter ?? question.chapter ?? "",
+    current_topic: question.ai_topic ?? question.topic ?? "",
+  })}`;
 }
 
-async function classifyBatch(subject: string, tax: Taxonomy, batch: Row[]) {
-  const payload = batch.map((q, idx) => ({
-    i: idx,
-    question: q.question_text?.slice(0, 900) ?? "",
-    options: [q.option_a, q.option_b, q.option_c, q.option_d].filter(Boolean).slice(0, 4),
-    current_chapter: q.ai_chapter ?? q.chapter ?? "",
-    current_topic: q.ai_topic ?? q.topic ?? "",
-  }));
+async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Question) {
+  const response = await unifiedFetch({
+    feature: "ai-organize-mock",
+    dedupKey: `${HIERARCHY_VERSION}:${question.id}`,
+    timeoutMs: 20_000,
+    overallTimeoutMs: 25_000,
+    maxRetriesPerProvider: 0,
+    maxProviders: 3,
+    body: {
+      model: "openai/gpt-5.6-sol",
+      messages: [
+        { role: "system", content: "You are a precise academic librarian. Output strict JSON only." },
+        { role: "user", content: classificationPrompt(subject, taxonomy, question) },
+      ],
+      temperature: 0.1,
+    },
+  });
+  if (!response.ok) throw new Error(await response.text());
+  const payload = await response.json();
+  const content = payload?.choices?.[0]?.message?.content;
+  const parsed = typeof content === "string" ? parseObject(content) : null;
+  if (!parsed) throw new Error("AI returned malformed classification JSON");
+  const chapter = typeof parsed.chapter === "string" ? parsed.chapter : "";
+  const topic = typeof parsed.topic === "string" ? parsed.topic : "";
+  if (!chapter.trim() || !topic.trim()) throw new Error("AI classification omitted chapter or topic");
+  const canonical = placeInHierarchy({
+    subject: typeof parsed.subject === "string" ? parsed.subject : subject,
+    chapter,
+    topic,
+    subtopic: typeof parsed.subtopic === "string" ? parsed.subtopic : "",
+  }, subject, taxonomy);
+  return { ...canonical, provider: typeof payload?.provider === "string" ? payload.provider : null };
+}
 
-  let mapped: any[] = [];
-  try {
-    const res = await unifiedFetch({
-      feature: "ai-organize-mock",
-      body: {
-        messages: [
-          { role: "system", content: "You are a precise academic classifier that reuses existing canonical categories. Output strict JSON only." },
-          { role: "user", content: buildPrompt(subject, tax, payload) },
-        ],
-        temperature: 0.1,
-        max_tokens: 1200,
-      },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      mapped = parseJsonArray(data?.choices?.[0]?.message?.content ?? "");
-    }
-  } catch (e) {
-    console.error("classification batch failed", e);
+async function syncLegacyMock(admin: Admin, job: Job, status: string) {
+  if (job.scope_type !== "mock" || !job.mock_id) return;
+  const active = status === "processing" || status === "pending";
+  const finalStatus = active ? "processing" : status === "completed" || status === "partial" ? "organized" : "updated";
+  const processed = job.completed_questions + job.failed_questions + job.skipped_questions;
+  await admin.from("mock_mistake_mocks").update({
+    organize_status: finalStatus,
+    organize_progress: processed,
+    organize_total: job.total_questions,
+    organize_message: active ? `Classifying question ${Math.min(processed + 1, job.total_questions)} / ${job.total_questions}` : status === "completed" ? "Completed Successfully" : status === "partial" ? `Completed with ${job.failed_questions} failed` : null,
+    organize_error: status === "failed" || status === "stalled" ? "Classification paused. Resume to continue." : null,
+    organized_at: status === "completed" || status === "partial" ? new Date().toISOString() : null,
+  }).eq("id", job.mock_id);
+}
+
+async function invokeNext(jobId: string, hopsLeft: number) {
+  if (hopsLeft <= 0) return;
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return;
+  await new Promise((resolve) => setTimeout(resolve, 750));
+  const response = await fetch(`${url}/functions/v1/ai-organize-mock`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    body: JSON.stringify({ action: "process", jobId, hopsLeft }),
+  });
+  await response.text();
+}
+
+async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
+  const leaseToken = crypto.randomUUID();
+  const { data: claimed } = await admin.rpc("claim_mock_classification_job", {
+    _job_id: jobId, _lease_token: leaseToken, _lease_seconds: LEASE_SECONDS,
+  });
+  if (!claimed) return;
+
+  const { data: jobData } = await admin.from("mock_classification_jobs").select("*").eq("id", jobId).maybeSingle();
+  const job = jobData as Job | null;
+  if (!job || job.status === "cancelled") return;
+
+  const expiredBefore = new Date(Date.now() - STALE_MS).toISOString();
+  await admin.from("mock_classification_job_items").update({ status: "pending", claimed_at: null })
+    .eq("job_id", jobId).eq("status", "processing").lt("claimed_at", expiredBefore);
+
+  const { data: candidates } = await admin.from("mock_classification_job_items")
+    .select("id, question_id, attempts").eq("job_id", jobId).eq("status", "pending")
+    .order("created_at", { ascending: true }).limit(BATCH_SIZE);
+  const items = candidates ?? [];
+  if (!items.length) {
+    const { data: finalStatus } = await admin.rpc("finalize_mock_classification_job", { _job_id: jobId, _lease_token: leaseToken });
+    const { data: finalJob } = await admin.from("mock_classification_jobs").select("*").eq("id", jobId).maybeSingle();
+    if (finalJob) await syncLegacyMock(admin, finalJob as Job, String(finalStatus ?? finalJob.status));
+    return;
   }
 
-  const byIndex = new Map<number, any>();
-  for (const m of mapped) if (typeof m?.i === "number") byIndex.set(m.i, m);
-  return byIndex;
+  const ids = items.map((item: { question_id: string }) => item.question_id);
+  await admin.from("mock_classification_job_items").update({ status: "processing", claimed_at: new Date().toISOString() })
+    .eq("job_id", jobId).in("question_id", ids).eq("status", "pending");
+  const { data: questions } = await admin.from("mock_mistake_questions").select("id, mock_id, question_text, option_a, option_b, option_c, option_d, chapter, topic, ai_chapter, ai_topic, ai_subtopic").in("id", ids);
+  const questionMap = new Map((questions ?? []).map((q: Question) => [q.id, q]));
+  const taxonomy = await loadTaxonomy(admin, job.user_id, job.subject);
+
+  for (const item of items as Array<{ id: string; question_id: string; attempts: number }>) {
+    const { data: latest } = await admin.from("mock_classification_jobs").select("status").eq("id", jobId).maybeSingle();
+    if (latest?.status === "cancelled") break;
+    const question = questionMap.get(item.question_id);
+    if (!question) {
+      await admin.rpc("fail_mock_classification_item", { _job_id: jobId, _item_id: item.id, _lease_token: leaseToken, _error_message: "Original question was not found" });
+      continue;
+    }
+    try {
+      const result = await classifyQuestion(job.subject, taxonomy, question);
+      await admin.rpc("complete_mock_classification_item", {
+        _job_id: jobId, _item_id: item.id, _lease_token: leaseToken, _hierarchy_version: HIERARCHY_VERSION,
+        _ai_subject: result.subject, _ai_chapter: result.chapter, _ai_topic: result.topic,
+        _ai_subtopic: result.subtopic ?? "", _provider: result.provider,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await admin.rpc("fail_mock_classification_item", { _job_id: jobId, _item_id: item.id, _lease_token: leaseToken, _error_message: message });
+    }
+  }
+
+  const { data: refreshed } = await admin.from("mock_classification_jobs").select("*").eq("id", jobId).maybeSingle();
+  if (!refreshed) return;
+  const current = refreshed as Job;
+  const { count: remaining } = await admin.from("mock_classification_job_items").select("id", { count: "exact", head: true }).eq("job_id", jobId).eq("status", "pending");
+  await syncLegacyMock(admin, current, remaining ? "processing" : current.status);
+  if (remaining && current.status !== "cancelled") {
+    await admin.from("mock_classification_jobs").update({ lease_token: null, lease_expires_at: null, heartbeat_at: new Date().toISOString() }).eq("id", jobId).eq("lease_token", leaseToken);
+    await invokeNext(jobId, hopsLeft - 1);
+  } else {
+    const { data: finalStatus } = await admin.rpc("finalize_mock_classification_job", { _job_id: jobId, _lease_token: leaseToken });
+    const { data: finalJob } = await admin.from("mock_classification_jobs").select("*").eq("id", jobId).maybeSingle();
+    if (finalJob) await syncLegacyMock(admin, finalJob as Job, String(finalStatus ?? finalJob.status));
+  }
+}
+
+async function createJob(admin: Admin, userId: string, body: Record<string, unknown>) {
+  const mockId = typeof body.mockId === "string" ? body.mockId : null;
+  const subjectInput = typeof body.subject === "string" ? body.subject.trim() : "";
+  let subject = subjectInput;
+  if (mockId) {
+    const { data: mock } = await admin.from("mock_mistake_mocks").select("id, user_id, subject").eq("id", mockId).maybeSingle();
+    if (!mock || mock.user_id !== userId) throw new Error("Mock not found");
+    subject = mock.subject;
+  }
+  if (!subject) throw new Error("Subject is required");
+  const scopeType = mockId ? "mock" : "subject";
+  const scopeKey = mockId ?? subject;
+  const { data: active } = await admin.from("mock_classification_jobs").select("*")
+    .eq("user_id", userId).eq("scope_type", scopeType).eq("scope_key", scopeKey)
+    .eq("hierarchy_version", HIERARCHY_VERSION).in("status", ["pending", "processing", "stalled"]).maybeSingle();
+  if (active) return { job: active as Job, existing: true };
+
+  let query = admin.from("mock_mistake_questions").select("id, mock_id, classification_version")
+    .eq("user_id", userId).neq("classification_version", HIERARCHY_VERSION);
+  if (mockId) query = query.eq("mock_id", mockId);
+  else {
+    const { data: mocks } = await admin.from("mock_mistake_mocks").select("id").eq("user_id", userId).eq("subject", subject);
+    const mockIds = (mocks ?? []).map((m: { id: string }) => m.id);
+    if (!mockIds.length) throw new Error("No questions found for this subject");
+    query = query.in("mock_id", mockIds);
+  }
+  const { data: questions, error: questionError } = await query;
+  if (questionError) throw questionError;
+  const rows = questions ?? [];
+
+  const { data: created, error: createError } = await admin.from("mock_classification_jobs").insert({
+    user_id: userId, scope_type: scopeType, scope_key: scopeKey, mock_id: mockId, subject,
+    hierarchy_version: HIERARCHY_VERSION, total_questions: rows.length,
+    status: rows.length ? "pending" : "completed", completed_at: rows.length ? null : new Date().toISOString(),
+  }).select("*").single();
+  if (createError) throw createError;
+  const job = created as Job;
+  if (rows.length) {
+    const { error: itemError } = await admin.from("mock_classification_job_items").insert(rows.map((row: { id: string }) => ({
+      job_id: job.id, user_id: userId, question_id: row.id,
+    })));
+    if (itemError) throw itemError;
+  }
+  if (mockId) await syncLegacyMock(admin, job, rows.length ? "processing" : "completed");
+  return { job, existing: false };
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+    const auth = await authenticatedUser(req);
+    if (!auth) return json({ error: "Unauthorized" }, 401);
+    const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const action = typeof body.action === "string" ? body.action : "start";
+    const admin = adminClient();
 
-    const userClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
-    const { data: claims, error: authErr } = await userClient.auth.getClaims(
-      authHeader.replace("Bearer ", ""),
-    );
-    if (authErr || !claims?.claims) return json({ error: "Unauthorized" }, 401);
-    const userId = claims.claims.sub as string;
-
-    const body = await req.json().catch(() => ({}));
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-
-    // ------------------------------------------------------------------
-    // MODE: normalize & reorganize an entire subject (one-time cleanup)
-    // ------------------------------------------------------------------
-    if (body?.mode === "normalize" || body?.mode === "rebuild") {
-      const subject = typeof body.subject === "string" ? body.subject : "";
-      if (!subject) return json({ error: "subject required" }, 400);
-
-      const { data: mocks } = await admin
-        .from("mock_mistake_mocks")
-        .select("id, organize_status")
-        .eq("user_id", userId)
-        .eq("subject", subject);
-      const mockIds = (mocks ?? []).map((m: any) => m.id);
-      if (!mockIds.length) return json({ ok: true, processed: 0 });
-      if ((mocks ?? []).some((m: any) => m.organize_status === "processing")) {
-        return json({ ok: true, already: true });
-      }
-
-      const { data: qs } = await admin
-        .from("mock_mistake_questions")
-        .select("id, mock_id, question_text, option_a, option_b, option_c, option_d, correct_answer, chapter, topic, ai_chapter, ai_topic, ai_subtopic")
-        .in("mock_id", mockIds)
-        .eq("user_id", userId)
-        .not("classification_id", "is", null)
-        .order("created_at", { ascending: true });
-      const rows = (qs ?? []) as Row[];
-      if (!rows.length) return json({ ok: true, processed: 0 });
-
-      const setStatus = async (patch: Record<string, unknown>) => {
-        await admin.from("mock_mistake_mocks").update(patch).in("id", mockIds);
-      };
-
-      await setStatus({
-        organize_status: "processing",
-        organize_progress: 0,
-        organize_total: rows.length,
-        organize_message: "Preparing...",
-        organize_error: null,
-      });
-
-      const work = async () => {
-        let done = 0;
-        try {
-          await setStatus({ organize_message: "Analyzing questions..." });
-          // Pass 1 — deterministic merge of equivalent / combined names.
-          const tax = taxonomyFromRows([]);
-          await setStatus({ organize_message: "Building canonical hierarchy..." });
-          const merged = rows.map((r) => ({
-            row: r,
-            canon: placeInHierarchy(
-              { subject, chapter: r.ai_chapter, topic: r.ai_topic, subtopic: r.ai_subtopic },
-              subject,
-              tax,
-            ),
-          }));
-          await setStatus({ organize_message: "Merging duplicates..." });
-          for (const m of merged) {
-            const r = m.row;
-            if (
-              r.ai_chapter === m.canon.chapter &&
-              r.ai_topic === m.canon.topic &&
-              (r.ai_subtopic ?? null) === m.canon.subtopic
-            ) continue;
-            await admin.from("mock_mistake_questions").update({
-              ai_subject: m.canon.subject,
-              ai_chapter: m.canon.chapter,
-              ai_topic: m.canon.topic,
-              ai_subtopic: m.canon.subtopic,
-            }).eq("id", r.id).eq("user_id", userId);
-          }
-
-          // Pass 2 — AI re-check every question against the canonical taxonomy.
-          await setStatus({ organize_message: "Assigning Chapters & Topics..." });
-          for (let i = 0; i < rows.length; i += BATCH) {
-            const batch = rows.slice(i, i + BATCH);
-            await setStatus({
-              organize_progress: done,
-              organize_message: `Assigning Chapters & Topics... ${Math.min(done + 1, rows.length)} / ${rows.length}`,
-            });
-            const byIndex = await classifyBatch(subject, tax, batch);
-            for (let k = 0; k < batch.length; k++) {
-              const q = batch[k];
-              const ai = byIndex.get(k);
-              const prev = merged.find((m) => m.row.id === q.id)!.canon;
-              const canon = ai
-                ? placeInHierarchy(
-                    { subject, chapter: ai.chapter, topic: ai.topic, subtopic: ai.subtopic },
-                    subject,
-                    tax,
-                  )
-                : prev;
-              await admin.from("mock_mistake_questions").update({
-                ai_subject: canon.subject,
-                ai_chapter: canon.chapter,
-                ai_topic: canon.topic,
-                ai_subtopic: canon.subtopic,
-                classification_status: "classified",
-                classified_at: new Date().toISOString(),
-              }).eq("id", q.id).eq("user_id", userId);
-              done++;
-            }
-          }
-
-          await setStatus({ organize_message: "Verifying questions...", organize_progress: done });
-          await setStatus({ organize_message: "Saving..." });
-          await setStatus({
-            organize_status: "organized",
-            organize_progress: done,
-            organize_message: "Completed Successfully",
-            organize_error: null,
-            organized_at: new Date().toISOString(),
-          });
-        } catch (e) {
-          console.error("normalize job error", e);
-          await setStatus({
-            organize_status: "organized",
-            organize_progress: done,
-            organize_message: null,
-            organize_error: (e as Error).message,
-          });
-        }
-      };
-
-      // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
-      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
-        // @ts-ignore
-        EdgeRuntime.waitUntil(work());
-      } else {
-        work();
-      }
-      return json({ ok: true, queued: rows.length, mode: "rebuild" });
+    if (action === "process") {
+      if (!auth.internal) return json({ error: "Forbidden" }, 403);
+      const jobId = typeof body.jobId === "string" ? body.jobId : "";
+      const hopsLeft = typeof body.hopsLeft === "number" ? Math.max(0, Math.min(MAX_CHAIN_HOPS, body.hopsLeft)) : MAX_CHAIN_HOPS;
+      if (!jobId) return json({ error: "jobId is required" }, 400);
+      // @ts-ignore EdgeRuntime is available in deployed edge functions.
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(processJob(admin, jobId, hopsLeft));
+      else await processJob(admin, jobId, hopsLeft);
+      return json({ ok: true, jobId });
     }
 
-    // ------------------------------------------------------------------
-    // MODE: classify one mock's new questions (existing manual AI Organize)
-    // ------------------------------------------------------------------
-    const mockId = body?.mockId;
-    if (!mockId || typeof mockId !== "string") return json({ error: "mockId required" }, 400);
-
-    const { data: mock } = await admin
-      .from("mock_mistake_mocks")
-      .select("id, user_id, name, subject, organize_status")
-      .eq("id", mockId)
-      .maybeSingle();
-    if (!mock || mock.user_id !== userId) return json({ error: "Mock not found" }, 404);
-    if (mock.organize_status === "processing") return json({ ok: true, already: true });
-
-    const { data: pending } = await admin
-      .from("mock_mistake_questions")
-      .select("id, question_text, option_a, option_b, option_c, option_d, correct_answer, chapter, topic")
-      .eq("mock_id", mockId)
-      .eq("user_id", userId)
-      .is("classification_id", null)
-      .order("sort_order", { ascending: true });
-
-    const rows = (pending ?? []) as Row[];
-    if (rows.length === 0) {
-      await admin.from("mock_mistake_mocks").update({
-        organize_status: "organized",
-        organize_progress: 0,
-        organize_total: 0,
-        organize_message: "Completed Successfully",
-        organize_error: null,
-        organized_at: new Date().toISOString(),
-      }).eq("id", mockId);
-      return json({ ok: true, processed: 0 });
+    const userId = auth.userId;
+    if (!userId) return json({ error: "Unauthorized" }, 401);
+    if (action === "cancel") {
+      const jobId = typeof body.jobId === "string" ? body.jobId : "";
+      const { data } = await admin.from("mock_classification_jobs").update({ status: "cancelled", completed_at: new Date().toISOString(), lease_token: null, lease_expires_at: null })
+        .eq("id", jobId).eq("user_id", userId).in("status", ["pending", "processing", "stalled", "partial", "failed"]).select("*").maybeSingle();
+      if (!data) return json({ error: "Active job not found" }, 404);
+      await syncLegacyMock(admin, data as Job, "cancelled");
+      return json({ ok: true, job: data });
     }
 
-    await admin.from("mock_mistake_mocks").update({
-      organize_status: "processing",
-      organize_progress: 0,
-      organize_total: rows.length,
-      organize_message: "Preparing...",
-      organize_error: null,
-    }).eq("id", mockId);
-
-    const work = async () => {
-      let done = 0;
-      try {
-        // Reuse the student's existing canonical categories for this subject.
-        const tax = await loadTaxonomy(admin, userId, mock.subject);
-
-        for (let i = 0; i < rows.length; i += BATCH) {
-          const batch = rows.slice(i, i + BATCH);
-          await admin.from("mock_mistake_mocks").update({
-            organize_progress: done,
-            organize_message: `Analyzing Question ${Math.min(done + 1, rows.length)} / ${rows.length}`,
-          }).eq("id", mockId);
-
-          const byIndex = await classifyBatch(mock.subject, tax, batch);
-
-          for (let k = 0; k < batch.length; k++) {
-            const q = batch[k];
-            const ai = byIndex.get(k) ?? {};
-            const canon = placeInHierarchy(
-              {
-                subject: ai.subject ?? mock.subject,
-                chapter: ai.chapter ?? q.chapter,
-                topic: ai.topic ?? q.topic,
-                subtopic: ai.subtopic,
-              },
-              mock.subject,
-              tax,
-            );
-            await admin.from("mock_mistake_questions").update({
-              classification_id: crypto.randomUUID(),
-              ai_subject: canon.subject,
-              ai_chapter: canon.chapter,
-              ai_topic: canon.topic,
-              ai_subtopic: canon.subtopic,
-              classification_status: "classified",
-              classified_at: new Date().toISOString(),
-            }).eq("id", q.id).eq("user_id", userId);
-            done++;
-          }
-
-          await admin.from("mock_mistake_mocks").update({
-            organize_progress: done,
-            organize_message: `Saving... ${done} / ${rows.length}`,
-          }).eq("id", mockId);
-        }
-
-        await admin.from("mock_mistake_mocks").update({
-          organize_status: "organized",
-          organize_progress: done,
-          organize_message: "Completed Successfully",
-          organized_at: new Date().toISOString(),
-        }).eq("id", mockId);
-      } catch (e) {
-        console.error("ai-organize-mock job error", e);
-        await admin.from("mock_mistake_mocks").update({
-          organize_status: done > 0 ? "updated" : "not_organized",
-          organize_progress: done,
-          organize_message: null,
-          organize_error: (e as Error).message,
-        }).eq("id", mockId);
-      }
-    };
-
-    // Keep the job alive after the response so the user can navigate away.
-    // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
-    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
-      // @ts-ignore
-      EdgeRuntime.waitUntil(work());
-    } else {
-      work();
+    if (action === "resume") {
+      const jobId = typeof body.jobId === "string" ? body.jobId : "";
+      const { data: job } = await admin.from("mock_classification_jobs").select("*").eq("id", jobId).eq("user_id", userId).maybeSingle();
+      if (!job) return json({ error: "Job not found" }, 404);
+      await admin.from("mock_classification_job_items").update({ status: "pending", claimed_at: null, error_message: null })
+        .eq("job_id", jobId).in("status", ["failed", "processing"]);
+      await admin.from("mock_classification_jobs").update({ status: "pending", error_message: null, lease_token: null, lease_expires_at: null, completed_at: null, heartbeat_at: new Date().toISOString() }).eq("id", jobId);
+      await invokeNext(jobId, MAX_CHAIN_HOPS);
+      return json({ ok: true, jobId });
     }
 
-    return json({ ok: true, queued: rows.length });
-  } catch (e) {
-    console.error("ai-organize-mock error", e);
-    return json({ error: (e as Error).message }, 500);
+    const legacyMode = body.mode === "rebuild" || body.mode === "normalize";
+    const result = await createJob(admin, userId, { ...body, subject: legacyMode ? body.subject : body.subject });
+    if (result.job.status !== "completed") await invokeNext(result.job.id, MAX_CHAIN_HOPS);
+    return json({ ok: true, job: result.job, existing: result.existing });
+  } catch (error) {
+    console.error("ai-organize-mock error", error);
+    return json({ error: error instanceof Error ? error.message : String(error) }, 500);
   }
 });
