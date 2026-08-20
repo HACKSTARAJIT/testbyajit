@@ -365,6 +365,8 @@ export type ChatOptions = {
   dedupKey?: string;        // if set, in-flight identical calls share a promise
   timeoutMs?: number;       // per-attempt timeout (default 90s)
   overallTimeoutMs?: number;
+  maxRetriesPerProvider?: number;
+  maxProviders?: number;
 };
 
 export async function chatCompletion(
@@ -397,7 +399,8 @@ async function _run(body: ChatCompletionRequest, opts: ChatOptions): Promise<Cha
   const ordered = PROVIDERS.slice().sort((a, b) => {
     // Healthy providers first, otherwise keep declared order.
     return (isHealthy(a.name) ? 0 : 1) - (isHealthy(b.name) ? 0 : 1);
-  });
+  }).slice(0, opts.maxProviders ?? PROVIDERS.length);
+  const maxRetriesPerProvider = opts.maxRetriesPerProvider ?? MAX_RETRIES_PER_PROVIDER;
 
   let lastError = "AI service is temporarily unavailable. Please try again later.";
   let lastCode: string | null = null;
@@ -418,7 +421,7 @@ async function _run(body: ChatCompletionRequest, opts: ChatOptions): Promise<Cha
     }
     if (i > 0) fallbackUsed = true;
 
-    for (let attempt = 0; attempt <= MAX_RETRIES_PER_PROVIDER; attempt++) {
+    for (let attempt = 0; attempt <= maxRetriesPerProvider; attempt++) {
       if (opts.overallTimeoutMs && Date.now() >= deadline) {
         lastCode = "timeout";
         lastError = "AI request exceeded the safe processing window";
@@ -454,7 +457,7 @@ async function _run(body: ChatCompletionRequest, opts: ChatOptions): Promise<Cha
       });
       totalRetries++;
       if (!result.retryable) break;                // terminal for this provider → move on
-      if (attempt < MAX_RETRIES_PER_PROVIDER) {
+      if (attempt < maxRetriesPerProvider) {
         const backoff = 400 * Math.pow(2, attempt); // 400ms, 800ms
         await new Promise((r) => setTimeout(r, backoff));
       }
@@ -490,6 +493,8 @@ export type UnifiedFetchInit = {
   dedupKey?: string;
   timeoutMs?: number;
   overallTimeoutMs?: number;
+  maxRetriesPerProvider?: number;
+  maxProviders?: number;
 };
 
 export async function unifiedFetch(init: UnifiedFetchInit): Promise<{
@@ -504,6 +509,8 @@ export async function unifiedFetch(init: UnifiedFetchInit): Promise<{
       dedupKey: init.dedupKey,
       timeoutMs: init.timeoutMs,
       overallTimeoutMs: init.overallTimeoutMs,
+      maxRetriesPerProvider: init.maxRetriesPerProvider,
+      maxProviders: init.maxProviders,
     });
     return {
       ok: true,
