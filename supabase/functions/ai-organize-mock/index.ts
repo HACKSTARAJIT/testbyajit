@@ -125,7 +125,6 @@ async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Q
     maxRetriesPerProvider: 0,
     maxProviders: 3,
     body: {
-      model: "openai/gpt-5.6-sol",
       messages: [
         { role: "system", content: "You are a precise academic librarian. Output strict JSON only." },
         { role: "user", content: classificationPrompt(subject, taxonomy, question) },
@@ -266,7 +265,7 @@ async function createJob(admin: Admin, userId: string, body: Record<string, unkn
   if (active) return { job: active as Job, existing: true };
 
   let query = admin.from("mock_mistake_questions").select("id, mock_id, classification_version")
-    .eq("user_id", userId).neq("classification_version", HIERARCHY_VERSION);
+    .eq("user_id", userId).or(`classification_version.is.null,classification_version.neq.${HIERARCHY_VERSION}`);
   if (mockId) query = query.eq("mock_id", mockId);
   else {
     const { data: mocks } = await admin.from("mock_mistake_mocks").select("id").eq("user_id", userId).eq("subject", subject);
@@ -324,6 +323,17 @@ Deno.serve(async (req) => {
       if (!data) return json({ error: "Active job not found" }, 404);
       await syncLegacyMock(admin, data as Job, "cancelled");
       return json({ ok: true, job: data });
+    }
+
+    if (action === "status") {
+      const staleBefore = new Date(Date.now() - STALE_MS).toISOString();
+      await admin.from("mock_classification_jobs").update({
+        status: "stalled", lease_token: null, lease_expires_at: null,
+        error_message: "No progress heartbeat was detected. Resume to continue.",
+      }).eq("user_id", userId).eq("status", "processing").lt("heartbeat_at", staleBefore);
+      const { data } = await admin.from("mock_classification_jobs").select("*")
+        .eq("user_id", userId).order("created_at", { ascending: false }).limit(100);
+      return json({ ok: true, jobs: data ?? [] });
     }
 
     if (action === "resume") {
