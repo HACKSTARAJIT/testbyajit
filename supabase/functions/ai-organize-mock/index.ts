@@ -1,6 +1,5 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { unifiedFetch } from "../_shared/unifiedAI.ts";
 import { taxonomyFromRows, taxonomyPrompt, type Taxonomy } from "../_shared/taxonomy.ts";
 import { hierarchyPrompt, placeInHierarchy } from "../_shared/hierarchy.ts";
 
@@ -8,7 +7,9 @@ const HIERARCHY_VERSION = "canonical-v2";
 const BATCH_SIZE = 5;
 const LEASE_SECONDS = 90;
 const STALE_MS = 3 * 60 * 1000;
-const MAX_CHAIN_HOPS = 8;
+const MAX_CHAIN_HOPS = 40;
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_MODEL = "openai/gpt-5.6-sol";
 
 type Admin = ReturnType<typeof createClient>;
 type Job = {
@@ -43,6 +44,12 @@ type Question = {
   ai_topic: string | null;
   ai_subtopic: string | null;
 };
+
+class CircuitBreakerError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+  }
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -117,36 +124,55 @@ QUESTION:\n${JSON.stringify({
 }
 
 async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Question) {
-  const response = await unifiedFetch({
-    feature: "ai-organize-mock",
-    dedupKey: `${HIERARCHY_VERSION}:${question.id}`,
-    timeoutMs: 20_000,
-    overallTimeoutMs: 25_000,
-    maxRetriesPerProvider: 0,
-    maxProviders: 3,
-    body: {
-      messages: [
-        { role: "system", content: "You are a precise academic librarian. Output strict JSON only." },
-        { role: "user", content: classificationPrompt(subject, taxonomy, question) },
-      ],
-      temperature: 0.1,
-    },
-  });
-  if (!response.ok) throw new Error(await response.text());
-  const payload = await response.json();
-  const content = payload?.choices?.[0]?.message?.content;
-  const parsed = typeof content === "string" ? parseObject(content) : null;
-  if (!parsed) throw new Error("AI returned malformed classification JSON");
-  const chapter = typeof parsed.chapter === "string" ? parsed.chapter : "";
-  const topic = typeof parsed.topic === "string" ? parsed.topic : "";
-  if (!chapter.trim() || !topic.trim()) throw new Error("AI classification omitted chapter or topic");
-  const canonical = placeInHierarchy({
-    subject: typeof parsed.subject === "string" ? parsed.subject : subject,
-    chapter,
-    topic,
-    subtopic: typeof parsed.subtopic === "string" ? parsed.subtopic : "",
-  }, subject, taxonomy);
-  return { ...canonical, provider: typeof payload?.provider === "string" ? payload.provider : null };
+  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!apiKey) throw new CircuitBreakerError(401, "AI configuration is unavailable");
+  const body = {
+    model: AI_MODEL,
+    messages: [
+      { role: "system", content: "You are a precise academic librarian. Output strict JSON only." },
+      { role: "user", content: classificationPrompt(subject, taxonomy, question) },
+    ],
+    temperature: 0.1,
+  };
+  let lastMessage = "AI service is temporarily unavailable";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await fetch(AI_GATEWAY_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      lastMessage = typeof payload?.message === "string"
+        ? payload.message
+        : typeof payload?.error === "string" ? payload.error : `AI request failed (${response.status})`;
+      if ([400, 401, 402, 403].includes(response.status)) {
+        throw new CircuitBreakerError(response.status, lastMessage);
+      }
+      if ((response.status === 429 || response.status >= 500) && attempt === 0) {
+        const retryAfter = Number(response.headers.get("Retry-After"));
+        const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 800 + Math.floor(Math.random() * 400);
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+        continue;
+      }
+      throw new Error(lastMessage);
+    }
+    const payload = await response.json();
+    const content = payload?.choices?.[0]?.message?.content;
+    const parsed = typeof content === "string" ? parseObject(content) : null;
+    if (!parsed) throw new Error("AI returned malformed classification JSON");
+    const chapter = typeof parsed.chapter === "string" ? parsed.chapter : "";
+    const topic = typeof parsed.topic === "string" ? parsed.topic : "";
+    if (!chapter.trim() || !topic.trim()) throw new Error("AI classification omitted chapter or topic");
+    const canonical = placeInHierarchy({
+      subject: typeof parsed.subject === "string" ? parsed.subject : subject,
+      chapter,
+      topic,
+      subtopic: typeof parsed.subtopic === "string" ? parsed.subtopic : "",
+    }, subject, taxonomy);
+    return { ...canonical, provider: "lovable-ai" };
+  }
+  throw new Error(lastMessage);
 }
 
 async function syncLegacyMock(admin: Admin, job: Job, status: string) {
@@ -211,6 +237,7 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
   const questionMap = new Map((questions ?? []).map((q: Question) => [q.id, q]));
   const taxonomy = await loadTaxonomy(admin, job.user_id, job.subject);
 
+  let halted = false;
   for (const item of items as Array<{ id: string; question_id: string; attempts: number }>) {
     const { data: latest } = await admin.from("mock_classification_jobs").select("status").eq("id", jobId).maybeSingle();
     if (latest?.status === "cancelled") break;
@@ -228,6 +255,20 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      if (error instanceof CircuitBreakerError) {
+        const paused = error.status === 402 || error.status === 403 || error.status === 401;
+        await admin.from("mock_classification_job_items").update({ status: "pending", claimed_at: null }).eq("id", item.id).eq("status", "processing");
+        await admin.from("mock_classification_job_items").update({ status: "pending", claimed_at: null }).eq("job_id", jobId).eq("status", "processing");
+        await admin.from("mock_classification_jobs").update({
+          status: paused ? "paused" : "stalled",
+          error_message: message,
+          lease_token: null,
+          lease_expires_at: null,
+          heartbeat_at: new Date().toISOString(),
+        }).eq("id", jobId).eq("lease_token", leaseToken);
+        halted = true;
+        break;
+      }
       await admin.rpc("fail_mock_classification_item", { _job_id: jobId, _item_id: item.id, _lease_token: leaseToken, _error_message: message });
     }
   }
@@ -236,6 +277,10 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
   if (!refreshed) return;
   const current = refreshed as Job;
   const { count: remaining } = await admin.from("mock_classification_job_items").select("id", { count: "exact", head: true }).eq("job_id", jobId).eq("status", "pending");
+  if (halted || current.status === "paused" || current.status === "stalled") {
+    await syncLegacyMock(admin, current, current.status);
+    return;
+  }
   await syncLegacyMock(admin, current, remaining ? "processing" : current.status);
   if (remaining && current.status !== "cancelled") {
     await admin.from("mock_classification_jobs").update({ lease_token: null, lease_expires_at: null, heartbeat_at: new Date().toISOString() }).eq("id", jobId).eq("lease_token", leaseToken);
@@ -259,9 +304,13 @@ async function createJob(admin: Admin, userId: string, body: Record<string, unkn
   if (!subject) throw new Error("Subject is required");
   const scopeType = mockId ? "mock" : "subject";
   const scopeKey = mockId ?? subject;
-  const { data: active } = await admin.from("mock_classification_jobs").select("*")
-    .eq("user_id", userId).eq("scope_type", scopeType).eq("scope_key", scopeKey)
-    .eq("hierarchy_version", HIERARCHY_VERSION).in("status", ["pending", "processing", "stalled"]).maybeSingle();
+  const activeStatuses = ["pending", "processing", "stalled", "paused"];
+  const { data: activeJobs } = await admin.from("mock_classification_jobs").select("*")
+    .eq("user_id", userId).eq("subject", subject).eq("hierarchy_version", HIERARCHY_VERSION)
+    .in("status", activeStatuses).order("created_at", { ascending: false });
+  const active = (activeJobs ?? []).find((candidate: Job) =>
+    candidate.scope_type === "subject" || scopeType === "subject" || candidate.mock_id === mockId
+  );
   if (active) return { job: active as Job, existing: true };
 
   let query = admin.from("mock_mistake_questions").select("id, mock_id, classification_version")
@@ -330,9 +379,17 @@ Deno.serve(async (req) => {
       await admin.from("mock_classification_jobs").update({
         status: "stalled", lease_token: null, lease_expires_at: null,
         error_message: "No progress heartbeat was detected. Resume to continue.",
-      }).eq("user_id", userId).eq("status", "processing").lt("heartbeat_at", staleBefore);
+      }).eq("user_id", userId).eq("status", "processing").or(`heartbeat_at.is.null,heartbeat_at.lt.${staleBefore}`);
       const { data } = await admin.from("mock_classification_jobs").select("*")
         .eq("user_id", userId).order("created_at", { ascending: false }).limit(100);
+      const activeMockIds = new Set((data ?? []).filter((j: Job) => ["pending", "processing", "stalled", "paused"].includes(j.status) && j.mock_id).map((j: Job) => j.mock_id));
+      const activeSubjects = new Set((data ?? []).filter((j: Job) => ["pending", "processing", "stalled", "paused"].includes(j.status) && j.scope_type === "subject").map((j: Job) => j.subject));
+      const { data: legacyProcessing } = await admin.from("mock_mistake_mocks").select("id, subject").eq("user_id", userId).eq("organize_status", "processing");
+      const orphanIds = (legacyProcessing ?? []).filter((m: { id: string; subject: string }) => !activeMockIds.has(m.id) && !activeSubjects.has(m.subject)).map((m: { id: string }) => m.id);
+      if (orphanIds.length) await admin.from("mock_mistake_mocks").update({
+        organize_status: "updated", organize_message: null,
+        organize_error: "Previous classification stopped. Start AI Organize to continue safely.",
+      }).in("id", orphanIds);
       return json({ ok: true, jobs: data ?? [] });
     }
 
@@ -342,7 +399,7 @@ Deno.serve(async (req) => {
       if (!job) return json({ error: "Job not found" }, 404);
       await admin.from("mock_classification_job_items").update({ status: "pending", claimed_at: null, error_message: null })
         .eq("job_id", jobId).in("status", ["failed", "processing"]);
-      await admin.from("mock_classification_jobs").update({ status: "pending", error_message: null, lease_token: null, lease_expires_at: null, completed_at: null, heartbeat_at: new Date().toISOString() }).eq("id", jobId);
+      await admin.from("mock_classification_jobs").update({ status: "pending", error_message: null, lease_token: null, lease_expires_at: null, completed_at: null, heartbeat_at: new Date().toISOString() }).eq("id", jobId).in("status", ["stalled", "partial", "failed", "paused"]);
       await invokeNext(jobId, MAX_CHAIN_HOPS);
       return json({ ok: true, jobId });
     }
