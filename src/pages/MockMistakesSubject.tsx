@@ -13,7 +13,7 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Brain, ChevronRight, FileText, FolderTree, History as HistoryIcon, Play, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Brain, ChevronRight, FileText, FolderTree, History as HistoryIcon, Pause, Play, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   loadAIChapters, loadTopicStats, topicRouteKey, topicSourceKey, STATUS_META,
@@ -31,6 +31,21 @@ type MockRow = {
   organize_error: string | null;
 };
 
+type ClassificationJob = {
+  id: string;
+  scope_type: "mock" | "subject";
+  scope_key: string;
+  mock_id: string | null;
+  subject: string;
+  total_questions: number;
+  completed_questions: number;
+  failed_questions: number;
+  skipped_questions: number;
+  current_question: number;
+  status: string;
+  error_message: string | null;
+};
+
 export default function MockMistakesSubject() {
   const { subject = "" } = useParams();
   const subjectName = decodeURIComponent(subject);
@@ -46,7 +61,15 @@ export default function MockMistakesSubject() {
   const [chapters, setChapters] = useState<ChapterNode[]>([]);
   const [chaptersLoading, setChaptersLoading] = useState(false);
   const [topicStats, setTopicStats] = useState<Record<string, TopicTestStats>>({});
+  const [jobs, setJobs] = useState<ClassificationJob[]>([]);
+  const [jobAction, setJobAction] = useState<string | null>(null);
   const pollRef = useRef<number | null>(null);
+
+  const loadJobs = async () => {
+    if (!user) return;
+    const { data, error } = await supabase.functions.invoke("ai-organize-mock", { body: { action: "status" } });
+    if (!error) setJobs(((data as { jobs?: ClassificationJob[] } | null)?.jobs ?? []).filter((job) => job.subject === subjectName));
+  };
 
   const load = async () => {
     if (!user) { setLoading(false); return; }
@@ -87,30 +110,32 @@ export default function MockMistakesSubject() {
     setChaptersLoading(false);
   };
 
-  useEffect(() => { load(); loadChapters(); /* eslint-disable-next-line */ }, [user, subjectName]);
+  useEffect(() => { load(); loadChapters(); loadJobs(); /* eslint-disable-next-line */ }, [user, subjectName]);
 
-  // Poll while any mock is being organized in the background.
+  const activeStatuses = ["pending", "processing"];
+  const activeJobs = jobs.filter((job) => activeStatuses.includes(job.status));
+  const hasActiveJob = activeJobs.length > 0;
+
+  // Poll durable backend jobs rather than relying on legacy card state.
   useEffect(() => {
-    const busy = mocks.some((m) => m.organize_status === "processing");
-    if (!busy) {
+    if (!hasActiveJob) {
       if (pollRef.current) { window.clearInterval(pollRef.current); pollRef.current = null; }
       return;
     }
     if (pollRef.current) return;
     pollRef.current = window.setInterval(async () => {
-      await load();
+      await Promise.all([load(), loadJobs()]);
     }, 3000);
     return () => {
       if (pollRef.current) { window.clearInterval(pollRef.current); pollRef.current = null; }
     };
-  }, [mocks]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [hasActiveJob]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const wasBusy = useRef(false);
   useEffect(() => {
-    const busy = mocks.some((m) => m.organize_status === "processing");
-    if (wasBusy.current && !busy) loadChapters();
-    wasBusy.current = busy;
-  }, [mocks]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (wasBusy.current && !hasActiveJob) loadChapters();
+    wasBusy.current = hasActiveJob;
+  }, [hasActiveJob]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const createMock = async () => {
     if (!user || !name.trim()) return;
@@ -141,26 +166,36 @@ export default function MockMistakesSubject() {
     setMocks((prev) => prev.map((x) => x.id === m.id
       ? { ...x, organize_status: "processing", organize_message: "Preparing...", organize_progress: 0, organize_total: pending[m.id] ?? 0 }
       : x));
-    const { error } = await supabase.functions.invoke("ai-organize-mock", { body: { mockId: m.id } });
+    const { error } = await supabase.functions.invoke("ai-organize-mock", { body: { action: "start", mockId: m.id } });
     if (error) {
       toast({ title: "AI Organize failed", description: error.message, variant: "destructive" });
       load();
       return;
     }
     toast({ title: "🧠 AI Organize started", description: "Chal raha hai background me — aap app use karte rahiye." });
-    load();
+    await Promise.all([load(), loadJobs()]);
   };
 
-  const busy = mocks.some((m) => m.organize_status === "processing");
-  const busyMock = mocks.find((m) => m.organize_status === "processing");
+  const latestJob = (scopeType: "mock" | "subject", scopeKey: string) =>
+    jobs.find((job) => job.scope_type === scopeType && job.scope_key === scopeKey);
+  const subjectJob = latestJob("subject", subjectName);
+
+  const updateJob = async (job: ClassificationJob, action: "resume" | "cancel") => {
+    setJobAction(`${action}:${job.id}`);
+    const { error } = await supabase.functions.invoke("ai-organize-mock", { body: { action, jobId: job.id } });
+    setJobAction(null);
+    if (error) {
+      toast({ title: action === "resume" ? "Resume failed" : "Cancel failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: action === "resume" ? "Classification resumed" : "Classification cancelled" });
+    await Promise.all([load(), loadJobs()]);
+  };
 
   const normalize = async () => {
-    if (!user || busy) return;
-    setMocks((prev) => prev.map((x) => ({
-      ...x, organize_status: "processing", organize_message: "Preparing...", organize_progress: 0,
-    })));
+    if (!user || hasActiveJob) return;
     const { error } = await supabase.functions.invoke("ai-organize-mock", {
-      body: { mode: "rebuild", subject: subjectName },
+      body: { action: "start", mode: "rebuild", subject: subjectName },
     });
     if (error) {
       toast({ title: "Rebuild failed", description: error.message, variant: "destructive" });
@@ -168,7 +203,7 @@ export default function MockMistakesSubject() {
       return;
     }
     toast({ title: "🧠 Rebuild AI Hierarchy started", description: "Background me chal raha hai — questions, practice history aur mastery safe hain, sirf classification update hogi." });
-    load();
+    await Promise.all([load(), loadJobs()]);
   };
 
   return (
