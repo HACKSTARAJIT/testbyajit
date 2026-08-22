@@ -384,9 +384,8 @@ Deno.serve(async (req) => {
       const { data } = await admin.from("mock_classification_jobs").select("*")
         .eq("user_id", userId).order("created_at", { ascending: false }).limit(100);
       const activeMockIds = new Set((data ?? []).filter((j: Job) => ["pending", "processing", "stalled", "paused"].includes(j.status) && j.mock_id).map((j: Job) => j.mock_id));
-      const activeSubjects = new Set((data ?? []).filter((j: Job) => ["pending", "processing", "stalled", "paused"].includes(j.status) && j.scope_type === "subject").map((j: Job) => j.subject));
       const { data: legacyProcessing } = await admin.from("mock_mistake_mocks").select("id, subject").eq("user_id", userId).eq("organize_status", "processing");
-      const orphanIds = (legacyProcessing ?? []).filter((m: { id: string; subject: string }) => !activeMockIds.has(m.id) && !activeSubjects.has(m.subject)).map((m: { id: string }) => m.id);
+      const orphanIds = (legacyProcessing ?? []).filter((m: { id: string }) => !activeMockIds.has(m.id)).map((m: { id: string }) => m.id);
       if (orphanIds.length) await admin.from("mock_mistake_mocks").update({
         organize_status: "updated", organize_message: null,
         organize_error: "Previous classification stopped. Start AI Organize to continue safely.",

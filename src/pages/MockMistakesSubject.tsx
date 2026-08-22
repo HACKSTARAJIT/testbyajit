@@ -260,6 +260,8 @@ export default function MockMistakesSubject() {
                 const jobNeedsResume = job && ["stalled", "paused", "partial", "failed"].includes(job.status);
                 const status: OrganizeStatus = jobIsActive
                   ? "processing"
+                  : !job && m.organize_status === "processing"
+                    ? "updated"
                   : m.organize_status === "organized" && (pending[m.id] ?? 0) > 0
                     ? "updated"
                     : (m.organize_status ?? "not_organized");
