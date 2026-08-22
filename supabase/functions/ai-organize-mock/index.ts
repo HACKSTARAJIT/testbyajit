@@ -133,6 +133,7 @@ async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Q
       { role: "user", content: classificationPrompt(subject, taxonomy, question) },
     ],
     temperature: 0.1,
+    response_format: { type: "json_object" },
   };
   let lastMessage = "AI service is temporarily unavailable";
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -185,7 +186,7 @@ async function syncLegacyMock(admin: Admin, job: Job, status: string) {
     organize_progress: processed,
     organize_total: job.total_questions,
     organize_message: active ? `Classifying question ${Math.min(processed + 1, job.total_questions)} / ${job.total_questions}` : status === "completed" ? "Completed Successfully" : status === "partial" ? `Completed with ${job.failed_questions} failed` : null,
-    organize_error: status === "failed" || status === "stalled" ? "Classification paused. Resume to continue." : null,
+    organize_error: status === "failed" || status === "stalled" || status === "paused" ? "Classification paused. Resume to continue." : null,
     organized_at: status === "completed" || status === "partial" ? new Date().toISOString() : null,
   }).eq("id", job.mock_id);
 }
@@ -368,7 +369,7 @@ Deno.serve(async (req) => {
     if (action === "cancel") {
       const jobId = typeof body.jobId === "string" ? body.jobId : "";
       const { data } = await admin.from("mock_classification_jobs").update({ status: "cancelled", completed_at: new Date().toISOString(), lease_token: null, lease_expires_at: null })
-        .eq("id", jobId).eq("user_id", userId).in("status", ["pending", "processing", "stalled", "partial", "failed"]).select("*").maybeSingle();
+        .eq("id", jobId).eq("user_id", userId).in("status", ["pending", "processing", "stalled", "paused", "partial", "failed"]).select("*").maybeSingle();
       if (!data) return json({ error: "Active job not found" }, 404);
       await syncLegacyMock(admin, data as Job, "cancelled");
       return json({ ok: true, job: data });
@@ -383,9 +384,8 @@ Deno.serve(async (req) => {
       const { data } = await admin.from("mock_classification_jobs").select("*")
         .eq("user_id", userId).order("created_at", { ascending: false }).limit(100);
       const activeMockIds = new Set((data ?? []).filter((j: Job) => ["pending", "processing", "stalled", "paused"].includes(j.status) && j.mock_id).map((j: Job) => j.mock_id));
-      const activeSubjects = new Set((data ?? []).filter((j: Job) => ["pending", "processing", "stalled", "paused"].includes(j.status) && j.scope_type === "subject").map((j: Job) => j.subject));
       const { data: legacyProcessing } = await admin.from("mock_mistake_mocks").select("id, subject").eq("user_id", userId).eq("organize_status", "processing");
-      const orphanIds = (legacyProcessing ?? []).filter((m: { id: string; subject: string }) => !activeMockIds.has(m.id) && !activeSubjects.has(m.subject)).map((m: { id: string }) => m.id);
+      const orphanIds = (legacyProcessing ?? []).filter((m: { id: string }) => !activeMockIds.has(m.id)).map((m: { id: string }) => m.id);
       if (orphanIds.length) await admin.from("mock_mistake_mocks").update({
         organize_status: "updated", organize_message: null,
         organize_error: "Previous classification stopped. Start AI Organize to continue safely.",
