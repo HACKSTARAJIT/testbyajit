@@ -255,12 +255,17 @@ export default function MockMistakesSubject() {
           ) : (
             <div className="space-y-3">
               {mocks.map((m) => {
-                const status: OrganizeStatus =
-                  m.organize_status === "organized" && (pending[m.id] ?? 0) > 0
+                const job = latestJob("mock", m.id);
+                const jobIsActive = job && activeStatuses.includes(job.status);
+                const jobNeedsResume = job && ["stalled", "paused", "partial", "failed"].includes(job.status);
+                const status: OrganizeStatus = jobIsActive
+                  ? "processing"
+                  : m.organize_status === "organized" && (pending[m.id] ?? 0) > 0
                     ? "updated"
                     : (m.organize_status ?? "not_organized");
                 const meta = STATUS_META[status] ?? STATUS_META.not_organized;
-                const total = m.organize_total || 1;
+                const processed = job ? job.completed_questions + job.failed_questions + job.skipped_questions : m.organize_progress;
+                const total = job?.total_questions || m.organize_total || 1;
                 return (
                   <div key={m.id} className="glass-card space-y-3 rounded-2xl p-4">
                     <div className="flex items-center gap-3">
@@ -284,12 +289,29 @@ export default function MockMistakesSubject() {
                       </Button>
                     </div>
 
-                    {status === "processing" ? (
-                      <div className="space-y-1.5">
-                        <Progress value={Math.round(((m.organize_progress ?? 0) / total) * 100)} className="h-2" />
+                    {jobIsActive ? (
+                      <div className="space-y-2">
+                        <Progress value={Math.round(((processed ?? 0) / total) * 100)} className="h-2" />
                         <p className="text-xs text-muted-foreground">
-                          {m.organize_message ?? "Analyzing..."}
+                          Classifying {processed ?? 0} / {total}
+                          {job.failed_questions > 0 ? ` · ${job.failed_questions} failed` : ""}
                         </p>
+                        <Button variant="outline" size="sm" className="w-full rounded-xl" onClick={() => updateJob(job, "cancel")} disabled={jobAction === `cancel:${job.id}`}>
+                          <Pause className="mr-1 h-3.5 w-3.5" /> Cancel
+                        </Button>
+                      </div>
+                    ) : jobNeedsResume ? (
+                      <div className="space-y-2">
+                        <Progress value={Math.round(((processed ?? 0) / total) * 100)} className="h-2" />
+                        <p className="text-xs text-destructive">{job.error_message ?? "Classification paused. Resume to continue."}</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button variant="secondary" size="sm" className="rounded-xl" onClick={() => updateJob(job, "resume")} disabled={jobAction === `resume:${job.id}`}>
+                            <RotateCcw className="mr-1 h-3.5 w-3.5" /> Resume
+                          </Button>
+                          <Button variant="outline" size="sm" className="rounded-xl" onClick={() => updateJob(job, "cancel")} disabled={jobAction === `cancel:${job.id}`}>
+                            <Pause className="mr-1 h-3.5 w-3.5" /> Cancel
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <Button
@@ -319,16 +341,35 @@ export default function MockMistakesSubject() {
               <p className="text-xs text-muted-foreground">
                 सभी वास्तविक Mock Mistake questions को दोबारा समझकर Subject → Chapter → Topic → Sub-topic hierarchy में व्यवस्थित करें। प्रश्न, अभ्यास इतिहास और Mastery data सुरक्षित रहेंगे।
               </p>
-              {busy ? (
-                <div className="space-y-1.5 pt-1">
+              {subjectJob && activeStatuses.includes(subjectJob.status) ? (
+                <div className="space-y-2 pt-1">
                   <Progress
-                    value={Math.round(((busyMock?.organize_progress ?? 0) / (busyMock?.organize_total || 1)) * 100)}
+                    value={Math.round((subjectJob.current_question / (subjectJob.total_questions || 1)) * 100)}
                     className="h-2"
                   />
-                  <p className="text-xs text-muted-foreground">{busyMock?.organize_message ?? "Analyzing questions..."}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Classifying {subjectJob.current_question} / {subjectJob.total_questions}
+                    {subjectJob.failed_questions > 0 ? ` · ${subjectJob.failed_questions} failed` : ""}
+                  </p>
+                  <Button variant="outline" size="sm" className="w-full rounded-xl" onClick={() => updateJob(subjectJob, "cancel")} disabled={jobAction === `cancel:${subjectJob.id}`}>
+                    <Pause className="mr-1 h-3.5 w-3.5" /> Cancel
+                  </Button>
+                </div>
+              ) : subjectJob && ["stalled", "paused", "partial", "failed"].includes(subjectJob.status) ? (
+                <div className="space-y-2 pt-1">
+                  <Progress value={Math.round((subjectJob.current_question / (subjectJob.total_questions || 1)) * 100)} className="h-2" />
+                  <p className="text-xs text-destructive">{subjectJob.error_message ?? "Rebuild paused. Resume to continue."}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="secondary" size="sm" className="rounded-xl" onClick={() => updateJob(subjectJob, "resume")} disabled={jobAction === `resume:${subjectJob.id}`}>
+                      <RotateCcw className="mr-1 h-3.5 w-3.5" /> Resume
+                    </Button>
+                    <Button variant="outline" size="sm" className="rounded-xl" onClick={() => updateJob(subjectJob, "cancel")} disabled={jobAction === `cancel:${subjectJob.id}`}>
+                      <Pause className="mr-1 h-3.5 w-3.5" /> Cancel
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <Button variant="secondary" className="w-full rounded-xl" onClick={normalize}>
+                <Button variant="secondary" className="w-full rounded-xl" onClick={normalize} disabled={hasActiveJob}>
                   <Brain className="mr-1 h-4 w-4" /> Rebuild AI Hierarchy
                 </Button>
               )}
