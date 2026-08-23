@@ -132,7 +132,6 @@ async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Q
       { role: "system", content: "You are a precise academic librarian. Output strict JSON only." },
       { role: "user", content: classificationPrompt(subject, taxonomy, question) },
     ],
-    temperature: 0.1,
     response_format: { type: "json_object" },
   };
   let lastMessage = "AI service is temporarily unavailable";
@@ -144,12 +143,17 @@ async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Q
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      lastMessage = typeof payload?.message === "string"
-        ? payload.message
-        : typeof payload?.error === "string" ? payload.error : `AI request failed (${response.status})`;
-      if ([400, 401, 402, 403].includes(response.status)) {
+      const nested = payload?.error?.message ?? payload?.error?.error?.message;
+      lastMessage = typeof nested === "string"
+        ? nested
+        : typeof payload?.message === "string"
+          ? payload.message
+          : typeof payload?.error === "string" ? payload.error : `AI request failed (${response.status})`;
+      // 400 = malformed request for THIS question only: fail the item, never freeze the job.
+      if ([401, 402, 403].includes(response.status)) {
         throw new CircuitBreakerError(response.status, lastMessage);
       }
+
       if ((response.status === 429 || response.status >= 500) && attempt === 0) {
         const retryAfter = Number(response.headers.get("Retry-After"));
         const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 800 + Math.floor(Math.random() * 400);
