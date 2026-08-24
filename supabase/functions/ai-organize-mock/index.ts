@@ -43,6 +43,10 @@ type Question = {
   ai_chapter: string | null;
   ai_topic: string | null;
   ai_subtopic: string | null;
+  ai_subject: string | null;
+  classification_id: string | null;
+  classification_status: string | null;
+  classification_version: string | null;
 };
 
 class CircuitBreakerError extends Error {
@@ -94,6 +98,15 @@ function parseObject(text: string): Record<string, unknown> | null {
   }
 }
 
+function hasValidClassification(question: Pick<Question, "classification_id" | "ai_subject" | "ai_chapter" | "ai_topic">) {
+  return Boolean(
+    question.classification_id
+    && question.ai_subject?.trim()
+    && question.ai_chapter?.trim()
+    && question.ai_topic?.trim(),
+  );
+}
+
 async function loadTaxonomy(admin: Admin, userId: string, subject: string): Promise<Taxonomy> {
   const { data: mocks } = await admin.from("mock_mistake_mocks").select("id").eq("user_id", userId).eq("subject", subject);
   const ids = (mocks ?? []).map((m: { id: string }) => m.id);
@@ -136,11 +149,17 @@ async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Q
   };
   let lastMessage = "AI service is temporarily unavailable";
   for (let attempt = 0; attempt < 2; attempt++) {
-    const response = await fetch(AI_GATEWAY_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    let response: Response;
+    try {
+      response = await fetch(AI_GATEWAY_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (error) {
+      throw new Error(error instanceof Error ? `AI request timed out or failed: ${error.message}` : "AI request timed out");
+    }
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
       const nested = payload?.error?.message ?? payload?.error?.error?.message;
@@ -149,7 +168,13 @@ async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Q
         : typeof payload?.message === "string"
           ? payload.message
           : typeof payload?.error === "string" ? payload.error : `AI request failed (${response.status})`;
-      // 400 = malformed request for THIS question only: fail the item, never freeze the job.
+      console.error("AI classification request failed", {
+        status: response.status,
+        model: AI_MODEL,
+        message: lastMessage,
+        questionId: question.id,
+      });
+      // A request/content error belongs to this item only. Auth, credits and policy are job circuit breakers.
       if ([401, 402, 403].includes(response.status)) {
         throw new CircuitBreakerError(response.status, lastMessage);
       }
@@ -219,6 +244,16 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
   const { data: jobData } = await admin.from("mock_classification_jobs").select("*").eq("id", jobId).maybeSingle();
   const job = jobData as Job | null;
   if (!job || job.status === "cancelled") return;
+  if (job.scope_type !== "mock" || !job.mock_id) {
+    await admin.from("mock_classification_jobs").update({
+      status: "cancelled",
+      error_message: "Legacy subject-wide AI rebuild was retired. Organize each mock independently.",
+      lease_token: null,
+      lease_expires_at: null,
+      completed_at: new Date().toISOString(),
+    }).eq("id", jobId).eq("lease_token", leaseToken);
+    return;
+  }
 
   const expiredBefore = new Date(Date.now() - STALE_MS).toISOString();
   await admin.from("mock_classification_job_items").update({ status: "pending", claimed_at: null })
@@ -238,7 +273,7 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
   const ids = items.map((item: { question_id: string }) => item.question_id);
   await admin.from("mock_classification_job_items").update({ status: "processing", claimed_at: new Date().toISOString() })
     .eq("job_id", jobId).in("question_id", ids).eq("status", "pending");
-  const { data: questions } = await admin.from("mock_mistake_questions").select("id, mock_id, question_text, option_a, option_b, option_c, option_d, chapter, topic, ai_chapter, ai_topic, ai_subtopic").in("id", ids);
+  const { data: questions } = await admin.from("mock_mistake_questions").select("id, mock_id, question_text, option_a, option_b, option_c, option_d, chapter, topic, ai_subject, ai_chapter, ai_topic, ai_subtopic, classification_id, classification_status, classification_version").in("id", ids);
   const questionMap = new Map((questions ?? []).map((q: Question) => [q.id, q]));
   const taxonomy = await loadTaxonomy(admin, job.user_id, job.subject);
 
@@ -249,6 +284,15 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
     const question = questionMap.get(item.question_id);
     if (!question) {
       await admin.rpc("fail_mock_classification_item", { _job_id: jobId, _item_id: item.id, _lease_token: leaseToken, _error_message: "Original question was not found" });
+      continue;
+    }
+    if (hasValidClassification(question)) {
+      await admin.from("mock_classification_job_items").update({
+        status: "skipped",
+        error_message: "Existing valid classification preserved",
+        claimed_at: null,
+        completed_at: new Date().toISOString(),
+      }).eq("id", item.id).eq("job_id", jobId).eq("status", "processing");
       continue;
     }
     try {
@@ -280,6 +324,18 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
 
   const { data: refreshed } = await admin.from("mock_classification_jobs").select("*").eq("id", jobId).maybeSingle();
   if (!refreshed) return;
+  const { data: itemCounts } = await admin.from("mock_classification_job_items").select("status").eq("job_id", jobId);
+  const count = (status: string) => (itemCounts ?? []).filter((item: { status: string }) => item.status === status).length;
+  const completedCount = count("completed");
+  const failedCount = count("failed");
+  const skippedCount = count("skipped");
+  await admin.from("mock_classification_jobs").update({
+    completed_questions: completedCount,
+    failed_questions: failedCount,
+    skipped_questions: skippedCount,
+    current_question: completedCount + failedCount + skippedCount,
+    heartbeat_at: new Date().toISOString(),
+  }).eq("id", jobId).eq("lease_token", leaseToken);
   const current = refreshed as Job;
   const { count: remaining } = await admin.from("mock_classification_job_items").select("id", { count: "exact", head: true }).eq("job_id", jobId).eq("status", "pending");
   if (halted || current.status === "paused" || current.status === "stalled") {
@@ -289,7 +345,7 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
   await syncLegacyMock(admin, current, remaining ? "processing" : current.status);
   if (remaining && current.status !== "cancelled") {
     await admin.from("mock_classification_jobs").update({ lease_token: null, lease_expires_at: null, heartbeat_at: new Date().toISOString() }).eq("id", jobId).eq("lease_token", leaseToken);
-    await invokeNext(jobId, hopsLeft - 1);
+    await invokeNext(jobId, hopsLeft > 1 ? hopsLeft - 1 : MAX_CHAIN_HOPS);
   } else {
     const { data: finalStatus } = await admin.rpc("finalize_mock_classification_job", { _job_id: jobId, _lease_token: leaseToken });
     const { data: finalJob } = await admin.from("mock_classification_jobs").select("*").eq("id", jobId).maybeSingle();
@@ -299,52 +355,45 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
 
 async function createJob(admin: Admin, userId: string, body: Record<string, unknown>) {
   const mockId = typeof body.mockId === "string" ? body.mockId : null;
-  const subjectInput = typeof body.subject === "string" ? body.subject.trim() : "";
-  let subject = subjectInput;
-  if (mockId) {
-    const { data: mock } = await admin.from("mock_mistake_mocks").select("id, user_id, subject").eq("id", mockId).maybeSingle();
-    if (!mock || mock.user_id !== userId) throw new Error("Mock not found");
-    subject = mock.subject;
-  }
-  if (!subject) throw new Error("Subject is required");
-  const scopeType = mockId ? "mock" : "subject";
-  const scopeKey = mockId ?? subject;
+  if (!mockId) throw new Error("mockId is required. Subject-wide AI rebuilds are disabled.");
+  const { data: mock } = await admin.from("mock_mistake_mocks").select("id, user_id, subject").eq("id", mockId).maybeSingle();
+  if (!mock || mock.user_id !== userId) throw new Error("Mock not found");
+  const subject = mock.subject;
+  const scopeType = "mock" as const;
+  const scopeKey = mockId;
   const activeStatuses = ["pending", "processing", "stalled", "paused"];
   const { data: activeJobs } = await admin.from("mock_classification_jobs").select("*")
-    .eq("user_id", userId).eq("subject", subject).eq("hierarchy_version", HIERARCHY_VERSION)
+    .eq("user_id", userId).eq("mock_id", mockId).eq("scope_type", "mock").eq("hierarchy_version", HIERARCHY_VERSION)
     .in("status", activeStatuses).order("created_at", { ascending: false });
-  const active = (activeJobs ?? []).find((candidate: Job) =>
-    candidate.scope_type === "subject" || scopeType === "subject" || candidate.mock_id === mockId
-  );
+  const active = (activeJobs ?? [])[0];
   if (active) return { job: active as Job, existing: true };
 
-  let query = admin.from("mock_mistake_questions").select("id, mock_id, classification_version")
-    .eq("user_id", userId).or(`classification_version.is.null,classification_version.neq.${HIERARCHY_VERSION}`);
-  if (mockId) query = query.eq("mock_id", mockId);
-  else {
-    const { data: mocks } = await admin.from("mock_mistake_mocks").select("id").eq("user_id", userId).eq("subject", subject);
-    const mockIds = (mocks ?? []).map((m: { id: string }) => m.id);
-    if (!mockIds.length) throw new Error("No questions found for this subject");
-    query = query.in("mock_id", mockIds);
-  }
-  const { data: questions, error: questionError } = await query;
+  const { data: questions, error: questionError } = await admin.from("mock_mistake_questions")
+    .select("id, mock_id, classification_id, ai_subject, ai_chapter, ai_topic")
+    .eq("user_id", userId).eq("mock_id", mockId).order("created_at", { ascending: true });
   if (questionError) throw questionError;
-  const rows = questions ?? [];
+  const rows = (questions ?? []) as Array<Pick<Question, "id" | "mock_id" | "classification_id" | "ai_subject" | "ai_chapter" | "ai_topic">>;
+  const skipped = rows.filter(hasValidClassification).length;
+  const unresolved = rows.length - skipped;
 
   const { data: created, error: createError } = await admin.from("mock_classification_jobs").insert({
     user_id: userId, scope_type: scopeType, scope_key: scopeKey, mock_id: mockId, subject,
     hierarchy_version: HIERARCHY_VERSION, total_questions: rows.length,
-    status: rows.length ? "pending" : "completed", completed_at: rows.length ? null : new Date().toISOString(),
+    skipped_questions: skipped, current_question: skipped,
+    status: unresolved ? "pending" : "completed", completed_at: unresolved ? null : new Date().toISOString(),
   }).select("*").single();
   if (createError) throw createError;
   const job = created as Job;
   if (rows.length) {
-    const { error: itemError } = await admin.from("mock_classification_job_items").insert(rows.map((row: { id: string }) => ({
+    const { error: itemError } = await admin.from("mock_classification_job_items").insert(rows.map((row) => ({
       job_id: job.id, user_id: userId, question_id: row.id,
+      status: hasValidClassification(row) ? "skipped" : "pending",
+      error_message: hasValidClassification(row) ? "Existing valid classification preserved" : null,
+      completed_at: hasValidClassification(row) ? new Date().toISOString() : null,
     })));
     if (itemError) throw itemError;
   }
-  if (mockId) await syncLegacyMock(admin, job, rows.length ? "processing" : "completed");
+  await syncLegacyMock(admin, { ...job, skipped_questions: skipped, current_question: skipped }, unresolved ? "processing" : "completed");
   return { job, existing: false };
 }
 
@@ -381,20 +430,12 @@ Deno.serve(async (req) => {
 
     if (action === "status") {
       const staleBefore = new Date(Date.now() - STALE_MS).toISOString();
-      await admin.from("mock_classification_jobs").update({
-        status: "stalled", lease_token: null, lease_expires_at: null,
-        error_message: "No progress heartbeat was detected. Resume to continue.",
-      }).eq("user_id", userId).eq("status", "processing").or(`heartbeat_at.is.null,heartbeat_at.lt.${staleBefore}`);
       const { data } = await admin.from("mock_classification_jobs").select("*")
-        .eq("user_id", userId).order("created_at", { ascending: false }).limit(100);
-      const activeMockIds = new Set((data ?? []).filter((j: Job) => ["pending", "processing", "stalled", "paused"].includes(j.status) && j.mock_id).map((j: Job) => j.mock_id));
-      const { data: legacyProcessing } = await admin.from("mock_mistake_mocks").select("id, subject").eq("user_id", userId).eq("organize_status", "processing");
-      const orphanIds = (legacyProcessing ?? []).filter((m: { id: string }) => !activeMockIds.has(m.id)).map((m: { id: string }) => m.id);
-      if (orphanIds.length) await admin.from("mock_mistake_mocks").update({
-        organize_status: "updated", organize_message: null,
-        organize_error: "Previous classification stopped. Start AI Organize to continue safely.",
-      }).in("id", orphanIds);
-      return json({ ok: true, jobs: data ?? [] });
+        .eq("user_id", userId).eq("scope_type", "mock").order("created_at", { ascending: false }).limit(100);
+      const jobs = (data ?? []).map((job: Job) => job.status === "processing" && (!job.heartbeat_at || job.heartbeat_at < staleBefore)
+        ? { ...job, status: "stalled", error_message: "No progress heartbeat was detected. Resume to continue." }
+        : job);
+      return json({ ok: true, jobs });
     }
 
     if (action === "resume") {
@@ -404,12 +445,14 @@ Deno.serve(async (req) => {
       await admin.from("mock_classification_job_items").update({ status: "pending", claimed_at: null, error_message: null })
         .eq("job_id", jobId).in("status", ["failed", "processing"]);
       await admin.from("mock_classification_jobs").update({ status: "pending", error_message: null, lease_token: null, lease_expires_at: null, completed_at: null, heartbeat_at: new Date().toISOString() }).eq("id", jobId).in("status", ["stalled", "partial", "failed", "paused"]);
+      if (job.status === "processing") {
+        await admin.from("mock_classification_jobs").update({ status: "pending", error_message: null, lease_token: null, lease_expires_at: null, completed_at: null, heartbeat_at: new Date().toISOString() }).eq("id", jobId).eq("user_id", userId);
+      }
       await invokeNext(jobId, MAX_CHAIN_HOPS);
       return json({ ok: true, jobId });
     }
 
-    const legacyMode = body.mode === "rebuild" || body.mode === "normalize";
-    const result = await createJob(admin, userId, { ...body, subject: legacyMode ? body.subject : body.subject });
+    const result = await createJob(admin, userId, body);
     if (result.job.status !== "completed") await invokeNext(result.job.id, MAX_CHAIN_HOPS);
     return json({ ok: true, job: result.job, existing: result.existing });
   } catch (error) {
