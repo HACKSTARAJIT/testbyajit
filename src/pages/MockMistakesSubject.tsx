@@ -13,7 +13,7 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Brain, ChevronRight, FileText, FolderTree, History as HistoryIcon, Pause, Play, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowLeft, Brain, CheckCircle2, ChevronRight, FileText, FolderTree, History as HistoryIcon, Pause, Play, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   loadAIChapters, loadTopicStats, topicRouteKey, topicSourceKey, STATUS_META,
@@ -53,6 +53,7 @@ export default function MockMistakesSubject() {
   const navigate = useNavigate();
   const [mocks, setMocks] = useState<MockRow[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [classified, setClassified] = useState<Record<string, number>>({});
   const [pending, setPending] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -84,16 +85,19 @@ export default function MockMistakesSubject() {
     if (rows.length) {
       const { data: qs } = await supabase
         .from("mock_mistake_questions")
-        .select("mock_id, classification_id")
+        .select("mock_id, classification_id, ai_subject, ai_chapter, ai_topic")
         .in("mock_id", rows.map((r) => r.id));
       const acc: Record<string, number> = {};
       const pend: Record<string, number> = {};
       (qs ?? []).forEach((q: any) => {
         acc[q.mock_id] = (acc[q.mock_id] ?? 0) + 1;
-        if (!q.classification_id) pend[q.mock_id] = (pend[q.mock_id] ?? 0) + 1;
+        const valid = Boolean(q.classification_id && q.ai_subject?.trim() && q.ai_chapter?.trim() && q.ai_topic?.trim());
+        if (valid) classified[q.mock_id] = (classified[q.mock_id] ?? 0) + 1;
+        else pend[q.mock_id] = (pend[q.mock_id] ?? 0) + 1;
       });
       setCounts(acc);
       setPending(pend);
+      setClassified({ ...classified });
     }
     setLoading(false);
   };
@@ -178,7 +182,6 @@ export default function MockMistakesSubject() {
 
   const latestJob = (scopeType: "mock" | "subject", scopeKey: string) =>
     jobs.find((job) => job.scope_type === scopeType && job.scope_key === scopeKey);
-  const subjectJob = latestJob("subject", subjectName);
 
   const updateJob = async (job: ClassificationJob, action: "resume" | "cancel") => {
     setJobAction(`${action}:${job.id}`);
@@ -193,17 +196,9 @@ export default function MockMistakesSubject() {
   };
 
   const normalize = async () => {
-    if (!user || hasActiveJob) return;
-    const { error } = await supabase.functions.invoke("ai-organize-mock", {
-      body: { action: "start", mode: "rebuild", subject: subjectName },
-    });
-    if (error) {
-      toast({ title: "Rebuild failed", description: error.message, variant: "destructive" });
-      load();
-      return;
-    }
-    toast({ title: "🧠 Rebuild AI Hierarchy started", description: "Background me chal raha hai — questions, practice history aur mastery safe hain, sirf classification update hogi." });
-    await Promise.all([load(), loadJobs()]);
+    if (!user) return;
+    await loadChapters();
+    toast({ title: "Hierarchy refreshed", description: "Existing saved classifications se chapters dobara calculate kiye gaye. Koi AI request nahi bheji gayi." });
   };
 
   return (
@@ -258,16 +253,22 @@ export default function MockMistakesSubject() {
                 const job = latestJob("mock", m.id);
                 const jobIsActive = job && activeStatuses.includes(job.status);
                 const jobNeedsResume = job && ["stalled", "paused", "partial", "failed"].includes(job.status);
-                const status: OrganizeStatus = jobIsActive
-                  ? "processing"
-                  : !job && m.organize_status === "processing"
-                    ? "updated"
-                  : m.organize_status === "organized" && (pending[m.id] ?? 0) > 0
-                    ? "updated"
-                    : (m.organize_status ?? "not_organized");
+                const totalQuestions = counts[m.id] ?? 0;
+                const classifiedQuestions = classified[m.id] ?? 0;
+                const unresolvedQuestions = pending[m.id] ?? 0;
+                const status: OrganizeStatus = jobIsActive ? "processing" : unresolvedQuestions === 0 && totalQuestions > 0 ? "organized" : classifiedQuestions > 0 ? "updated" : "not_organized";
                 const meta = STATUS_META[status] ?? STATUS_META.not_organized;
                 const processed = job ? job.completed_questions + job.failed_questions + job.skipped_questions : m.organize_progress;
                 const total = job?.total_questions || m.organize_total || 1;
+                const statusText = jobIsActive
+                  ? `Processing ${processed}/${total}`
+                  : jobNeedsResume
+                    ? `${classifiedQuestions > 0 ? "Partially Organized" : "Paused"} — ${classifiedQuestions}/${totalQuestions}`
+                    : unresolvedQuestions === 0 && totalQuestions > 0
+                      ? `Organized — ${classifiedQuestions}/${totalQuestions}`
+                      : classifiedQuestions > 0
+                        ? `Partially Organized — ${classifiedQuestions}/${totalQuestions}`
+                        : "Not Organized";
                 return (
                   <div key={m.id} className="glass-card space-y-3 rounded-2xl p-4">
                     <div className="flex items-center gap-3">
@@ -281,7 +282,7 @@ export default function MockMistakesSubject() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-semibold">{m.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {counts[m.id] ?? 0} questions · {meta.dot} {meta.label}
+                            {totalQuestions} questions · {meta.dot} {statusText}
                           </p>
                         </div>
                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
@@ -315,6 +316,10 @@ export default function MockMistakesSubject() {
                           </Button>
                         </div>
                       </div>
+                    ) : unresolvedQuestions === 0 && totalQuestions > 0 ? (
+                      <Button variant="secondary" className="w-full rounded-xl" disabled>
+                        <CheckCircle2 className="mr-1 h-4 w-4" /> Organized ✓
+                      </Button>
                     ) : (
                       <Button
                         variant="secondary"
@@ -322,12 +327,11 @@ export default function MockMistakesSubject() {
                         onClick={() => organize(m)}
                         disabled={(counts[m.id] ?? 0) === 0}
                       >
-                        <Brain className="mr-1 h-4 w-4" /> AI Organize
-                        {(pending[m.id] ?? 0) > 0 && status !== "not_organized" ? ` (${pending[m.id]} new)` : ""}
+                        <Brain className="mr-1 h-4 w-4" /> {classifiedQuestions > 0 ? `Resume — ${classifiedQuestions}/${totalQuestions}` : "AI Organize"}
                       </Button>
                     )}
                     {m.organize_error && (
-                      <p className="text-xs text-destructive">{m.organize_error}</p>
+                      <p className="text-xs text-destructive">{job ? m.organize_error : null}</p>
                     )}
                   </div>
                 );
@@ -341,40 +345,11 @@ export default function MockMistakesSubject() {
             <div className="glass-card space-y-2 rounded-2xl p-4">
               <p className="text-sm font-semibold">🧠 Rebuild AI Hierarchy</p>
               <p className="text-xs text-muted-foreground">
-                सभी वास्तविक Mock Mistake questions को दोबारा समझकर Subject → Chapter → Topic → Sub-topic hierarchy में व्यवस्थित करें। प्रश्न, अभ्यास इतिहास और Mastery data सुरक्षित रहेंगे।
+                Existing saved classifications से Subject → Chapter → Topic → Sub-topic hierarchy को दोबारा calculate करें। यह AI reclassification नहीं चलाता।
               </p>
-              {subjectJob && activeStatuses.includes(subjectJob.status) ? (
-                <div className="space-y-2 pt-1">
-                  <Progress
-                    value={Math.round((subjectJob.current_question / (subjectJob.total_questions || 1)) * 100)}
-                    className="h-2"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Classifying {subjectJob.current_question} / {subjectJob.total_questions}
-                    {subjectJob.failed_questions > 0 ? ` · ${subjectJob.failed_questions} failed` : ""}
-                  </p>
-                  <Button variant="outline" size="sm" className="w-full rounded-xl" onClick={() => updateJob(subjectJob, "cancel")} disabled={jobAction === `cancel:${subjectJob.id}`}>
-                    <Pause className="mr-1 h-3.5 w-3.5" /> Cancel
-                  </Button>
-                </div>
-              ) : subjectJob && ["stalled", "paused", "partial", "failed"].includes(subjectJob.status) ? (
-                <div className="space-y-2 pt-1">
-                  <Progress value={Math.round((subjectJob.current_question / (subjectJob.total_questions || 1)) * 100)} className="h-2" />
-                  <p className="text-xs text-destructive">{subjectJob.error_message ?? "Rebuild paused. Resume to continue."}</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button variant="secondary" size="sm" className="rounded-xl" onClick={() => updateJob(subjectJob, "resume")} disabled={jobAction === `resume:${subjectJob.id}`}>
-                      <RotateCcw className="mr-1 h-3.5 w-3.5" /> Resume
-                    </Button>
-                    <Button variant="outline" size="sm" className="rounded-xl" onClick={() => updateJob(subjectJob, "cancel")} disabled={jobAction === `cancel:${subjectJob.id}`}>
-                      <Pause className="mr-1 h-3.5 w-3.5" /> Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button variant="secondary" className="w-full rounded-xl" onClick={normalize} disabled={hasActiveJob}>
-                  <Brain className="mr-1 h-4 w-4" /> Rebuild AI Hierarchy
-                </Button>
-              )}
+              <Button variant="secondary" className="w-full rounded-xl" onClick={normalize} disabled={chaptersLoading}>
+                <RefreshCw className="mr-1 h-4 w-4" /> Rebuild AI Hierarchy
+              </Button>
             </div>
           )}
           {chaptersLoading ? (
