@@ -158,7 +158,12 @@ async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Q
         signal: AbortSignal.timeout(30_000),
       });
     } catch (error) {
-      throw new Error(error instanceof Error ? `AI request timed out or failed: ${error.message}` : "AI request timed out");
+      lastMessage = error instanceof Error ? `AI request timed out or failed: ${error.message}` : "AI request timed out";
+      if (attempt === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 800 + Math.floor(Math.random() * 400)));
+        continue;
+      }
+      throw new Error(lastMessage);
     }
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
@@ -221,17 +226,26 @@ async function syncLegacyMock(admin: Admin, job: Job, status: string) {
 }
 
 async function invokeNext(jobId: string, hopsLeft: number) {
-  if (hopsLeft <= 0) return;
+  if (hopsLeft <= 0) return { ok: false, error: "Processing hop budget was exhausted" };
   const url = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) return;
+  if (!url || !key) return { ok: false, error: "Backend worker configuration is incomplete" };
   await new Promise((resolve) => setTimeout(resolve, 750));
-  const response = await fetch(`${url}/functions/v1/ai-organize-mock`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ action: "process", jobId, hopsLeft }),
-  });
-  await response.text();
+  try {
+    const response = await fetch(`${url}/functions/v1/ai-organize-mock`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ action: "process", jobId, hopsLeft }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      return { ok: false, error: `Worker invocation failed (${response.status}): ${responseText.slice(0, 500)}` };
+    }
+    return { ok: true, error: null };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Worker invocation failed" };
+  }
 }
 
 async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
@@ -322,8 +336,6 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
     }
   }
 
-  const { data: refreshed } = await admin.from("mock_classification_jobs").select("*").eq("id", jobId).maybeSingle();
-  if (!refreshed) return;
   const { data: itemCounts } = await admin.from("mock_classification_job_items").select("status").eq("job_id", jobId);
   const count = (status: string) => (itemCounts ?? []).filter((item: { status: string }) => item.status === status).length;
   const completedCount = count("completed");
@@ -336,6 +348,8 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
     current_question: completedCount + failedCount + skippedCount,
     heartbeat_at: new Date().toISOString(),
   }).eq("id", jobId).eq("lease_token", leaseToken);
+  const { data: refreshed } = await admin.from("mock_classification_jobs").select("*").eq("id", jobId).maybeSingle();
+  if (!refreshed) return;
   const current = refreshed as Job;
   const { count: remaining } = await admin.from("mock_classification_job_items").select("id", { count: "exact", head: true }).eq("job_id", jobId).eq("status", "pending");
   if (halted || current.status === "paused" || current.status === "stalled") {
@@ -345,7 +359,16 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
   await syncLegacyMock(admin, current, remaining ? "processing" : current.status);
   if (remaining && current.status !== "cancelled") {
     await admin.from("mock_classification_jobs").update({ lease_token: null, lease_expires_at: null, heartbeat_at: new Date().toISOString() }).eq("id", jobId).eq("lease_token", leaseToken);
-    await invokeNext(jobId, hopsLeft > 1 ? hopsLeft - 1 : MAX_CHAIN_HOPS);
+    const next = await invokeNext(jobId, hopsLeft > 1 ? hopsLeft - 1 : MAX_CHAIN_HOPS);
+    if (!next.ok) {
+      await admin.from("mock_classification_jobs").update({
+        status: "stalled",
+        error_message: next.error,
+        lease_token: null,
+        lease_expires_at: null,
+        heartbeat_at: new Date().toISOString(),
+      }).eq("id", jobId).in("status", ["pending", "processing"]);
+    }
   } else {
     const { data: finalStatus } = await admin.rpc("finalize_mock_classification_job", { _job_id: jobId, _lease_token: leaseToken });
     const { data: finalJob } = await admin.from("mock_classification_jobs").select("*").eq("id", jobId).maybeSingle();
@@ -361,7 +384,7 @@ async function createJob(admin: Admin, userId: string, body: Record<string, unkn
   const subject = mock.subject;
   const scopeType = "mock" as const;
   const scopeKey = mockId;
-  const activeStatuses = ["pending", "processing", "stalled", "paused"];
+  const activeStatuses = ["pending", "processing", "stalled"];
   const { data: activeJobs } = await admin.from("mock_classification_jobs").select("*")
     .eq("user_id", userId).eq("mock_id", mockId).eq("scope_type", "mock").eq("hierarchy_version", HIERARCHY_VERSION)
     .in("status", activeStatuses).order("created_at", { ascending: false });
@@ -382,7 +405,16 @@ async function createJob(admin: Admin, userId: string, body: Record<string, unkn
     skipped_questions: skipped, current_question: skipped,
     status: unresolved ? "pending" : "completed", completed_at: unresolved ? null : new Date().toISOString(),
   }).select("*").single();
-  if (createError) throw createError;
+  if (createError) {
+    if (createError.code === "23505") {
+      const { data: existing } = await admin.from("mock_classification_jobs").select("*")
+        .eq("user_id", userId).eq("scope_type", "mock").eq("scope_key", mockId)
+        .eq("hierarchy_version", HIERARCHY_VERSION).in("status", activeStatuses)
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (existing) return { job: existing as Job, existing: true };
+    }
+    throw createError;
+  }
   const job = created as Job;
   if (rows.length) {
     const { error: itemError } = await admin.from("mock_classification_job_items").insert(rows.map((row) => ({
@@ -422,7 +454,7 @@ Deno.serve(async (req) => {
     if (action === "cancel") {
       const jobId = typeof body.jobId === "string" ? body.jobId : "";
       const { data } = await admin.from("mock_classification_jobs").update({ status: "cancelled", completed_at: new Date().toISOString(), lease_token: null, lease_expires_at: null })
-        .eq("id", jobId).eq("user_id", userId).in("status", ["pending", "processing", "stalled", "paused", "partial", "failed"]).select("*").maybeSingle();
+        .eq("id", jobId).eq("user_id", userId).in("status", ["pending", "processing", "stalled", "partial", "failed"]).select("*").maybeSingle();
       if (!data) return json({ error: "Active job not found" }, 404);
       await syncLegacyMock(admin, data as Job, "cancelled");
       return json({ ok: true, job: data });
@@ -444,16 +476,26 @@ Deno.serve(async (req) => {
       if (!job) return json({ error: "Job not found" }, 404);
       await admin.from("mock_classification_job_items").update({ status: "pending", claimed_at: null, error_message: null })
         .eq("job_id", jobId).in("status", ["failed", "processing"]);
-      await admin.from("mock_classification_jobs").update({ status: "pending", error_message: null, lease_token: null, lease_expires_at: null, completed_at: null, heartbeat_at: new Date().toISOString() }).eq("id", jobId).in("status", ["stalled", "partial", "failed", "paused"]);
+      await admin.from("mock_classification_jobs").update({ status: "pending", error_message: null, lease_token: null, lease_expires_at: null, completed_at: null, heartbeat_at: new Date().toISOString() }).eq("id", jobId).in("status", ["stalled", "partial", "failed"]);
       if (job.status === "processing") {
         await admin.from("mock_classification_jobs").update({ status: "pending", error_message: null, lease_token: null, lease_expires_at: null, completed_at: null, heartbeat_at: new Date().toISOString() }).eq("id", jobId).eq("user_id", userId);
       }
-      await invokeNext(jobId, MAX_CHAIN_HOPS);
+      const next = await invokeNext(jobId, MAX_CHAIN_HOPS);
+      if (!next.ok) {
+        await admin.from("mock_classification_jobs").update({ status: "stalled", error_message: next.error, lease_token: null, lease_expires_at: null }).eq("id", jobId).eq("user_id", userId);
+        return json({ error: next.error }, 503);
+      }
       return json({ ok: true, jobId });
     }
 
     const result = await createJob(admin, userId, body);
-    if (result.job.status !== "completed") await invokeNext(result.job.id, MAX_CHAIN_HOPS);
+    if (result.job.status !== "completed") {
+      const next = await invokeNext(result.job.id, MAX_CHAIN_HOPS);
+      if (!next.ok) {
+        await admin.from("mock_classification_jobs").update({ status: "stalled", error_message: next.error, lease_token: null, lease_expires_at: null }).eq("id", result.job.id).eq("user_id", userId);
+        return json({ error: next.error, jobId: result.job.id }, 503);
+      }
+    }
     return json({ ok: true, job: result.job, existing: result.existing });
   } catch (error) {
     console.error("ai-organize-mock error", error);
