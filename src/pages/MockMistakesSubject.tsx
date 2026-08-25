@@ -88,16 +88,17 @@ export default function MockMistakesSubject() {
         .select("mock_id, classification_id, ai_subject, ai_chapter, ai_topic")
         .in("mock_id", rows.map((r) => r.id));
       const acc: Record<string, number> = {};
+      const done: Record<string, number> = {};
       const pend: Record<string, number> = {};
       (qs ?? []).forEach((q: any) => {
         acc[q.mock_id] = (acc[q.mock_id] ?? 0) + 1;
         const valid = Boolean(q.classification_id && q.ai_subject?.trim() && q.ai_chapter?.trim() && q.ai_topic?.trim());
-        if (valid) classified[q.mock_id] = (classified[q.mock_id] ?? 0) + 1;
+        if (valid) done[q.mock_id] = (done[q.mock_id] ?? 0) + 1;
         else pend[q.mock_id] = (pend[q.mock_id] ?? 0) + 1;
       });
       setCounts(acc);
       setPending(pend);
-      setClassified({ ...classified });
+      setClassified(done);
     }
     setLoading(false);
   };
@@ -167,10 +168,9 @@ export default function MockMistakesSubject() {
       toast({ title: "No questions to organize", description: "Import questions into this mock first.", variant: "destructive" });
       return;
     }
-    setMocks((prev) => prev.map((x) => x.id === m.id
-      ? { ...x, organize_status: "processing", organize_message: "Preparing...", organize_progress: 0, organize_total: pending[m.id] ?? 0 }
-      : x));
+    setJobAction(`start:${m.id}`);
     const { error } = await supabase.functions.invoke("ai-organize-mock", { body: { action: "start", mockId: m.id } });
+    setJobAction(null);
     if (error) {
       toast({ title: "AI Organize failed", description: error.message, variant: "destructive" });
       load();
@@ -252,7 +252,7 @@ export default function MockMistakesSubject() {
               {mocks.map((m) => {
                 const job = latestJob("mock", m.id);
                 const jobIsActive = job && activeStatuses.includes(job.status);
-                const jobNeedsResume = job && ["stalled", "paused", "partial", "failed"].includes(job.status);
+                const jobNeedsResume = job && ["stalled", "partial", "failed"].includes(job.status);
                 const totalQuestions = counts[m.id] ?? 0;
                 const classifiedQuestions = classified[m.id] ?? 0;
                 const unresolvedQuestions = pending[m.id] ?? 0;
@@ -325,7 +325,7 @@ export default function MockMistakesSubject() {
                         variant="secondary"
                         className="w-full rounded-xl"
                         onClick={() => organize(m)}
-                        disabled={(counts[m.id] ?? 0) === 0}
+                        disabled={(counts[m.id] ?? 0) === 0 || jobAction === `start:${m.id}`}
                       >
                         <Brain className="mr-1 h-4 w-4" /> {classifiedQuestions > 0 ? `Resume — ${classifiedQuestions}/${totalQuestions}` : "AI Organize"}
                       </Button>
