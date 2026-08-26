@@ -98,10 +98,9 @@ function parseObject(text: string): Record<string, unknown> | null {
   }
 }
 
-function hasValidClassification(question: Pick<Question, "classification_id" | "ai_subject" | "ai_chapter" | "ai_topic">) {
+function hasValidClassification(question: Pick<Question, "ai_subject" | "ai_chapter" | "ai_topic">) {
   return Boolean(
-    question.classification_id
-    && question.ai_subject?.trim()
+    question.ai_subject?.trim()
     && question.ai_chapter?.trim()
     && question.ai_topic?.trim(),
   );
@@ -310,6 +309,11 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
       continue;
     }
     try {
+      await admin.from("mock_classification_jobs").update({
+        heartbeat_at: new Date().toISOString(),
+        lease_expires_at: new Date(Date.now() + LEASE_SECONDS * 1000).toISOString(),
+        current_question_id: question.id,
+      }).eq("id", jobId).eq("lease_token", leaseToken);
       const result = await classifyQuestion(job.subject, taxonomy, question);
       await admin.rpc("complete_mock_classification_item", {
         _job_id: jobId, _item_id: item.id, _lease_token: leaseToken, _hierarchy_version: HIERARCHY_VERSION,
@@ -394,7 +398,7 @@ async function createJob(admin: Admin, userId: string, body: Record<string, unkn
     .select("id, mock_id, classification_id, ai_subject, ai_chapter, ai_topic")
     .eq("user_id", userId).eq("mock_id", mockId).order("created_at", { ascending: true });
   if (questionError) throw questionError;
-  const rows = (questions ?? []) as Array<Pick<Question, "id" | "mock_id" | "classification_id" | "ai_subject" | "ai_chapter" | "ai_topic">>;
+  const rows = (questions ?? []) as Array<Pick<Question, "id" | "mock_id" | "ai_subject" | "ai_chapter" | "ai_topic">>;
   const skipped = rows.filter(hasValidClassification).length;
   const unresolved = rows.length - skipped;
 

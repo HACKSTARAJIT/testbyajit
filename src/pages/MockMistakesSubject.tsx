@@ -92,7 +92,7 @@ export default function MockMistakesSubject() {
       const pend: Record<string, number> = {};
       (qs ?? []).forEach((q: any) => {
         acc[q.mock_id] = (acc[q.mock_id] ?? 0) + 1;
-        const valid = Boolean(q.classification_id && q.ai_subject?.trim() && q.ai_chapter?.trim() && q.ai_topic?.trim());
+        const valid = Boolean(q.ai_subject?.trim() && q.ai_chapter?.trim() && q.ai_topic?.trim());
         if (valid) done[q.mock_id] = (done[q.mock_id] ?? 0) + 1;
         else pend[q.mock_id] = (pend[q.mock_id] ?? 0) + 1;
       });
