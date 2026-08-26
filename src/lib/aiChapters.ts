@@ -59,7 +59,9 @@ export async function loadAIChapters(userId: string, subject: string): Promise<{
       "id, mock_id, question_text, option_a, option_b, option_c, option_d, correct_answer, user_answer, explanation, ai_chapter, ai_topic, ai_subtopic, source_status, practice_count, correct_count, wrong_count, last_practice_at, mastered, classified_at, created_at",
     )
     .in("mock_id", ids)
-    .not("classification_id", "is", null)
+    .not("ai_subject", "is", null)
+    .not("ai_chapter", "is", null)
+    .not("ai_topic", "is", null)
     .order("created_at", { ascending: true });
 
   const map = new Map<string, Map<string, AIQuestion[]>>();

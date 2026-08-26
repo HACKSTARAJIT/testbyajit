@@ -98,10 +98,9 @@ function parseObject(text: string): Record<string, unknown> | null {
   }
 }
 
-function hasValidClassification(question: Pick<Question, "classification_id" | "ai_subject" | "ai_chapter" | "ai_topic">) {
+function hasValidClassification(question: Pick<Question, "ai_subject" | "ai_chapter" | "ai_topic">) {
   return Boolean(
-    question.classification_id
-    && question.ai_subject?.trim()
+    question.ai_subject?.trim()
     && question.ai_chapter?.trim()
     && question.ai_topic?.trim(),
   );
@@ -141,6 +140,7 @@ async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Q
   if (!apiKey) throw new CircuitBreakerError(401, "AI configuration is unavailable");
   const body = {
     model: AI_MODEL,
+    reasoning_effort: "none",
     messages: [
       { role: "system", content: "You are a precise academic librarian. Output strict JSON only." },
       { role: "user", content: classificationPrompt(subject, taxonomy, question) },
@@ -153,9 +153,8 @@ async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Q
     try {
       response = await fetch(AI_GATEWAY_URL, {
         method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        headers: { "Lovable-API-Key": apiKey, "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(30_000),
       });
     } catch (error) {
       lastMessage = error instanceof Error ? `AI request timed out or failed: ${error.message}` : "AI request timed out";
@@ -310,6 +309,11 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
       continue;
     }
     try {
+      await admin.from("mock_classification_jobs").update({
+        heartbeat_at: new Date().toISOString(),
+        lease_expires_at: new Date(Date.now() + LEASE_SECONDS * 1000).toISOString(),
+        current_question_id: question.id,
+      }).eq("id", jobId).eq("lease_token", leaseToken);
       const result = await classifyQuestion(job.subject, taxonomy, question);
       await admin.rpc("complete_mock_classification_item", {
         _job_id: jobId, _item_id: item.id, _lease_token: leaseToken, _hierarchy_version: HIERARCHY_VERSION,
@@ -319,11 +323,10 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (error instanceof CircuitBreakerError) {
-        const paused = error.status === 402 || error.status === 403 || error.status === 401;
         await admin.from("mock_classification_job_items").update({ status: "pending", claimed_at: null }).eq("id", item.id).eq("status", "processing");
         await admin.from("mock_classification_job_items").update({ status: "pending", claimed_at: null }).eq("job_id", jobId).eq("status", "processing");
         await admin.from("mock_classification_jobs").update({
-          status: paused ? "paused" : "stalled",
+          status: "stalled",
           error_message: message,
           lease_token: null,
           lease_expires_at: null,
@@ -352,7 +355,7 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
   if (!refreshed) return;
   const current = refreshed as Job;
   const { count: remaining } = await admin.from("mock_classification_job_items").select("id", { count: "exact", head: true }).eq("job_id", jobId).eq("status", "pending");
-  if (halted || current.status === "paused" || current.status === "stalled") {
+  if (halted || current.status === "stalled") {
     await syncLegacyMock(admin, current, current.status);
     return;
   }
@@ -395,7 +398,7 @@ async function createJob(admin: Admin, userId: string, body: Record<string, unkn
     .select("id, mock_id, classification_id, ai_subject, ai_chapter, ai_topic")
     .eq("user_id", userId).eq("mock_id", mockId).order("created_at", { ascending: true });
   if (questionError) throw questionError;
-  const rows = (questions ?? []) as Array<Pick<Question, "id" | "mock_id" | "classification_id" | "ai_subject" | "ai_chapter" | "ai_topic">>;
+  const rows = (questions ?? []) as Array<Pick<Question, "id" | "mock_id" | "ai_subject" | "ai_chapter" | "ai_topic">>;
   const skipped = rows.filter(hasValidClassification).length;
   const unresolved = rows.length - skipped;
 
