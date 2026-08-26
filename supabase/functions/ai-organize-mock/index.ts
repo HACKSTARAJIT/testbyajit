@@ -153,7 +153,7 @@ async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Q
     try {
       response = await fetch(AI_GATEWAY_URL, {
         method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        headers: { "Lovable-API-Key": apiKey, "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
     } catch (error) {
