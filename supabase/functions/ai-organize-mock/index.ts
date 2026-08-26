@@ -141,6 +141,7 @@ async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Q
   if (!apiKey) throw new CircuitBreakerError(401, "AI configuration is unavailable");
   const body = {
     model: AI_MODEL,
+    reasoning_effort: "none",
     messages: [
       { role: "system", content: "You are a precise academic librarian. Output strict JSON only." },
       { role: "user", content: classificationPrompt(subject, taxonomy, question) },
@@ -155,7 +156,6 @@ async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Q
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(30_000),
       });
     } catch (error) {
       lastMessage = error instanceof Error ? `AI request timed out or failed: ${error.message}` : "AI request timed out";
@@ -319,11 +319,10 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (error instanceof CircuitBreakerError) {
-        const paused = error.status === 402 || error.status === 403 || error.status === 401;
         await admin.from("mock_classification_job_items").update({ status: "pending", claimed_at: null }).eq("id", item.id).eq("status", "processing");
         await admin.from("mock_classification_job_items").update({ status: "pending", claimed_at: null }).eq("job_id", jobId).eq("status", "processing");
         await admin.from("mock_classification_jobs").update({
-          status: paused ? "paused" : "stalled",
+          status: "stalled",
           error_message: message,
           lease_token: null,
           lease_expires_at: null,
@@ -352,7 +351,7 @@ async function processJob(admin: Admin, jobId: string, hopsLeft: number) {
   if (!refreshed) return;
   const current = refreshed as Job;
   const { count: remaining } = await admin.from("mock_classification_job_items").select("id", { count: "exact", head: true }).eq("job_id", jobId).eq("status", "pending");
-  if (halted || current.status === "paused" || current.status === "stalled") {
+  if (halted || current.status === "stalled") {
     await syncLegacyMock(admin, current, current.status);
     return;
   }
