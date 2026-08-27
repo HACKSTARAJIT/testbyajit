@@ -2,14 +2,14 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { taxonomyFromRows, taxonomyPrompt, type Taxonomy } from "../_shared/taxonomy.ts";
 import { hierarchyPrompt, placeInHierarchy } from "../_shared/hierarchy.ts";
+import { unifiedFetch } from "../_shared/unifiedAI.ts";
 
 const HIERARCHY_VERSION = "canonical-v2";
 const BATCH_SIZE = 5;
 const LEASE_SECONDS = 90;
 const STALE_MS = 3 * 60 * 1000;
 const MAX_CHAIN_HOPS = 40;
-const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const AI_MODEL = "openai/gpt-5.6-sol";
+const AI_MODEL = "google/gemini-2.5-flash";
 
 type Admin = ReturnType<typeof createClient>;
 type Job = {
