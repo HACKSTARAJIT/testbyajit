@@ -2,14 +2,14 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { taxonomyFromRows, taxonomyPrompt, type Taxonomy } from "../_shared/taxonomy.ts";
 import { hierarchyPrompt, placeInHierarchy } from "../_shared/hierarchy.ts";
+import { unifiedFetch } from "../_shared/unifiedAI.ts";
 
 const HIERARCHY_VERSION = "canonical-v2";
 const BATCH_SIZE = 5;
 const LEASE_SECONDS = 90;
 const STALE_MS = 3 * 60 * 1000;
 const MAX_CHAIN_HOPS = 40;
-const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const AI_MODEL = "openai/gpt-5.6-sol";
+const AI_MODEL = "google/gemini-2.5-flash";
 
 type Admin = ReturnType<typeof createClient>;
 type Job = {
@@ -136,78 +136,50 @@ QUESTION:\n${JSON.stringify({
 }
 
 async function classifyQuestion(subject: string, taxonomy: Taxonomy, question: Question) {
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!apiKey) throw new CircuitBreakerError(401, "AI configuration is unavailable");
-  const body = {
-    model: AI_MODEL,
-    reasoning_effort: "none",
-    messages: [
-      { role: "system", content: "You are a precise academic librarian. Output strict JSON only." },
-      { role: "user", content: classificationPrompt(subject, taxonomy, question) },
-    ],
-    response_format: { type: "json_object" },
-  };
-  let lastMessage = "AI service is temporarily unavailable";
-  for (let attempt = 0; attempt < 2; attempt++) {
-    let response: Response;
-    try {
-      response = await fetch(AI_GATEWAY_URL, {
-        method: "POST",
-        headers: { "Lovable-API-Key": apiKey, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-    } catch (error) {
-      lastMessage = error instanceof Error ? `AI request timed out or failed: ${error.message}` : "AI request timed out";
-      if (attempt === 0) {
-        await new Promise((resolve) => setTimeout(resolve, 800 + Math.floor(Math.random() * 400)));
-        continue;
-      }
-      throw new Error(lastMessage);
-    }
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
-      const nested = payload?.error?.message ?? payload?.error?.error?.message;
-      lastMessage = typeof nested === "string"
-        ? nested
-        : typeof payload?.message === "string"
-          ? payload.message
-          : typeof payload?.error === "string" ? payload.error : `AI request failed (${response.status})`;
-      console.error("AI classification request failed", {
-        status: response.status,
-        model: AI_MODEL,
-        message: lastMessage,
-        questionId: question.id,
-      });
-      // A request/content error belongs to this item only. Auth, credits and policy are job circuit breakers.
-      if ([401, 402, 403].includes(response.status)) {
-        throw new CircuitBreakerError(response.status, lastMessage);
-      }
+  // Routing: Gemini → Groq → OpenRouter → NVIDIA NIM (unifiedAI handles retries + failover).
+  const res = await unifiedFetch({
+    body: {
+      model: AI_MODEL,
+      messages: [
+        { role: "system", content: "You are a precise academic librarian. Output strict JSON only." },
+        { role: "user", content: classificationPrompt(subject, taxonomy, question) },
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 400,
+    },
+    feature: "ai-organize-mock",
+    timeoutMs: 45_000,
+  });
 
-      if ((response.status === 429 || response.status >= 500) && attempt === 0) {
-        const retryAfter = Number(response.headers.get("Retry-After"));
-        const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 800 + Math.floor(Math.random() * 400);
-        await new Promise((resolve) => setTimeout(resolve, waitMs));
-        continue;
-      }
-      throw new Error(lastMessage);
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    const code = typeof (payload as any)?.code === "string" ? (payload as any).code : null;
+    const message = typeof (payload as any)?.error === "string" ? (payload as any).error : "AI service is temporarily unavailable";
+    console.error("AI classification failed after all providers", { questionId: question.id, code, message });
+    // Only a total absence of provider credentials is a job-level circuit breaker.
+    if (code?.startsWith("missing_")) {
+      throw new CircuitBreakerError(401, "No AI provider API key is configured");
     }
-    const payload = await response.json();
-    const content = payload?.choices?.[0]?.message?.content;
-    const parsed = typeof content === "string" ? parseObject(content) : null;
-    if (!parsed) throw new Error("AI returned malformed classification JSON");
-    const chapter = typeof parsed.chapter === "string" ? parsed.chapter : "";
-    const topic = typeof parsed.topic === "string" ? parsed.topic : "";
-    if (!chapter.trim() || !topic.trim()) throw new Error("AI classification omitted chapter or topic");
-    const canonical = placeInHierarchy({
-      subject: typeof parsed.subject === "string" ? parsed.subject : subject,
-      chapter,
-      topic,
-      subtopic: typeof parsed.subtopic === "string" ? parsed.subtopic : "",
-    }, subject, taxonomy);
-    return { ...canonical, provider: "lovable-ai" };
+    throw new Error(message);
   }
-  throw new Error(lastMessage);
+
+  const payload = await res.json();
+  console.log("AI classification provider used", { questionId: question.id, provider: payload?.provider });
+  const content = payload?.choices?.[0]?.message?.content;
+  const parsed = typeof content === "string" ? parseObject(content) : null;
+  if (!parsed) throw new Error("AI returned malformed classification JSON");
+  const chapter = typeof parsed.chapter === "string" ? parsed.chapter : "";
+  const topic = typeof parsed.topic === "string" ? parsed.topic : "";
+  if (!chapter.trim() || !topic.trim()) throw new Error("AI classification omitted chapter or topic");
+  const canonical = placeInHierarchy({
+    subject: typeof parsed.subject === "string" ? parsed.subject : subject,
+    chapter,
+    topic,
+    subtopic: typeof parsed.subtopic === "string" ? parsed.subtopic : "",
+  }, subject, taxonomy);
+  return { ...canonical, provider: String(payload?.provider ?? "unified") };
 }
+
 
 async function syncLegacyMock(admin: Admin, job: Job, status: string) {
   if (job.scope_type !== "mock" || !job.mock_id) return;
