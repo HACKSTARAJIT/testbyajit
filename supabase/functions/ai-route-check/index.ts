@@ -9,8 +9,9 @@ Deno.serve(async () => {
         { role: "system", content: "Output strict JSON only." },
         { role: "user", content: 'Return {"ok":true} as JSON.' },
       ],
+      model: "google/gemini-2.5-flash",
       temperature: 0.4,
-      max_tokens: 3000,
+      max_tokens: 400,
     },
     overallTimeoutMs: 60000,
   });
