@@ -275,7 +275,9 @@ ${schema}`;
           { role: "user", content: prompt },
         ],
         temperature: 0.4,
-        max_tokens: 6000,
+        // Function-specific budget: kept at ~3000 so the OpenRouter fallback stays
+        // affordable on the current balance. Do not raise without checking that.
+        max_tokens: 3000,
       },
       overallTimeoutMs: 180000,
     });
