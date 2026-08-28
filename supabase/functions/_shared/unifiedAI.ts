@@ -174,12 +174,18 @@ const PROVIDERS: ProviderConfig[] = [
     endpoint: (model, apiKey) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
     envKey: "GEMINI_API_KEY",
     auth: "query_key",
+    // Verified live against the configured Gemini key (2026-08): the 2.5 family is
+    // retired for new keys, so canonical ids are remapped onto live 3.x models.
     mapModel: (m) => {
       const lower = (m || "").toLowerCase();
-      if (!lower) return "gemini-2.5-flash";
-      // Strip vendor prefix ("google/gemini-2.5-flash" → "gemini-2.5-flash").
       const bare = lower.includes("/") ? lower.split("/").pop()! : lower;
-      return bare;
+      if (!bare) return "gemini-3.6-flash";
+      if (bare.includes("flash-lite") || bare.includes("lite") || bare.includes("nano") || bare.includes("mini")) {
+        return "gemini-3.1-flash-lite";
+      }
+      if (bare.includes("pro")) return "gemini-pro-latest";
+      if (bare.startsWith("gemini-3")) return bare;   // already a live 3.x id
+      return "gemini-3.6-flash";
     },
     transformBody: toGeminiNativeBody,
     normalizeResponse: normalizeGeminiNative,
@@ -188,17 +194,17 @@ const PROVIDERS: ProviderConfig[] = [
     name: "groq",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     envKey: "GROQ_API_KEY",
-    mapModel: (m, reqBody) => {
+    // Verified live (2026-08): the llama-3.x chat models are no longer served on
+    // this Groq account; gpt-oss is the current text pool.
+    mapModel: (m) => {
       const lower = (m || "").toLowerCase();
-      if ((reqBody ? hasMedia(reqBody) : false) || lower.includes("vision") || lower.includes("image")) {
-        return "meta-llama/llama-4-scout-17b-16e-instruct";
-      }
       if (lower.includes("flash-lite") || lower.includes("nano") || lower.includes("mini") || lower.includes("8b")) {
-        return "llama-3.1-8b-instant";
+        return "openai/gpt-oss-20b";
       }
-      return "llama-3.3-70b-versatile";
+      return "openai/gpt-oss-120b";
     },
-    supports: (body) => !hasPdfFile(body),
+    // Groq's available pool here is text-only — let image/PDF work fall through.
+    supports: (body) => !hasPdfFile(body) && !hasMedia(body),
   },
   {
     name: "openrouter",
@@ -214,16 +220,14 @@ const PROVIDERS: ProviderConfig[] = [
     name: "nvidia",
     endpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
     envKey: "NVIDIA_API_KEY",
-    // Gemini isn't on NIM — map to a strong OSS equivalent.
-    mapModel: (m, reqBody) => {
+    // Verified live (2026-08): llama-3.3-70b-instruct is EOL on NIM; the nemotron-3
+    // family is what this account can actually serve.
+    mapModel: (m) => {
       const lower = (m || "").toLowerCase();
-      if ((reqBody ? hasMedia(reqBody) : false) || lower.includes("vision") || lower.includes("pro") || lower.includes("image")) {
-        return "meta/llama-3.2-90b-vision-instruct";
-      }
       if (lower.includes("flash-lite") || lower.includes("nano") || lower.includes("mini")) {
-        return "meta/llama-3.1-8b-instruct";
+        return "nvidia/nemotron-3-nano-30b-a3b";
       }
-      return "meta/llama-3.3-70b-instruct";
+      return "nvidia/nemotron-3-super-120b-a12b";
     },
     transformBody: (body) => {
       // NVIDIA NIM rejects response_format json_object on some models — drop it and
@@ -231,8 +235,10 @@ const PROVIDERS: ProviderConfig[] = [
       const { response_format, ...rest } = stripPdfPartsForTextProviders(body);
       return rest;
     },
-    supports: (body) => !hasPdfFile(body),
+    // Text-only pool on this account.
+    supports: (body) => !hasPdfFile(body) && !hasMedia(body),
   },
+
 ];
 
 
