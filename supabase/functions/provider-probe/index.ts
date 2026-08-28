@@ -44,38 +44,34 @@ Deno.serve(async (req) => {
     } catch (e) { out.openrouter = { error: String(e) }; }
   } else out.openrouter = "missing_key";
 
-  // live generation smoke tests
   const tests: Record<string, unknown> = {};
-  if (gk) {
-    for (const gm of ["gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"]) {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${gm}:generateContent?key=${encodeURIComponent(gk)}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "say hi" }] }], generationConfig: { maxOutputTokens: 200 } }),
-      });
-      const d = await r.json();
-      tests[`gemini:${gm}`] = { status: r.status, err: d?.error?.message ?? null };
-    }
+  const t = (ms: number) => AbortSignal.timeout(ms);
+  const jobs: Promise<void>[] = [];
+  if (gk) for (const gm of ["gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"]) {
+    jobs.push((async () => {
+      try {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${gm}:generateContent?key=${encodeURIComponent(gk)}`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, signal: t(20000),
+          body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "say hi" }] }], generationConfig: { maxOutputTokens: 200 } }),
+        });
+        const d = await r.json();
+        tests[`gemini:${gm}`] = { status: r.status, err: d?.error?.message ?? null };
+      } catch (e) { tests[`gemini:${gm}`] = { err: String(e) }; }
+    })());
   }
-  if (qk) {
-    for (const m of ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "meta-llama/llama-prompt-guard-2-22m"].slice(0,2)) {
-      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST", headers: { Authorization: `Bearer ${qk}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: m, messages: [{ role: "user", content: "hi" }], max_tokens: 20 }),
-      });
-      const d = await r.json();
-      tests[`groq:${m}`] = { status: r.status, err: d?.error?.message ?? null };
-    }
+  if (nk) for (const m of ["nvidia/nemotron-3-super-120b-a12b", "nvidia/nemotron-3-nano-30b-a3b", "meta/llama-3.2-90b-vision-instruct", "mistralai/mistral-nemotron", "nvidia/nemotron-3.5-lightning-30b-a3b"]) {
+    jobs.push((async () => {
+      try {
+        const r = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+          method: "POST", headers: { Authorization: `Bearer ${nk}`, "Content-Type": "application/json" }, signal: t(25000),
+          body: JSON.stringify({ model: m, messages: [{ role: "user", content: "hi" }], max_tokens: 20 }),
+        });
+        const d = await r.json();
+        tests[`nvidia:${m}`] = { status: r.status, err: d?.error?.message ?? d?.detail ?? null };
+      } catch (e) { tests[`nvidia:${m}`] = { err: String(e) }; }
+    })());
   }
-  if (nk) {
-    for (const m of ["nvidia/nemotron-3-super-120b-a12b", "nvidia/nemotron-3-nano-30b-a3b", "meta/llama-3.2-90b-vision-instruct", "mistralai/mistral-nemotron", "nvidia/nemotron-3.5-lightning-30b-a3b"]) {
-      const r = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
-        method: "POST", headers: { Authorization: `Bearer ${nk}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: m, messages: [{ role: "user", content: "hi" }], max_tokens: 20 }),
-      });
-      const d = await r.json();
-      tests[`nvidia:${m}`] = { status: r.status, err: d?.error?.message ?? d?.detail ?? null };
-    }
-  }
+  await Promise.all(jobs);
   out.smoke = tests;
 
   return new Response(JSON.stringify(out, null, 2), { headers: { ...cors, "Content-Type": "application/json" } });
