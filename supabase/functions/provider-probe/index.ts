@@ -11,11 +11,9 @@ Deno.serve(async (req) => {
   const gk = Deno.env.get("GEMINI_API_KEY");
   if (gk) {
     try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(gk)}&pageSize=200`);
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(gk)}&pageSize=1`);
       const d = await r.json();
-      out.gemini = r.ok
-        ? (d.models ?? []).map((m: any) => m.name).filter((n: string) => n.includes("flash") || n.includes("pro"))
-        : { status: r.status, error: d?.error?.message };
+      out.gemini = r.ok ? "ok" : { status: r.status };
     } catch (e) { out.gemini = { error: String(e) }; }
   } else out.gemini = "missing_key";
 
@@ -24,7 +22,7 @@ Deno.serve(async (req) => {
     try {
       const r = await fetch("https://api.groq.com/openai/v1/models", { headers: { Authorization: `Bearer ${qk}` } });
       const d = await r.json();
-      out.groq = r.ok ? (d.data ?? []).map((m: any) => m.id) : { status: r.status, error: d?.error?.message };
+      out.groq = r.ok ? "ok" : { status: r.status, error: d?.error?.message };
     } catch (e) { out.groq = { error: String(e) }; }
   } else out.groq = "missing_key";
 
@@ -33,9 +31,7 @@ Deno.serve(async (req) => {
     try {
       const r = await fetch("https://integrate.api.nvidia.com/v1/models", { headers: { Authorization: `Bearer ${nk}` } });
       const d = await r.json();
-      out.nvidia = r.ok
-        ? (d.data ?? []).map((m: any) => m.id).filter((id: string) => /llama|qwen|nemotron|mistral/i.test(id)).slice(0, 60)
-        : { status: r.status, error: d?.error?.message ?? d?.detail };
+      out.nvidia = r.ok ? "ok" : { status: r.status };
     } catch (e) { out.nvidia = { error: String(e) }; }
   } else out.nvidia = "missing_key";
 
@@ -44,7 +40,7 @@ Deno.serve(async (req) => {
     try {
       const r = await fetch("https://openrouter.ai/api/v1/key", { headers: { Authorization: `Bearer ${ok}` } });
       const d = await r.json();
-      out.openrouter = r.ok ? d?.data : { status: r.status };
+      out.openrouter = r.ok ? "ok" : { status: r.status };
     } catch (e) { out.openrouter = { error: String(e) }; }
   } else out.openrouter = "missing_key";
 
