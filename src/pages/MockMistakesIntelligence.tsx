@@ -95,11 +95,23 @@ export default function MockMistakesIntelligence() {
     const { data, error: fnError } = await supabase.functions.invoke("mock-mistakes-intelligence", { body: {} });
     setRunning(false);
     if (fnError || (data as any)?.error) {
-      const msg = (data as any)?.message ?? (data as any)?.error ?? fnError?.message ?? "Analysis failed";
+      // functions.invoke hides the body of non-2xx responses — read it back so the
+      // student sees the real reason instead of "non-2xx status code".
+      let detail: string | null = (data as any)?.message ?? (data as any)?.error ?? null;
+      const ctx = (fnError as any)?.context;
+      if (!detail && ctx && typeof ctx.json === "function") {
+        try {
+          const body = await ctx.json();
+          detail = body?.error ?? body?.message ?? null;
+          if (body?.stage) detail = `[${body.stage}] ${detail}`;
+        } catch { /* keep fallback message */ }
+      }
+      const msg = detail ?? fnError?.message ?? "Analysis failed";
       setError(msg);
       toast({ title: "AJIT AI विश्लेषण नहीं हो सका", description: msg, variant: "destructive" });
       return;
     }
+
     setReport((data as any).report);
     setGeneratedAt((data as any).generated_at ?? new Date().toISOString());
     setAnalyzed((data as any).report?.totals?.questions ?? 0);
