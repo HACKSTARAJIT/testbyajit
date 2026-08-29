@@ -35,18 +35,43 @@ type Q = {
   created_at: string;
 };
 
+function tryParse(s: string): any | null {
+  try { return JSON.parse(s); } catch { return null; }
+}
+
+/** Repairs a JSON object that was cut off mid-stream (closes open strings/brackets). */
+function repairTruncatedJson(raw: string): string {
+  let out = raw;
+  // drop a trailing partial token
+  const stack: string[] = [];
+  let inStr = false, esc = false;
+  for (const ch of out) {
+    if (esc) { esc = false; continue; }
+    if (ch === "\\" && inStr) { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === "{" || ch === "[") stack.push(ch);
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+  if (inStr) out += '"';
+  out = out.replace(/,\s*$/, "");
+  while (stack.length) out += stack.pop() === "{" ? "}" : "]";
+  return out;
+}
+
 function parseJsonObject(text: string): any | null {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   const raw = (fenced ? fenced[1] : text).trim();
   const start = raw.indexOf("{");
+  if (start === -1) return null;
   const end = raw.lastIndexOf("}");
-  if (start === -1 || end === -1) return null;
-  try {
-    return JSON.parse(raw.slice(start, end + 1));
-  } catch {
-    return null;
+  if (end > start) {
+    const direct = tryParse(raw.slice(start, end + 1));
+    if (direct) return direct;
   }
+  return tryParse(repairTruncatedJson(raw.slice(start)));
 }
+
 
 const SEVERITIES = ["critical", "high", "medium", "improving", "insufficient"];
 
