@@ -35,18 +35,43 @@ type Q = {
   created_at: string;
 };
 
+function tryParse(s: string): any | null {
+  try { return JSON.parse(s); } catch { return null; }
+}
+
+/** Repairs a JSON object that was cut off mid-stream (closes open strings/brackets). */
+function repairTruncatedJson(raw: string): string {
+  let out = raw;
+  // drop a trailing partial token
+  const stack: string[] = [];
+  let inStr = false, esc = false;
+  for (const ch of out) {
+    if (esc) { esc = false; continue; }
+    if (ch === "\\" && inStr) { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === "{" || ch === "[") stack.push(ch);
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+  if (inStr) out += '"';
+  out = out.replace(/,\s*$/, "");
+  while (stack.length) out += stack.pop() === "{" ? "}" : "]";
+  return out;
+}
+
 function parseJsonObject(text: string): any | null {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   const raw = (fenced ? fenced[1] : text).trim();
   const start = raw.indexOf("{");
+  if (start === -1) return null;
   const end = raw.lastIndexOf("}");
-  if (start === -1 || end === -1) return null;
-  try {
-    return JSON.parse(raw.slice(start, end + 1));
-  } catch {
-    return null;
+  if (end > start) {
+    const direct = tryParse(raw.slice(start, end + 1));
+    if (direct) return direct;
   }
+  return tryParse(repairTruncatedJson(raw.slice(start)));
 }
+
 
 const SEVERITIES = ["critical", "high", "medium", "improving", "insufficient"];
 
@@ -267,44 +292,65 @@ ${JSON.stringify((prevRow as any)?.report?.overview ?? null)} (तब ${(prevRow
 केवल इस JSON schema में उत्तर दो, कोई अतिरिक्त text नहीं:
 ${schema}`;
 
+    const aiBody = {
+      messages: [
+        { role: "system" as const, content: "You are AJIT AI, a strict evidence-based Hindi mentor. Output strict JSON only." },
+        { role: "user" as const, content: prompt },
+      ],
+      temperature: 0.4,
+      response_format: { type: "json_object" as const },
+      // Gemini 3.x flash is a thinking model: reasoning tokens are billed against
+      // maxOutputTokens. 3000 was consumed by thinking and returned an empty /
+      // truncated body (finishReason MAX_TOKENS) → the parser failed with 502.
+      max_tokens: 12000,
+    };
+
     const res = await unifiedFetch({
       feature: "mock-mistakes-intelligence",
-      body: {
-        messages: [
-          { role: "system", content: "You are AJIT AI, a strict evidence-based Hindi mentor. Output strict JSON only." },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.4,
-        // Function-specific budget: kept at ~3000 so the OpenRouter fallback stays
-        // affordable on the current balance. Do not raise without checking that.
-        max_tokens: 3000,
-      },
+      body: aiBody,
       overallTimeoutMs: 180000,
     });
 
     if (!res.ok) {
-      const err = await res.json();
+      const err = await res.json().catch(() => ({}));
+      const message = err?.error ?? "AI unavailable";
+      console.error(JSON.stringify({ stage: "ai", user_id: userId, http: res.status, error: message }));
       await admin.from("mock_mistake_intelligence").upsert({
         user_id: userId,
         status: "error",
-        error: err?.error ?? "AI unavailable",
+        error: message,
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" });
-      return json({ error: err?.error ?? "AI unavailable" }, 503);
+      return json({ success: false, stage: "ai", error: message }, 503);
     }
 
     const data = await res.json();
-    const report = parseJsonObject(data?.choices?.[0]?.message?.content ?? "");
+    const choice = data?.choices?.[0];
+    const content: string = choice?.message?.content ?? "";
+    const report = parseJsonObject(content);
 
     if (!report || !Array.isArray(report.sections) || report.sections.length === 0) {
+      const reason = !content.trim()
+        ? `AI ने खाली उत्तर दिया (finish_reason: ${choice?.finish_reason ?? "unknown"})`
+        : `AI उत्तर पढ़ा नहीं जा सका (finish_reason: ${choice?.finish_reason ?? "unknown"}, ${content.length} अक्षर)`;
+      console.error(JSON.stringify({
+        stage: "parsing",
+        user_id: userId,
+        provider: data?.provider ?? null,
+        finish_reason: choice?.finish_reason ?? null,
+        content_length: content.length,
+        usage: data?.usage ?? null,
+        snippet: content.slice(0, 400),
+      }));
       await admin.from("mock_mistake_intelligence").upsert({
         user_id: userId,
         status: "error",
-        error: "AI response could not be parsed",
+        error: reason,
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" });
-      return json({ error: "AI response could not be parsed" }, 502);
+      return json({ success: false, stage: "parsing", error: reason }, 502);
     }
+
 
     // Never let the model claim strength or drop deterministic facts.
     report.repeated_questions = repeatedQuestions;
