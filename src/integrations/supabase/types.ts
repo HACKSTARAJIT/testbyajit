@@ -1665,6 +1665,78 @@ export type Database = {
           },
         ]
       }
+      practice_sessions: {
+        Row: {
+          answers: Json
+          chapter: string | null
+          created_at: string
+          current_index: number
+          current_question_id: string | null
+          elapsed_seconds: number
+          id: string
+          last_saved_at: string
+          marked: Json
+          option_order: Json
+          question_ids: Json
+          remaining_seconds: number | null
+          shuffle_mode: boolean
+          skipped: Json
+          source: string
+          source_key: string
+          status: string
+          subject: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          chapter?: string | null
+          created_at?: string
+          current_index?: number
+          current_question_id?: string | null
+          elapsed_seconds?: number
+          id?: string
+          last_saved_at?: string
+          marked?: Json
+          option_order?: Json
+          question_ids?: Json
+          remaining_seconds?: number | null
+          shuffle_mode?: boolean
+          skipped?: Json
+          source: string
+          source_key: string
+          status?: string
+          subject?: string | null
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          chapter?: string | null
+          created_at?: string
+          current_index?: number
+          current_question_id?: string | null
+          elapsed_seconds?: number
+          id?: string
+          last_saved_at?: string
+          marked?: Json
+          option_order?: Json
+          question_ids?: Json
+          remaining_seconds?: number | null
+          shuffle_mode?: boolean
+          skipped?: Json
+          source?: string
+          source_key?: string
+          status?: string
+          subject?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
