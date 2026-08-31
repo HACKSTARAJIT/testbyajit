@@ -172,6 +172,7 @@ export async function recordAttempt(
         priority: "low",
         status: "pending",
         source: "marked",
+        source_type: "app_test",
         test_name: test.title ?? null,
         total_attempts: 1,
         total_correct: 1,
