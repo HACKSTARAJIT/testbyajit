@@ -57,7 +57,8 @@ export function AddWrongQuestionDialog({
         explanation: explanation || null,
         priority,
         status: "pending",
-      });
+        source_type: "app_test",
+      } as any);
       if (error) throw error;
       toast.success("Saved to Wrong Questions Notebook!");
       reset();
