@@ -2927,6 +2927,7 @@ export type Database = {
           selected_option: string | null
           source: string
           source_report_id: string | null
+          source_type: string
           status: string
           subject_id: string | null
           test_id: string | null
@@ -2969,6 +2970,7 @@ export type Database = {
           selected_option?: string | null
           source?: string
           source_report_id?: string | null
+          source_type?: string
           status?: string
           subject_id?: string | null
           test_id?: string | null
@@ -3011,6 +3013,7 @@ export type Database = {
           selected_option?: string | null
           source?: string
           source_report_id?: string | null
+          source_type?: string
           status?: string
           subject_id?: string | null
           test_id?: string | null
