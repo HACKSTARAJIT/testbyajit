@@ -49,6 +49,7 @@ export async function loadWrongQuestionPractice(
     .from("wrong_questions")
     .select("question_id, question_text, correct_option, explanation, selected_option, wrong_count")
     .eq("user_id", userId)
+    .eq("source_type", "app_test")
     .eq("status", "pending")
     .is("source_report_id", null)
     .filter("subject_id", realSubject ? "eq" : "is", realSubject as any)

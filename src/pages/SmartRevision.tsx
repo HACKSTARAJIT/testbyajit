@@ -18,6 +18,7 @@ export default function SmartRevision() {
           .from("wrong_questions")
           .select("id", { count: "exact", head: true })
           .eq("user_id", user.id)
+          .eq("source_type", "app_test")
           .eq("status", "pending")
           .is("source_report_id", null),
         supabase

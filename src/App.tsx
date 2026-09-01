@@ -55,7 +55,7 @@ const AICoach = lazy(() => import("./pages/AICoach.tsx"));
 const AICoachChat = lazy(() => import("./pages/AICoachChat.tsx"));
 const WrongQuestionsSubjects = lazy(() => import("./pages/WrongQuestionsSubjects.tsx"));
 const ChapterPractice = lazy(() => import("./pages/ChapterPractice.tsx"));
-const SelectionIntelligence = lazy(() => import("./pages/SelectionIntelligence.tsx"));
+const AppTestMistakes = lazy(() => import("./pages/AppTestMistakes.tsx"));
 const Accountability = lazy(() => import("./pages/Accountability.tsx"));
 const Profile = lazy(() => import("./pages/Profile.tsx"));
 
@@ -136,7 +136,8 @@ const App = () => (
             <Route path="/ai-mock-analyzer" element={<Navigate to="/smart-revision" replace />} />
             <Route path="/analysis-import" element={<Navigate to="/smart-revision" replace />} />
             <Route path="/ai-performance-center" element={<Navigate to="/smart-revision" replace />} />
-            <Route path="/selection-intelligence" element={withLayout(<SelectionIntelligence />)} />
+            <Route path="/app-test-mistakes" element={withLayout(<AppTestMistakes />)} />
+            <Route path="/selection-intelligence" element={<Navigate to="/app-test-mistakes" replace />} />
             <Route path="/accountability" element={withLayout(<Accountability />)} />
             <Route path="/performance" element={withLayout(<PerformanceIntelligence />)} />
             <Route path="/ai-coach" element={withLayout(<AICoach />)} />

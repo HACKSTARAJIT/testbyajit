@@ -101,6 +101,7 @@ export async function detectRepeatMistakes(
       "question_id, question_text, topic, status, wrong_count, total_attempts, total_wrong, total_correct, total_skipped, consecutive_correct, last_attempt_result, last_attempt_at, subjects(name), chapters(name)",
     )
     .eq("user_id", userId)
+    .eq("source_type", "app_test")
     .is("source_report_id", null)
     .not("question_id", "is", null);
 
