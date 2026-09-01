@@ -186,7 +186,7 @@ export default function Preparation360() {
         <CardHeader className="pb-2"><CardTitle className="text-sm">Jump into action</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <Button asChild size="sm" variant="outline"><Link to="/tests"><Target className="mr-1 h-3.5 w-3.5" />Practice Tests</Link></Button>
-          <Button asChild size="sm" variant="outline"><Link to="/smart-revision"><BookMarked className="mr-1 h-3.5 w-3.5" />Smart Revision</Link></Button>
+          <Button asChild size="sm" variant="outline"><Link to="/app-test-mistakes"><BookMarked className="mr-1 h-3.5 w-3.5" />App Test Mistakes</Link></Button>
           <Button asChild size="sm" variant="outline"><Link to="/ai-coach/chat"><Sparkles className="mr-1 h-3.5 w-3.5" />Chat Coach</Link></Button>
           <Button asChild size="sm" variant="outline"><Link to="/dashboard"><TrendingUp className="mr-1 h-3.5 w-3.5" />Dashboard</Link></Button>
         </CardContent>
@@ -198,10 +198,10 @@ export default function Preparation360() {
 function recRoute(type: string) {
   switch (type) {
     case "practice": return "/tests";
-    case "revision": return "/smart-revision";
+    case "revision": return "/app-test-mistakes";
     case "pdf": return "/pdfs";
-    case "planner": return "/smart-revision";
-    default: return "/smart-revision";
+    case "planner": return "/app-test-mistakes";
+    default: return "/app-test-mistakes";
   }
 }
 

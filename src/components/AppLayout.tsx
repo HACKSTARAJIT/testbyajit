@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  Home, Shield, LogOut, Menu, User, Moon, Sun, XCircle, LogIn, Info, Brain, Sparkles, LayoutDashboard, Target, Upload, NotebookPen,
+  Home, Shield, LogOut, Menu, User, Moon, Sun, XCircle, LogIn, Info, Sparkles, LayoutDashboard, Target, Upload, NotebookPen,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetTrigger,
@@ -20,7 +20,6 @@ import { APP_NAME, APP_TAGLINE, APP_LOGO, APP_LOGO_ALT } from "@/lib/brand";
 const navItems = [
   { to: "/dashboard", label: "होम / Home", icon: Home },
   { to: "/my-dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/smart-revision", label: "स्मार्ट रिवीजन / Smart Revision", icon: Brain },
   { to: "/mock-mistakes", label: "🧠 Mock Mistakes", icon: NotebookPen },
   { to: "/app-test-mistakes", label: "❌ App Test Mistakes", icon: XCircle },
 ];

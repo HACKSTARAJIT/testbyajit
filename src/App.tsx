@@ -27,7 +27,6 @@ const TestRunner = lazy(() => import("./pages/TestRunner.tsx"));
 const TestAnalysis = lazy(() => import("./pages/TestAnalysis.tsx"));
 const TestMistakeAnalysis = lazy(() => import("./pages/TestMistakeAnalysis.tsx"));
 const WrongQuestions = lazy(() => import("./pages/WrongQuestions.tsx"));
-const SmartRevision = lazy(() => import("./pages/SmartRevision.tsx"));
 const SmartRevisionSubject = lazy(() => import("./pages/SmartRevisionSubject.tsx"));
 const SmartRevisionChapter = lazy(() => import("./pages/SmartRevisionChapter.tsx"));
 const Bookmarks = lazy(() => import("./pages/Bookmarks.tsx"));
@@ -108,11 +107,11 @@ const App = () => (
             <Route path="/test/:id" element={withLayout(<TestRunner />)} />
             <Route path="/analysis" element={withLayout(<TestAnalysis />)} />
             <Route path="/analysis/:attemptId" element={withLayout(<TestMistakeAnalysis />)} />
-            <Route path="/smart-revision" element={withLayout(<SmartRevision />)} />
-            <Route path="/smart-revision/wrong" element={withLayout(<WrongQuestionsSubjects />)} />
-            <Route path="/smart-revision/subject/:subjectId" element={withLayout(<SmartRevisionSubject />)} />
-            <Route path="/smart-revision/subject/:subjectId/chapter/:chapterId" element={withLayout(<SmartRevisionChapter />)} />
-            <Route path="/smart-revision/subject/:subjectId/chapter/:chapterId/practice" element={withLayout(<ChapterPractice />)} />
+            <Route path="/smart-revision" element={<Navigate to="/app-test-mistakes" replace />} />
+            <Route path="/smart-revision/*" element={<Navigate to="/app-test-mistakes" replace />} />
+            <Route path="/app-test-mistakes/subject/:subjectId" element={withLayout(<SmartRevisionSubject />)} />
+            <Route path="/app-test-mistakes/subject/:subjectId/chapter/:chapterId" element={withLayout(<SmartRevisionChapter />)} />
+            <Route path="/app-test-mistakes/subject/:subjectId/chapter/:chapterId/practice" element={withLayout(<ChapterPractice />)} />
             <Route path="/wrong-questions" element={withLayout(<WrongQuestions />)} />
             <Route path="/bookmarks" element={withLayout(<Bookmarks />)} />
             <Route path="/revision" element={withLayout(<Revision />)} />
@@ -132,10 +131,9 @@ const App = () => (
             <Route path="/mock-auto-test/:reportId" element={withLayout(<MockAutoTest />)} />
             <Route path="/about" element={withLayout(<About />)} />
             <Route path="/profile" element={withLayout(<Profile />)} />
-            <Route path="/smart-revision/ai" element={<Navigate to="/smart-revision" replace />} />
-            <Route path="/ai-mock-analyzer" element={<Navigate to="/smart-revision" replace />} />
-            <Route path="/analysis-import" element={<Navigate to="/smart-revision" replace />} />
-            <Route path="/ai-performance-center" element={<Navigate to="/smart-revision" replace />} />
+            <Route path="/ai-mock-analyzer" element={<Navigate to="/app-test-mistakes" replace />} />
+            <Route path="/analysis-import" element={<Navigate to="/app-test-mistakes" replace />} />
+            <Route path="/ai-performance-center" element={<Navigate to="/app-test-mistakes" replace />} />
             <Route path="/app-test-mistakes" element={withLayout(<AppTestMistakes />)} />
             <Route path="/selection-intelligence" element={<Navigate to="/app-test-mistakes" replace />} />
             <Route path="/accountability" element={withLayout(<Accountability />)} />
