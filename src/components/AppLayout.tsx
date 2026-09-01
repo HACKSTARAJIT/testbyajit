@@ -21,7 +21,8 @@ const navItems = [
   { to: "/dashboard", label: "होम / Home", icon: Home },
   { to: "/my-dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/smart-revision", label: "स्मार्ट रिवीजन / Smart Revision", icon: Brain },
-  { to: "/selection-intelligence", label: "🎯 Selection Intelligence", icon: Target },
+  { to: "/mock-mistakes", label: "🧠 Mock Mistakes", icon: NotebookPen },
+  { to: "/app-test-mistakes", label: "❌ App Test Mistakes", icon: XCircle },
 ];
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
