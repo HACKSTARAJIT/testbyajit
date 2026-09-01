@@ -55,7 +55,7 @@ const AICoach = lazy(() => import("./pages/AICoach.tsx"));
 const AICoachChat = lazy(() => import("./pages/AICoachChat.tsx"));
 const WrongQuestionsSubjects = lazy(() => import("./pages/WrongQuestionsSubjects.tsx"));
 const ChapterPractice = lazy(() => import("./pages/ChapterPractice.tsx"));
-const SelectionIntelligence = lazy(() => import("./pages/SelectionIntelligence.tsx"));
+const AppTestMistakes = lazy(() => import("./pages/AppTestMistakes.tsx"));
 const Accountability = lazy(() => import("./pages/Accountability.tsx"));
 const Profile = lazy(() => import("./pages/Profile.tsx"));
 
