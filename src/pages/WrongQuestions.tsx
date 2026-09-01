@@ -62,6 +62,7 @@ export default function WrongQuestions() {
       .from("wrong_questions")
       .select("*, tests(title), subjects(name), chapters(name)")
       .eq("user_id", user.id)
+      .eq("source_type", "app_test")
       .is("source_report_id", null)
       .order("created_at", { ascending: false });
     const list = (data as any as WQ[]) ?? [];
@@ -85,7 +86,6 @@ export default function WrongQuestions() {
   const remove = async (id: string) => {
     const { error } = await supabase.from("wrong_questions").delete().eq("id", id);
     if (error) return toast.error("Could not delete");
-    setRows((rs) => rs.filter((r) => r.id !== id));
   };
 
   const subjects = useMemo(() => {

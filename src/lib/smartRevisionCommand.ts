@@ -36,6 +36,7 @@ export async function loadCommandStats(userId: string): Promise<CommandStats> {
     .from("wrong_questions")
     .select("status, priority, subject_id, chapter_id, topic, wrong_count, is_guess, is_marked, last_attempt_at")
     .eq("user_id", userId);
+    .eq("source_type", "app_test")
 
   const rows = (data as any[]) ?? [];
   const now = Date.now();
@@ -77,6 +78,7 @@ export async function loadFilteredRevisionIds(
     .from("wrong_questions")
     .select("question_id, priority, wrong_count, last_attempt_at, is_guess, is_marked, is_skipped, consecutive_correct, correct_revision_count")
     .eq("user_id", userId)
+    .eq("source_type", "app_test")
     .eq("status", "pending")
     .not("question_id", "is", null);
 

@@ -57,6 +57,7 @@ export async function loadSubjectSummaries(userId: string): Promise<SubjectSumma
       .from("wrong_questions")
       .select("subject_id, priority, question_id")
       .eq("user_id", userId)
+      .eq("source_type", "app_test")
       .eq("status", "pending")
     .is("source_report_id", null),
     supabase.from("revision_tests").select("subject_id").eq("user_id", userId),
@@ -94,6 +95,7 @@ export async function loadChapterSummaries(userId: string, subjectId: string): P
       .from("wrong_questions")
       .select("chapter_id")
       .eq("user_id", userId)
+      .eq("source_type", "app_test")
       .eq("status", "pending")
     .is("source_report_id", null)
       .filter("subject_id", realSubject ? "eq" : "is", realSubject as any),
@@ -167,6 +169,7 @@ export async function loadOverallStats(userId: string): Promise<OverallStats> {
       .from("wrong_questions")
       .select("status, priority, wrong_count, correct_revision_count, mastered_at")
       .eq("user_id", userId),
+      .eq("source_type", "app_test")
     supabase.from("revision_tests").select("id", { count: "exact", head: true }).eq("user_id", userId),
   ]);
 
@@ -210,6 +213,7 @@ export async function loadMastered(userId: string): Promise<MasteredRow[]> {
     .from("wrong_questions")
     .select("id, question_id, question_text, correct_option, explanation, subject_id, chapter_id, mastered_at")
     .eq("user_id", userId)
+    .eq("source_type", "app_test")
     .eq("status", "mastered")
     .order("mastered_at", { ascending: false });
   return (data as any[]) ?? [];
@@ -221,6 +225,7 @@ export async function loadQuickRevisionIds(userId: string, limit: number): Promi
     .from("wrong_questions")
     .select("question_id, priority")
     .eq("user_id", userId)
+    .eq("source_type", "app_test")
     .eq("status", "pending")
     .is("source_report_id", null)
     .not("question_id", "is", null);
