@@ -35,8 +35,8 @@ export async function loadCommandStats(userId: string): Promise<CommandStats> {
   const { data } = await supabase
     .from("wrong_questions")
     .select("status, priority, subject_id, chapter_id, topic, wrong_count, is_guess, is_marked, last_attempt_at")
-    .eq("user_id", userId);
-    .eq("source_type", "app_test")
+    .eq("user_id", userId)
+    .eq("source_type", "app_test");
 
   const rows = (data as any[]) ?? [];
   const now = Date.now();

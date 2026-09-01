@@ -168,8 +168,8 @@ export async function loadOverallStats(userId: string): Promise<OverallStats> {
     supabase
       .from("wrong_questions")
       .select("status, priority, wrong_count, correct_revision_count, mastered_at")
-      .eq("user_id", userId),
-      .eq("source_type", "app_test")
+      .eq("user_id", userId)
+      .eq("source_type", "app_test"),
     supabase.from("revision_tests").select("id", { count: "exact", head: true }).eq("user_id", userId),
   ]);
 
