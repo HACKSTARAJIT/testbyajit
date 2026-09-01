@@ -313,7 +313,7 @@ export function DailyChallenge({ data }: { data: HomeData }) {
 export function QuickActions() {
   const actions = [
     { to: "/tests", icon: ClipboardList, label: "Practice Test" },
-    { to: "/smart-revision", icon: Brain, label: "Smart Revision" },
+    { to: "/mock-mistakes", icon: Brain, label: "Mock Mistakes" },
     { to: "/wrong-questions", icon: AlertTriangle, label: "Wrong Qs" },
     { to: "/ai-coach", icon: Sparkles, label: "AJIT AI" },
     { to: "/performance", icon: Gauge, label: "Performance" },
