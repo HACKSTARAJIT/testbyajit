@@ -136,7 +136,8 @@ const App = () => (
             <Route path="/ai-mock-analyzer" element={<Navigate to="/smart-revision" replace />} />
             <Route path="/analysis-import" element={<Navigate to="/smart-revision" replace />} />
             <Route path="/ai-performance-center" element={<Navigate to="/smart-revision" replace />} />
-            <Route path="/selection-intelligence" element={withLayout(<SelectionIntelligence />)} />
+            <Route path="/app-test-mistakes" element={withLayout(<AppTestMistakes />)} />
+            <Route path="/selection-intelligence" element={<Navigate to="/app-test-mistakes" replace />} />
             <Route path="/accountability" element={withLayout(<Accountability />)} />
             <Route path="/performance" element={withLayout(<PerformanceIntelligence />)} />
             <Route path="/ai-coach" element={withLayout(<AICoach />)} />
