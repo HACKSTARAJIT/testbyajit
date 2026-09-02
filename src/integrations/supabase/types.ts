@@ -2910,16 +2910,21 @@ export type Database = {
           first_wrong_at: string | null
           id: string
           image_path: string | null
+          is_active: boolean
           is_guess: boolean
           is_marked: boolean
           is_skipped: boolean
           last_attempt_at: string | null
           last_attempt_result: string | null
+          last_practiced_at: string | null
           last_wrong_at: string | null
           mastered_at: string | null
           mastery_score: number
+          mastery_status: string
           mistake_type: string | null
           note: string | null
+          practice_attempts: number
+          practice_correct_count: number
           priority: string
           question_id: string | null
           question_text: string | null
@@ -2929,6 +2934,7 @@ export type Database = {
           source_report_id: string | null
           source_type: string
           status: string
+          sub_topic: string | null
           subject_id: string | null
           test_id: string | null
           test_name: string | null
@@ -2953,16 +2959,21 @@ export type Database = {
           first_wrong_at?: string | null
           id?: string
           image_path?: string | null
+          is_active?: boolean
           is_guess?: boolean
           is_marked?: boolean
           is_skipped?: boolean
           last_attempt_at?: string | null
           last_attempt_result?: string | null
+          last_practiced_at?: string | null
           last_wrong_at?: string | null
           mastered_at?: string | null
           mastery_score?: number
+          mastery_status?: string
           mistake_type?: string | null
           note?: string | null
+          practice_attempts?: number
+          practice_correct_count?: number
           priority?: string
           question_id?: string | null
           question_text?: string | null
@@ -2972,6 +2983,7 @@ export type Database = {
           source_report_id?: string | null
           source_type?: string
           status?: string
+          sub_topic?: string | null
           subject_id?: string | null
           test_id?: string | null
           test_name?: string | null
@@ -2996,16 +3008,21 @@ export type Database = {
           first_wrong_at?: string | null
           id?: string
           image_path?: string | null
+          is_active?: boolean
           is_guess?: boolean
           is_marked?: boolean
           is_skipped?: boolean
           last_attempt_at?: string | null
           last_attempt_result?: string | null
+          last_practiced_at?: string | null
           last_wrong_at?: string | null
           mastered_at?: string | null
           mastery_score?: number
+          mastery_status?: string
           mistake_type?: string | null
           note?: string | null
+          practice_attempts?: number
+          practice_correct_count?: number
           priority?: string
           question_id?: string | null
           question_text?: string | null
@@ -3015,6 +3032,7 @@ export type Database = {
           source_report_id?: string | null
           source_type?: string
           status?: string
+          sub_topic?: string | null
           subject_id?: string | null
           test_id?: string | null
           test_name?: string | null
