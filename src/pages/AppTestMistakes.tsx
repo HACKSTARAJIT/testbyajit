@@ -4,34 +4,31 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, BookOpen, ChevronRight, FolderOpen, XCircle } from "lucide-react";
-import { loadSubjectSummaries, loadOverallStats, type SubjectSummary, type OverallStats } from "@/lib/smartRevision";
+import { loadSubjects, loadOverviewCounts, type SubjectNode } from "@/lib/appTestMistakes";
 
 /**
- * ❌ APP TEST MISTAKES — completely independent from Mock Mistakes.
- * Source of truth: public.wrong_questions (source_type = 'app_test').
- * Never reads mock_mistake_* tables.
+ * ❌ APP TEST MISTAKES — level 1 (Subjects).
+ * Hierarchy: Subject → Chapter → Test → Question.
+ * Only active mistakes are listed; mastered questions stay as a statistic.
  */
 export default function AppTestMistakes() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [subjects, setSubjects] = useState<SubjectSummary[]>([]);
-  const [stats, setStats] = useState<OverallStats | null>(null);
+  const [subjects, setSubjects] = useState<SubjectNode[]>([]);
+  const [counts, setCounts] = useState({ active: 0, mastered: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       if (!user) { setLoading(false); return; }
-      const [s, st] = await Promise.all([
-        loadSubjectSummaries(user.id),
-        loadOverallStats(user.id),
-      ]);
+      const [s, c] = await Promise.all([loadSubjects(user.id), loadOverviewCounts(user.id)]);
       setSubjects(s);
-      setStats(st);
+      setCounts(c);
       setLoading(false);
     })();
   }, [user]);
 
-  const totalPending = subjects.reduce((a, s) => a + (s.pending ?? 0), 0);
+  const activeSubjects = subjects.filter((s) => s.active > 0);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -46,7 +43,7 @@ export default function AppTestMistakes() {
           <div>
             <h1 className="font-display text-2xl font-bold">❌ App Test Mistakes</h1>
             <p className="text-sm text-white/85">
-              सिर्फ PRACTICE WITH AJIT App Tests के wrong / skipped questions
+              Subject → Chapter → Test → Question · 2 बार सही ⇒ Mastered
             </p>
           </div>
         </div>
@@ -54,31 +51,31 @@ export default function AppTestMistakes() {
 
       <div className="grid grid-cols-3 gap-3">
         <div className="glass-card rounded-2xl p-4 text-center">
-          <p className="font-display text-2xl font-bold">{loading ? "—" : totalPending}</p>
-          <p className="text-[11px] text-muted-foreground">Pending Mistakes</p>
+          <p className="font-display text-2xl font-bold">{loading ? "—" : counts.active}</p>
+          <p className="text-[11px] text-muted-foreground">Active Mistakes</p>
         </div>
         <div className="glass-card rounded-2xl p-4 text-center">
-          <p className="font-display text-2xl font-bold">{loading ? "—" : subjects.length}</p>
+          <p className="font-display text-2xl font-bold">{loading ? "—" : activeSubjects.length}</p>
           <p className="text-[11px] text-muted-foreground">Subjects</p>
         </div>
         <div className="glass-card rounded-2xl p-4 text-center">
-          <p className="font-display text-2xl font-bold">{loading ? "—" : (stats?.mastered ?? 0)}</p>
+          <p className="font-display text-2xl font-bold text-emerald-500">{loading ? "—" : counts.mastered}</p>
           <p className="text-[11px] text-muted-foreground">Mastered</p>
         </div>
       </div>
 
       {loading ? (
         <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}</div>
-      ) : subjects.length === 0 ? (
+      ) : activeSubjects.length === 0 ? (
         <div className="glass-card rounded-3xl p-10 text-center text-muted-foreground">
           <FolderOpen className="mx-auto h-10 w-10" />
-          <p className="mt-3 font-semibold">कोई App Test mistake नहीं</p>
+          <p className="mt-3 font-semibold">कोई active App Test mistake नहीं</p>
           <p className="mt-1 text-sm">कोई App Test दें — गलत और छूटे हुए questions अपने आप यहाँ आ जाएंगे।</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {subjects.map((s) => (
-            <Link key={s.subject_id} to={`/smart-revision/subject/${s.subject_id}`}>
+          {activeSubjects.map((s) => (
+            <Link key={s.subject_id} to={`/app-test-mistakes/subject/${s.subject_id}`}>
               <div className="btn-ripple glass-card flex items-center gap-4 rounded-2xl p-4 transition-transform hover:scale-[1.01]">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground">
                   <BookOpen className="h-5 w-5" />
@@ -87,7 +84,8 @@ export default function AppTestMistakes() {
                   <p className="truncate font-semibold">{s.name}</p>
                   {s.name_hi && <p className="truncate text-xs text-muted-foreground">{s.name_hi}</p>}
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {s.pending} pending question{s.pending !== 1 ? "s" : ""}
+                    {s.active} active mistake{s.active !== 1 ? "s" : ""} · {s.chapters} chapter{s.chapters !== 1 ? "s" : ""}
+                    {s.mastered > 0 && <span className="text-emerald-500"> · {s.mastered} mastered</span>}
                   </p>
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
