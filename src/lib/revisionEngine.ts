@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { EngineQuestion, EngineTest } from "@/components/TestEngine";
+import { recordAppTestMistakePractice } from "@/lib/appTestMistakes";
 
 // Priority derived from how many times a question was answered wrong.
 // Adds a "critical" tier for 4+ wrongs to power the AI Revision Command Center.
@@ -57,6 +58,7 @@ export async function recordAttempt(
     .from("wrong_questions")
     .select("id, question_id, wrong_count, correct_revision_count, consecutive_correct, status, total_attempts, total_correct, total_wrong, total_skipped, first_wrong_at")
     .eq("user_id", userId)
+    .eq("source_type", "app_test")
     .in("question_id", qIds);
 
   const existing = new Map<string, ExistingWQ>();
@@ -96,6 +98,10 @@ export async function recordAttempt(
             priority: priorityForCount(wrongCount),
             status: "pending",
             mastered_at: null,
+            // Wrong again in a NEW App Test ⇒ re-enters the active mistake system.
+            mastery_status: "active",
+            is_active: true,
+            practice_correct_count: 0,
             selected_option: attempted ? chosen : null,
             correct_option: q.correct_option,
             last_attempt_at: now,
@@ -131,6 +137,11 @@ export async function recordAttempt(
           wrong_count: 1,
           consecutive_correct: 0,
           mastery_score: 0,
+          mastery_status: "active",
+          is_active: true,
+          practice_attempts: 0,
+          practice_correct_count: 0,
+          topic: (q as any).topic ?? null,
           last_attempt_result: attempted ? "wrong" : "skipped",
           last_attempt_at: now,
           is_guess: wasGuess,
@@ -139,20 +150,14 @@ export async function recordAttempt(
         } as any);
       }
     } else if (prev && prev.status !== "mastered") {
-      // Correct answer to a question already in the bank = successful revision.
-      const streak = (prev.consecutive_correct ?? 0) + 1;
-      const mastered = streak >= MASTERY_STREAK;
+      // Correct answer inside a NORMAL App Test — history only.
+      // Mastery is earned exclusively through App Test Mistakes practice.
       await supabase
         .from("wrong_questions")
         .update({
-          correct_revision_count: (prev.correct_revision_count ?? 0) + 1,
           total_attempts: (prev.total_attempts ?? 0) + 1,
           total_correct: (prev.total_correct ?? 0) + 1,
-          consecutive_correct: streak,
-          mastery_score: Math.min(streak, MASTERY_STREAK),
           last_attempt_result: "correct",
-          status: mastered ? "mastered" : "pending",
-          mastered_at: mastered ? now : null,
           last_attempt_at: now,
         } as any)
         .eq("id", prev.id);
@@ -179,9 +184,13 @@ export async function recordAttempt(
         total_wrong: 0,
         total_skipped: 0,
         wrong_count: 0,
-        correct_revision_count: 1,
-        consecutive_correct: 1,
-        mastery_score: 1,
+        correct_revision_count: 0,
+        consecutive_correct: 0,
+        mastery_score: 0,
+        mastery_status: "active",
+        is_active: true,
+        practice_attempts: 0,
+        practice_correct_count: 0,
         last_attempt_result: "correct",
         last_attempt_at: now,
         is_guess: wasGuess,
@@ -262,56 +271,22 @@ export async function recordRevisionAttempt(
   const qIds = questions.map((q) => q.id);
   const { data: rows } = await supabase
     .from("wrong_questions")
-    .select("id, question_id, test_id, wrong_count, correct_revision_count, consecutive_correct, status, total_attempts, total_correct, total_wrong, total_skipped, first_wrong_at")
+    .select("id, question_id, test_id")
     .eq("user_id", userId)
+    .eq("source_type", "app_test")
     .in("question_id", qIds);
 
-  const byQ = new Map<string, any>();
-  (rows ?? []).forEach((r: any) => r.question_id && byQ.set(r.question_id, r));
-  const now = new Date().toISOString();
   const affectedTests = new Set<string>();
+  (rows ?? []).forEach((r: any) => { if (r.test_id) affectedTests.add(r.test_id); });
 
-  for (const q of questions) {
-    const prev = byQ.get(q.id);
-    if (!prev) continue;
-    if (prev.test_id) affectedTests.add(prev.test_id);
-    const chosen = answers[q.id];
-    const correct = chosen != null && chosen !== "" && chosen === q.correct_option;
-
-    if (correct && prev.status !== "mastered") {
-      const streak = (prev.consecutive_correct ?? 0) + 1;
-      const mastered = streak >= MASTERY_STREAK;
-      await supabase.from("wrong_questions").update({
-        correct_revision_count: (prev.correct_revision_count ?? 0) + 1,
-        total_attempts: (prev.total_attempts ?? 0) + 1,
-        total_correct: (prev.total_correct ?? 0) + 1,
-        consecutive_correct: streak,
-        mastery_score: Math.min(streak, MASTERY_STREAK),
-        last_attempt_result: "correct",
-        status: mastered ? "mastered" : "pending",
-        mastered_at: mastered ? now : null,
-        last_attempt_at: now,
-      } as any).eq("id", prev.id);
-    } else if (!correct) {
-      const wrongCount = (prev.wrong_count ?? 1) + 1;
-      await supabase.from("wrong_questions").update({
-        wrong_count: wrongCount,
-        total_attempts: (prev.total_attempts ?? 0) + 1,
-        total_wrong: (prev.total_wrong ?? 0) + (chosen ? 1 : 0),
-        total_skipped: (prev.total_skipped ?? 0) + (chosen ? 0 : 1),
-        first_wrong_at: prev.first_wrong_at ?? now,
-        last_wrong_at: now,
-        consecutive_correct: 0,
-        mastery_score: 0,
-        last_attempt_result: chosen ? "wrong" : "skipped",
-        priority: priorityForCount(wrongCount),
-        status: "pending",
-        mastered_at: null,
-        selected_option: chosen ?? null,
-        last_attempt_at: now,
-      } as any).eq("id", prev.id);
-    }
-  }
+  // Same mastery rule as the App Test Mistakes practice screens.
+  await recordAppTestMistakePractice(
+    userId,
+    questions.map((q) => {
+      const chosen = answers[q.id];
+      return { questionId: q.id, correct: !!chosen && chosen === q.correct_option };
+    }),
+  );
 
   for (const testId of affectedTests) {
     await regenerateRevisionTestById(userId, testId);

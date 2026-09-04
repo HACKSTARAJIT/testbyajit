@@ -58,7 +58,7 @@ export async function loadSubjectSummaries(userId: string): Promise<SubjectSumma
       .select("subject_id, priority, question_id")
       .eq("user_id", userId)
       .eq("source_type", "app_test")
-      .eq("status", "pending")
+      .eq("status", "pending").eq("is_active", true)
     .is("source_report_id", null),
     supabase.from("revision_tests").select("subject_id").eq("user_id", userId),
     supabase.from("subjects").select("id, name, name_hi").order("sort_order"),
@@ -96,7 +96,7 @@ export async function loadChapterSummaries(userId: string, subjectId: string): P
       .select("chapter_id")
       .eq("user_id", userId)
       .eq("source_type", "app_test")
-      .eq("status", "pending")
+      .eq("status", "pending").eq("is_active", true)
     .is("source_report_id", null)
       .filter("subject_id", realSubject ? "eq" : "is", realSubject as any),
     supabase
@@ -226,7 +226,7 @@ export async function loadQuickRevisionIds(userId: string, limit: number): Promi
     .select("question_id, priority")
     .eq("user_id", userId)
     .eq("source_type", "app_test")
-    .eq("status", "pending")
+    .eq("status", "pending").eq("is_active", true)
     .is("source_report_id", null)
     .not("question_id", "is", null);
   const ids = [...new Set((data ?? []).map((r: any) => r.question_id).filter(Boolean))] as string[];

@@ -27,8 +27,9 @@ const TestRunner = lazy(() => import("./pages/TestRunner.tsx"));
 const TestAnalysis = lazy(() => import("./pages/TestAnalysis.tsx"));
 const TestMistakeAnalysis = lazy(() => import("./pages/TestMistakeAnalysis.tsx"));
 const WrongQuestions = lazy(() => import("./pages/WrongQuestions.tsx"));
-const SmartRevisionSubject = lazy(() => import("./pages/SmartRevisionSubject.tsx"));
-const SmartRevisionChapter = lazy(() => import("./pages/SmartRevisionChapter.tsx"));
+const AppTestMistakesSubject = lazy(() => import("./pages/AppTestMistakesSubject.tsx"));
+const AppTestMistakesChapter = lazy(() => import("./pages/AppTestMistakesChapter.tsx"));
+const AppTestMistakesTest = lazy(() => import("./pages/AppTestMistakesTest.tsx"));
 const Bookmarks = lazy(() => import("./pages/Bookmarks.tsx"));
 const Revision = lazy(() => import("./pages/Revision.tsx"));
 const RevisionDashboard = lazy(() => import("./pages/RevisionDashboard.tsx"));
@@ -52,8 +53,6 @@ const AdminTestManager = lazy(() => import("./pages/AdminTestManager.tsx"));
 const PerformanceIntelligence = lazy(() => import("./pages/PerformanceIntelligence.tsx"));
 const AICoach = lazy(() => import("./pages/AICoach.tsx"));
 const AICoachChat = lazy(() => import("./pages/AICoachChat.tsx"));
-const WrongQuestionsSubjects = lazy(() => import("./pages/WrongQuestionsSubjects.tsx"));
-const ChapterPractice = lazy(() => import("./pages/ChapterPractice.tsx"));
 const AppTestMistakes = lazy(() => import("./pages/AppTestMistakes.tsx"));
 const Accountability = lazy(() => import("./pages/Accountability.tsx"));
 const Profile = lazy(() => import("./pages/Profile.tsx"));
@@ -109,9 +108,9 @@ const App = () => (
             <Route path="/analysis/:attemptId" element={withLayout(<TestMistakeAnalysis />)} />
             <Route path="/smart-revision" element={<Navigate to="/app-test-mistakes" replace />} />
             <Route path="/smart-revision/*" element={<Navigate to="/app-test-mistakes" replace />} />
-            <Route path="/app-test-mistakes/subject/:subjectId" element={withLayout(<SmartRevisionSubject />)} />
-            <Route path="/app-test-mistakes/subject/:subjectId/chapter/:chapterId" element={withLayout(<SmartRevisionChapter />)} />
-            <Route path="/app-test-mistakes/subject/:subjectId/chapter/:chapterId/practice" element={withLayout(<ChapterPractice />)} />
+            <Route path="/app-test-mistakes/subject/:subjectId" element={withLayout(<AppTestMistakesSubject />)} />
+            <Route path="/app-test-mistakes/subject/:subjectId/chapter/:chapterId" element={withLayout(<AppTestMistakesChapter />)} />
+            <Route path="/app-test-mistakes/subject/:subjectId/chapter/:chapterId/test/:testId" element={withLayout(<AppTestMistakesTest />)} />
             <Route path="/wrong-questions" element={withLayout(<WrongQuestions />)} />
             <Route path="/bookmarks" element={withLayout(<Bookmarks />)} />
             <Route path="/revision" element={withLayout(<Revision />)} />
