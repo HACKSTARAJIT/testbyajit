@@ -80,6 +80,7 @@ export async function loadFilteredRevisionIds(
     .eq("user_id", userId)
     .eq("source_type", "app_test")
     .eq("status", "pending")
+    .eq("is_active", true)
     .not("question_id", "is", null);
 
   if (filter.subjectId) q = q.eq("subject_id", filter.subjectId);

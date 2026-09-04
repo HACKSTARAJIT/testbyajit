@@ -51,6 +51,7 @@ export async function loadWrongQuestionPractice(
     .eq("user_id", userId)
     .eq("source_type", "app_test")
     .eq("status", "pending")
+    .eq("is_active", true)
     .is("source_report_id", null)
     .filter("subject_id", realSubject ? "eq" : "is", realSubject as any)
     .filter("chapter_id", realChapter ? "eq" : "is", realChapter as any);
