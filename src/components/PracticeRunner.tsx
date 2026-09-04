@@ -263,6 +263,18 @@ export function PracticeRunner({
       shuffleMode: shuffle,
     });
     setAttempt(row);
+
+    // App Test Mistakes mastery: 2 correct practice answers ⇒ mastered.
+    if (source === "wrong_questions") {
+      await recordAppTestMistakePractice(
+        userId,
+        questions.map((q) => ({
+          questionId: q.id,
+          correct: !!answers[q.id] && answers[q.id] === q.correct_answer,
+        })),
+      );
+    }
+
     if (sessionId) await setSessionStatus(sessionId, "completed");
     setSessionId(null);
     setSaving(false);
