@@ -9,6 +9,7 @@ import {
   createSession, formatClock, loadLiveSession, saveSession, setSessionStatus,
   type PracticeSessionRow,
 } from "@/lib/practiceSession";
+import { recordAppTestMistakePractice } from "@/lib/appTestMistakes";
 import { useFeedbackFX } from "@/hooks/useFeedbackFX";
 import { ShuffleModeSetting } from "@/components/test-ui/ShuffleModeSetting";
 import {
