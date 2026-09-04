@@ -108,9 +108,9 @@ const App = () => (
             <Route path="/analysis/:attemptId" element={withLayout(<TestMistakeAnalysis />)} />
             <Route path="/smart-revision" element={<Navigate to="/app-test-mistakes" replace />} />
             <Route path="/smart-revision/*" element={<Navigate to="/app-test-mistakes" replace />} />
-            <Route path="/app-test-mistakes/subject/:subjectId" element={withLayout(<SmartRevisionSubject />)} />
-            <Route path="/app-test-mistakes/subject/:subjectId/chapter/:chapterId" element={withLayout(<SmartRevisionChapter />)} />
-            <Route path="/app-test-mistakes/subject/:subjectId/chapter/:chapterId/practice" element={withLayout(<ChapterPractice />)} />
+            <Route path="/app-test-mistakes/subject/:subjectId" element={withLayout(<AppTestMistakesSubject />)} />
+            <Route path="/app-test-mistakes/subject/:subjectId/chapter/:chapterId" element={withLayout(<AppTestMistakesChapter />)} />
+            <Route path="/app-test-mistakes/subject/:subjectId/chapter/:chapterId/test/:testId" element={withLayout(<AppTestMistakesTest />)} />
             <Route path="/wrong-questions" element={withLayout(<WrongQuestions />)} />
             <Route path="/bookmarks" element={withLayout(<Bookmarks />)} />
             <Route path="/revision" element={withLayout(<Revision />)} />
