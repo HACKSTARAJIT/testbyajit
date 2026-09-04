@@ -97,6 +97,10 @@ export async function recordAttempt(
             priority: priorityForCount(wrongCount),
             status: "pending",
             mastered_at: null,
+            // Wrong again in a NEW App Test ⇒ re-enters the active mistake system.
+            mastery_status: "active",
+            is_active: true,
+            practice_correct_count: 0,
             selected_option: attempted ? chosen : null,
             correct_option: q.correct_option,
             last_attempt_at: now,
