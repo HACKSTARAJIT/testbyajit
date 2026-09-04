@@ -136,6 +136,11 @@ export async function recordAttempt(
           wrong_count: 1,
           consecutive_correct: 0,
           mastery_score: 0,
+          mastery_status: "active",
+          is_active: true,
+          practice_attempts: 0,
+          practice_correct_count: 0,
+          topic: (q as any).topic ?? null,
           last_attempt_result: attempted ? "wrong" : "skipped",
           last_attempt_at: now,
           is_guess: wasGuess,
@@ -144,20 +149,14 @@ export async function recordAttempt(
         } as any);
       }
     } else if (prev && prev.status !== "mastered") {
-      // Correct answer to a question already in the bank = successful revision.
-      const streak = (prev.consecutive_correct ?? 0) + 1;
-      const mastered = streak >= MASTERY_STREAK;
+      // Correct answer inside a NORMAL App Test — history only.
+      // Mastery is earned exclusively through App Test Mistakes practice.
       await supabase
         .from("wrong_questions")
         .update({
-          correct_revision_count: (prev.correct_revision_count ?? 0) + 1,
           total_attempts: (prev.total_attempts ?? 0) + 1,
           total_correct: (prev.total_correct ?? 0) + 1,
-          consecutive_correct: streak,
-          mastery_score: Math.min(streak, MASTERY_STREAK),
           last_attempt_result: "correct",
-          status: mastered ? "mastered" : "pending",
-          mastered_at: mastered ? now : null,
           last_attempt_at: now,
         } as any)
         .eq("id", prev.id);
