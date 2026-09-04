@@ -57,6 +57,7 @@ export async function recordAttempt(
     .from("wrong_questions")
     .select("id, question_id, wrong_count, correct_revision_count, consecutive_correct, status, total_attempts, total_correct, total_wrong, total_skipped, first_wrong_at")
     .eq("user_id", userId)
+    .eq("source_type", "app_test")
     .in("question_id", qIds);
 
   const existing = new Map<string, ExistingWQ>();
