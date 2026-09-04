@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { EngineQuestion, EngineTest } from "@/components/TestEngine";
+import { recordAppTestMistakePractice } from "@/lib/appTestMistakes";
 
 // Priority derived from how many times a question was answered wrong.
 // Adds a "critical" tier for 4+ wrongs to power the AI Revision Command Center.
