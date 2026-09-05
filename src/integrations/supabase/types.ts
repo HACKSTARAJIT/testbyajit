@@ -2284,6 +2284,183 @@ export type Database = {
           },
         ]
       }
+      study_time_entries: {
+        Row: {
+          created_at: string
+          duration_seconds: number
+          id: string
+          import_batch_id: string | null
+          needs_confirmation: boolean
+          normalized_key: string
+          notes: string | null
+          source: string
+          source_reference: string | null
+          study_date: string
+          subject_id: string | null
+          subject_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number
+          id?: string
+          import_batch_id?: string | null
+          needs_confirmation?: boolean
+          normalized_key: string
+          notes?: string | null
+          source?: string
+          source_reference?: string | null
+          study_date: string
+          subject_id?: string | null
+          subject_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number
+          id?: string
+          import_batch_id?: string | null
+          needs_confirmation?: boolean
+          normalized_key?: string
+          notes?: string | null
+          source?: string
+          source_reference?: string | null
+          study_date?: string
+          subject_id?: string | null
+          subject_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_time_entries_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "study_time_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_time_entries_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "study_time_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_time_goals: {
+        Row: {
+          created_at: string
+          daily_goal_seconds: number | null
+          id: string
+          monthly_goal_seconds: number | null
+          updated_at: string
+          user_id: string
+          weekly_goal_seconds: number | null
+        }
+        Insert: {
+          created_at?: string
+          daily_goal_seconds?: number | null
+          id?: string
+          monthly_goal_seconds?: number | null
+          updated_at?: string
+          user_id: string
+          weekly_goal_seconds?: number | null
+        }
+        Update: {
+          created_at?: string
+          daily_goal_seconds?: number | null
+          id?: string
+          monthly_goal_seconds?: number | null
+          updated_at?: string
+          user_id?: string
+          weekly_goal_seconds?: number | null
+        }
+        Relationships: []
+      }
+      study_time_imports: {
+        Row: {
+          created_at: string
+          entry_count: number
+          id: string
+          import_number: number
+          raw_extraction: Json | null
+          source: string
+          source_reference: string | null
+          status: string
+          study_date: string | null
+          total_seconds: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entry_count?: number
+          id?: string
+          import_number?: number
+          raw_extraction?: Json | null
+          source?: string
+          source_reference?: string | null
+          status?: string
+          study_date?: string | null
+          total_seconds?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entry_count?: number
+          id?: string
+          import_number?: number
+          raw_extraction?: Json | null
+          source?: string
+          source_reference?: string | null
+          status?: string
+          study_date?: string | null
+          total_seconds?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      study_time_subjects: {
+        Row: {
+          aliases: string[]
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          normalized_key: string
+          sort_order: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aliases?: string[]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          normalized_key: string
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aliases?: string[]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          normalized_key?: string
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       subjects: {
         Row: {
           cover_image: string | null
