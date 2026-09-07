@@ -56,6 +56,7 @@ const AICoachChat = lazy(() => import("./pages/AICoachChat.tsx"));
 const AppTestMistakes = lazy(() => import("./pages/AppTestMistakes.tsx"));
 const Accountability = lazy(() => import("./pages/Accountability.tsx"));
 const Profile = lazy(() => import("./pages/Profile.tsx"));
+const StudyTime = lazy(() => import("./pages/StudyTime.tsx"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
