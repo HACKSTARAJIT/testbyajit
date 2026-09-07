@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  Home, Shield, LogOut, Menu, User, Moon, Sun, XCircle, LogIn, Info, Sparkles, LayoutDashboard, Target, Upload, NotebookPen,
+  Home, Shield, LogOut, Menu, User, Moon, Sun, XCircle, LogIn, Info, Sparkles, LayoutDashboard, Target, Upload, NotebookPen, Timer,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetTrigger,
@@ -22,6 +22,7 @@ const navItems = [
   { to: "/my-dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/mock-mistakes", label: "🧠 Mock Mistakes", icon: NotebookPen },
   { to: "/app-test-mistakes", label: "❌ App Test Mistakes", icon: XCircle },
+  { to: "/study-time", label: "⏱ Study Time", icon: Timer },
 ];
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
