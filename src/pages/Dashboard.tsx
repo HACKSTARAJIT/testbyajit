@@ -13,7 +13,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useHomeData } from "@/components/home/useHomeData";
 import FloatingAIButton from "@/components/home/FloatingAIButton";
-import TodayTargetCard from "@/components/accountability/TodayTargetCard";
+
 import DayEndReviewDialog from "@/components/accountability/DayEndReviewDialog";
 import StudyTimeCard from "@/components/studytime/StudyTimeCard";
 
