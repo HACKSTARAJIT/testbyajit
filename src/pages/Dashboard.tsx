@@ -13,7 +13,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useHomeData } from "@/components/home/useHomeData";
 import FloatingAIButton from "@/components/home/FloatingAIButton";
-import TodayTargetCard from "@/components/accountability/TodayTargetCard";
+
 import DayEndReviewDialog from "@/components/accountability/DayEndReviewDialog";
 import StudyTimeCard from "@/components/studytime/StudyTimeCard";
 
@@ -139,8 +139,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Today's Target — Daily Accountability */}
-      {user && <TodayTargetCard userId={user.id} />}
 
       {/* Continue Learning — compact */}
       {user && continueLearning && (
