@@ -359,7 +359,10 @@ export async function updateEntry(
   patch: { study_date?: string; subject?: string; duration_seconds?: number },
   userId: string,
 ) {
-  const update: Record<string, unknown> = {};
+  const update: {
+    study_date?: string; duration_seconds?: number; needs_confirmation?: boolean;
+    subject_name?: string; normalized_key?: string; subject_id?: string | null;
+  } = {};
   if (patch.study_date) update.study_date = patch.study_date;
   if (typeof patch.duration_seconds === "number") {
     update.duration_seconds = Math.max(0, Math.round(patch.duration_seconds));
