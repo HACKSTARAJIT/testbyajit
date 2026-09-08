@@ -139,8 +139,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Today's Target — Daily Accountability */}
-      {user && <TodayTargetCard userId={user.id} />}
 
       {/* Continue Learning — compact */}
       {user && continueLearning && (
