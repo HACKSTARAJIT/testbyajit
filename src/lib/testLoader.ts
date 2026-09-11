@@ -45,9 +45,12 @@ async function ensureAttempt(testId: string, userId: string): Promise<string | n
 export async function loadTestWithQuestions(
   testId: string,
   userId?: string | null,
+  options?: { isAdmin?: boolean },
 ): Promise<LoadedTest> {
+  const isAdmin = options?.isAdmin === true;
   let attemptError: string | null = null;
-  if (userId) attemptError = await ensureAttempt(testId, userId);
+  // Admins can already read questions via RLS — never create an attempt row for them.
+  if (userId && !isAdmin) attemptError = await ensureAttempt(testId, userId);
 
   const [tRes, qRes] = await Promise.all([
     supabase.from("tests").select("*, subjects(name)").eq("id", testId).maybeSingle(),
@@ -59,7 +62,7 @@ export async function loadTestWithQuestions(
 
   // Retry once: the attempt row may have been created a moment after the read
   // started, which is exactly what used to cause a false "no questions" state.
-  if (!questionsError && questions.length === 0 && userId) {
+  if (!questionsError && questions.length === 0 && userId && !isAdmin) {
     const retryAttemptError = await ensureAttempt(testId, userId);
     const retry = await fetchQuestions(testId);
     questions = (retry.data as any as EngineQuestion[]) ?? [];
@@ -69,7 +72,7 @@ export async function loadTestWithQuestions(
     }
   }
 
-  if (!questionsError && questions.length === 0 && !userId && tRes.data) {
+  if (!questionsError && questions.length === 0 && !userId && !isAdmin && tRes.data) {
     questionsError = "Please sign in to load and attempt this test.";
   }
 
