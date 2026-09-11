@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
   const [questions, setQuestions] = useState<ParsedQuestion[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [published, setPublished] = useState<{ id: string; title: string; count: number } | null>(null);
 
   // config
   const [subjectId, setSubjectId] = useState("");
@@ -156,7 +158,7 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
       }
 
       // final validation: load the test EXACTLY like the Student Test page does
-      const studentView = await loadTestWithQuestions(test.id);
+      const studentView = await loadTestWithQuestions(test.id, null, { isAdmin: true });
       if (studentView.testError || studentView.questionsError) {
         throw new Error(`Student page cannot load this test: ${studentView.testError || studentView.questionsError}`);
       }
@@ -164,6 +166,7 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
         throw new Error(`Student query returned ${studentView.questions.length}/${questions.length} questions. Publish incomplete — please retry.`);
       }
 
+      setPublished({ id: test.id, title: testName.trim(), count: studentView.questions.length });
       toast.success(`Test "${testName}" published & verified — students can load all ${studentView.questions.length} questions!`);
 
       // Fire-and-forget: AI pipeline runs in background — quality analyser, then embeddings, then similarity detector.
@@ -317,6 +320,27 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
   }
 
   return (
+    <div className="space-y-4">
+    {published && (
+      <Card className="border-green-500/40 bg-green-500/5">
+        <CardContent className="space-y-3 p-4">
+          <div className="flex items-center gap-2 font-semibold">
+            <CheckCircle2 className="h-5 w-5 text-green-600" /> "{published.title}" published successfully
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Summary label="Total Questions" value={String(published.count)} />
+            <Summary label="Test Status" value="Published" />
+            <Summary label="Test ID" value={published.id} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="secondary" size="sm">
+              <Link to={`/test/${published.id}`}><Eye className="mr-1 h-4 w-4" /> Preview as Student</Link>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setPublished(null)}>Dismiss</Button>
+          </div>
+        </CardContent>
+      </Card>
+    )}
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
@@ -364,6 +388,7 @@ Explanation: (optional)`}</pre>
         </Button>
       </CardContent>
     </Card>
+    </div>
   );
 }
 
