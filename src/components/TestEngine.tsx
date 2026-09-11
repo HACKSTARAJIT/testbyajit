@@ -476,13 +476,18 @@ export function TestEngine({
         progress={((current + 1) / sessionQs.length) * 100}
         subtitle={`${mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}${shuffle ? " · 🔀 Shuffled" : ""}`}
         timer={<CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
-        stats={{
-          correct: stats.correct,
-          wrong: stats.incorrect,
-          skipped: stats.skipped,
-          accuracy: stats.accuracy,
-          score: stats.score,
-        }}
+        // EXAM MODE: never pass correctness/score data to the header.
+        stats={
+          mode === "practice"
+            ? {
+                correct: stats.correct,
+                wrong: stats.incorrect,
+                skipped: stats.skipped,
+                accuracy: stats.accuracy,
+                score: stats.score,
+              }
+            : undefined
+        }
         right={
           <div className="flex items-center gap-2">
             <div className={cn(focus ? "block" : "hidden")}>
