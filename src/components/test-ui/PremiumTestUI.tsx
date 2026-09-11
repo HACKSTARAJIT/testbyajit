@@ -123,6 +123,34 @@ export type LiveStats = {
   streak?: number; bestStreak?: number; remaining?: number;
 };
 
+/**
+ * Exam-mode progress strip. Deliberately receives NO correctness data —
+ * it cannot leak score/accuracy because those values are never passed in.
+ */
+export function ExamProgressPanel({
+  total, current, attempted, skipped, marked, className,
+}: {
+  total: number; current: number; attempted: number; skipped: number;
+  marked?: number; className?: string;
+}) {
+  const cells: Array<[string, string | number, string]> = [
+    ["Question", `${current}/${total}`, "text-primary"],
+    ["Attempted", attempted, "text-foreground"],
+    ["Skipped", skipped, "text-amber-400"],
+  ];
+  if (marked !== undefined) cells.push(["Review", marked, "text-purple-300"]);
+  return (
+    <div className={cn("test-glass grid grid-cols-4 gap-1 p-3 text-center", className)}>
+      {cells.map(([label, value, tone]) => (
+        <div key={label} className="rounded-xl px-1 py-1.5">
+          <p className={cn("text-sm font-extrabold leading-none tabular-nums", tone)}>{value}</p>
+          <p className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function LivePerformancePanel({ stats, className }: { stats: LiveStats; className?: string }) {
   const cells: Array<[string, string | number, string]> = [
     ["Correct", stats.correct, "text-emerald-400"],
