@@ -156,7 +156,7 @@ export function AITestGenerator({ subjects, chapters, reload }: any) {
       }
 
       // final validation: load the test EXACTLY like the Student Test page does
-      const studentView = await loadTestWithQuestions(test.id);
+      const studentView = await loadTestWithQuestions(test.id, null, { isAdmin: true });
       if (studentView.testError || studentView.questionsError) {
         throw new Error(`Student page cannot load this test: ${studentView.testError || studentView.questionsError}`);
       }

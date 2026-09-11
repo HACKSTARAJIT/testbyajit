@@ -17,7 +17,7 @@ type Mode = "practice" | "exam";
 export default function TestRunner() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [test, setTest] = useState<any>(null);
   const [questions, setQuestions] = useState<EngineQuestion[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -31,11 +31,11 @@ export default function TestRunner() {
   useEffect(() => {
     (async () => {
       // Single shared loader — identical to Admin validation & debug panel
-      const loaded = await loadTestWithQuestions(id!, user?.id ?? null);
+      const loaded = await loadTestWithQuestions(id!, user?.id ?? null, { isAdmin });
       setTest(loaded.test);
       setQuestions(loaded.questions);
       setLoadError(loaded.testError || loaded.questionsError);
-      if (user) {
+      if (user && !isAdmin) {
         const { data: att } = await supabase
           .from("test_attempts")
           .select("*")
@@ -45,7 +45,7 @@ export default function TestRunner() {
       }
       setLoading(false);
     })();
-  }, [id, user]);
+  }, [id, user, isAdmin]);
 
   if (loading) return <div className="space-y-3"><Skeleton className="h-48 rounded-3xl" /><Skeleton className="h-32 rounded-2xl" /></div>;
 

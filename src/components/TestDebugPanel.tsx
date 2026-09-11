@@ -29,7 +29,7 @@ export function TestDebugPanel({ tests }: { tests: any[] }) {
     const { count, error: cErr } = await supabase
       .from("questions").select("id", { count: "exact", head: true }).eq("test_id", testId);
     // The EXACT same loader the Student Test page uses
-    const loaded = await loadTestWithQuestions(testId);
+    const loaded = await loadTestWithQuestions(testId, null, { isAdmin: true });
     setResult({
       testId,
       published: loaded.test?.is_published ?? null,
