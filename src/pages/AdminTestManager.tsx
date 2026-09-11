@@ -154,10 +154,28 @@ function TestList() {
   }
 
   async function togglePublish(t: Test) {
-    const { error } = await supabase.from("tests").update({ is_published: !t.is_published }).eq("id", t.id);
+    if (!t.is_published) {
+      const { count, error: cErr } = await supabase
+        .from("questions").select("id", { count: "exact", head: true }).eq("test_id", t.id);
+      if (cErr) { toast.error(cErr.message); return; }
+      if ((count ?? 0) === 0) {
+        toast.error("This test has 0 questions saved. Add questions before publishing.");
+        return;
+      }
+      const { error } = await supabase
+        .from("tests")
+        .update({ is_published: true, total_questions: count })
+        .eq("id", t.id);
+      if (error) { toast.error(error.message); return; }
+      toast.success(`Published "${t.title}" — ${count} questions live. Test ID: ${t.id}`);
+      load();
+      return;
+    }
+    const { error } = await supabase.from("tests").update({ is_published: false }).eq("id", t.id);
     if (error) toast.error(error.message);
-    else load();
+    else { toast.success("Test unpublished"); load(); }
   }
+
 
   async function exportTest(t: Test) {
     const { data: qs } = await supabase.from("questions").select("*").eq("test_id", t.id).order("sort_order");
