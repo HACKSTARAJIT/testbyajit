@@ -455,9 +455,10 @@ export function TestEngine({
   };
 
 
-  // Presentational streak metrics (no scoring impact)
+  // Presentational streak metrics (practice only — never computed for exams)
   const streaks = (() => {
     let cur = 0, best = 0;
+    if (mode !== "practice") return { cur, best };
     for (const item of sessionQs) {
       const a = answers[item.id];
       if (!a) continue;
