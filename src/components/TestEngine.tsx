@@ -16,7 +16,7 @@ import {
 } from "@/lib/shuffleMode";
 
 import {
-  TestHeader, CircularTimer, LivePerformancePanel, QuestionCard, OptionCard,
+  TestHeader, CircularTimer, LivePerformancePanel, ExamProgressPanel, QuestionCard, OptionCard,
   AnswerFeedback, FloatingAIStatus, TestBottomNav, AIAnalyzingLoader,
   ResultHero, ResultStatGrid, gradeFor, xpFor, buildInsight,
   QuestionNavigator, NavigatorPanel, TestWorkspace, FocusModeButton, useFocusMode,
