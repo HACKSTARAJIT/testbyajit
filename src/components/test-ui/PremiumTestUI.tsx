@@ -405,7 +405,7 @@ function matchesFilter(st: NavItemStatus, filter: NavFilter) {
  * Used inline as the desktop right column and inside the mobile/focus drawer.
  */
 export function NavigatorPanel({
-  total, current, statusFor, onJump, className, title = "Question Navigator",
+  total, current, statusFor, onJump, className, title = "Question Navigator", hideCorrectness = false,
 }: {
   total: number;
   current: number;
@@ -413,6 +413,8 @@ export function NavigatorPanel({
   onJump: (index: number) => void;
   className?: string;
   title?: string;
+  /** Exam mode: never surface correct/wrong legend cues. */
+  hideCorrectness?: boolean;
 }) {
   const [filter, setFilter] = useState<NavFilter>("all");
   const [goTo, setGoTo] = useState("");
@@ -514,7 +516,7 @@ export function NavigatorPanel({
       </form>
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-white/10 pt-3 text-[10px] text-muted-foreground">
-        {NAV_LEGEND.map(([dot, label]) => (
+        {NAV_LEGEND.filter(([, l]) => !(hideCorrectness && l === "Wrong")).map(([dot, label]) => (
           <span key={label} className="flex items-center gap-1.5">
             <span className={cn("h-2 w-2 rounded-full", dot)} />
             {label}
@@ -531,7 +533,7 @@ export function NavigatorPanel({
  * Purely presentational; jumping is delegated to `onJump`.
  */
 export function QuestionNavigator({
-  total, current, statusFor, onJump, triggerClassName, floating = false,
+  total, current, statusFor, onJump, triggerClassName, floating = false, hideCorrectness = false,
 }: {
   total: number;
   current: number;
@@ -539,6 +541,7 @@ export function QuestionNavigator({
   onJump: (index: number) => void;
   triggerClassName?: string;
   floating?: boolean;
+  hideCorrectness?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -573,6 +576,7 @@ export function QuestionNavigator({
           total={total}
           current={current}
           statusFor={statusFor}
+          hideCorrectness={hideCorrectness}
           onJump={(i) => { onJump(i); setOpen(false); }}
         />
       </SheetContent>

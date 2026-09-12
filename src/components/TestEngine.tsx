@@ -16,7 +16,7 @@ import {
 } from "@/lib/shuffleMode";
 
 import {
-  TestHeader, CircularTimer, LivePerformancePanel, QuestionCard, OptionCard,
+  TestHeader, CircularTimer, LivePerformancePanel, ExamProgressPanel, QuestionCard, OptionCard,
   AnswerFeedback, FloatingAIStatus, TestBottomNav, AIAnalyzingLoader,
   ResultHero, ResultStatGrid, gradeFor, xpFor, buildInsight,
   QuestionNavigator, NavigatorPanel, TestWorkspace, FocusModeButton, useFocusMode,
@@ -455,9 +455,10 @@ export function TestEngine({
   };
 
 
-  // Presentational streak metrics (no scoring impact)
+  // Presentational streak metrics (practice only — never computed for exams)
   const streaks = (() => {
     let cur = 0, best = 0;
+    if (mode !== "practice") return { cur, best };
     for (const item of sessionQs) {
       const a = answers[item.id];
       if (!a) continue;
@@ -495,6 +496,7 @@ export function TestEngine({
                 total={sessionQs.length}
                 current={current}
                 statusFor={navStatus}
+                hideCorrectness={mode === "exam"}
                 onJump={goto}
               />
             </div>
@@ -510,23 +512,34 @@ export function TestEngine({
             total={sessionQs.length}
             current={current}
             statusFor={navStatus}
+            hideCorrectness={mode === "exam"}
             onJump={goto}
           />
         }
       >
-        <LivePerformancePanel
-          className="xl:hidden"
-          stats={{
-            correct: stats.correct,
-            wrong: stats.incorrect,
-            skipped: stats.skipped,
-            accuracy: stats.accuracy,
-            score: stats.score,
-            streak: streaks.cur,
-            bestStreak: streaks.best,
-            remaining: sessionQs.length - stats.attempted,
-          }}
-        />
+        {mode === "practice" ? (
+          <LivePerformancePanel
+            className="xl:hidden"
+            stats={{
+              correct: stats.correct,
+              wrong: stats.incorrect,
+              skipped: stats.skipped,
+              accuracy: stats.accuracy,
+              score: stats.score,
+              streak: streaks.cur,
+              bestStreak: streaks.best,
+              remaining: sessionQs.length - stats.attempted,
+            }}
+          />
+        ) : (
+          <ExamProgressPanel
+            current={current + 1}
+            total={sessionQs.length}
+            attempted={answeredCount}
+            skipped={sessionQs.length - answeredCount}
+            marked={Object.values(marked).filter(Boolean).length}
+          />
+        )}
 
 
 
@@ -628,6 +641,7 @@ export function TestEngine({
             total={sessionQs.length}
             current={current}
             statusFor={navStatus}
+            hideCorrectness={mode === "exam"}
             onJump={goto}
           />
         </div>
