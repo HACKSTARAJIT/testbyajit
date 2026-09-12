@@ -496,6 +496,7 @@ export function TestEngine({
                 total={sessionQs.length}
                 current={current}
                 statusFor={navStatus}
+                hideCorrectness={mode === "exam"}
                 onJump={goto}
               />
             </div>
@@ -511,6 +512,7 @@ export function TestEngine({
             total={sessionQs.length}
             current={current}
             statusFor={navStatus}
+            hideCorrectness={mode === "exam"}
             onJump={goto}
           />
         }
@@ -639,6 +641,7 @@ export function TestEngine({
             total={sessionQs.length}
             current={current}
             statusFor={navStatus}
+            hideCorrectness={mode === "exam"}
             onJump={goto}
           />
         </div>
