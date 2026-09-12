@@ -514,19 +514,29 @@ export function TestEngine({
           />
         }
       >
-        <LivePerformancePanel
-          className="xl:hidden"
-          stats={{
-            correct: stats.correct,
-            wrong: stats.incorrect,
-            skipped: stats.skipped,
-            accuracy: stats.accuracy,
-            score: stats.score,
-            streak: streaks.cur,
-            bestStreak: streaks.best,
-            remaining: sessionQs.length - stats.attempted,
-          }}
-        />
+        {mode === "practice" ? (
+          <LivePerformancePanel
+            className="xl:hidden"
+            stats={{
+              correct: stats.correct,
+              wrong: stats.incorrect,
+              skipped: stats.skipped,
+              accuracy: stats.accuracy,
+              score: stats.score,
+              streak: streaks.cur,
+              bestStreak: streaks.best,
+              remaining: sessionQs.length - stats.attempted,
+            }}
+          />
+        ) : (
+          <ExamProgressPanel
+            current={current + 1}
+            total={sessionQs.length}
+            attempted={answeredCount}
+            skipped={sessionQs.length - answeredCount}
+            marked={Object.values(marked).filter(Boolean).length}
+          />
+        )}
 
 
 
