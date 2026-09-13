@@ -636,19 +636,20 @@ export function TestEngine({
       <FloatingAIStatus />
 
       <TestBottomNav>
-        <div className={cn(focus ? "block" : "xl:hidden")}>
+        <div className={cn("order-1 min-w-0 sm:order-none", focus ? "block" : "xl:hidden")}>
           <QuestionNavigator
             total={sessionQs.length}
             current={current}
             statusFor={navStatus}
             hideCorrectness={mode === "exam"}
             onJump={goto}
+            triggerClassName="w-full min-w-0 px-2 sm:w-auto sm:px-3"
           />
         </div>
 
         <Button
           variant="outline"
-          className="h-12 flex-1 rounded-2xl"
+          className="order-3 h-12 min-w-0 rounded-2xl px-2 sm:order-none sm:flex-1 sm:px-4"
           disabled={current === 0}
           onClick={() => setCurrent((c) => c - 1)}
         >
@@ -657,19 +658,19 @@ export function TestEngine({
 
         <Button
           variant="outline"
-          className={cn("h-12 flex-1 rounded-2xl", marked[q.id] === "review" && "border-amber-500/60 bg-amber-500/15 text-amber-400")}
+          className={cn("order-2 h-12 min-w-0 rounded-2xl px-2 text-xs sm:order-none sm:flex-1 sm:px-4 sm:text-sm", marked[q.id] === "review" && "border-amber-500/60 bg-amber-500/15 text-amber-400")}
           onClick={() => toggleMark("review")}
         >
           <Flag className="mr-1 h-4 w-4" /> Review &amp; Mark
         </Button>
 
         {current < sessionQs.length - 1 ? (
-          <Button className="h-12 flex-1 rounded-2xl bg-gradient-neon text-white" onClick={() => setCurrent((c) => c + 1)}>
+          <Button className="order-4 h-12 min-w-0 rounded-2xl bg-gradient-neon px-2 text-white sm:order-none sm:flex-1 sm:px-4" onClick={() => setCurrent((c) => c + 1)}>
             Next <ArrowRight className="ml-1 h-4 w-4" />
           </Button>
         ) : (
           <Button
-            className="h-12 flex-1 rounded-2xl bg-gradient-neon text-white"
+            className="order-4 h-12 min-w-0 rounded-2xl bg-gradient-neon px-2 text-white sm:order-none sm:flex-1 sm:px-4"
             onClick={() => {
               if (mode === "exam" && answeredCount < sessionQs.length &&
                 !confirm(`${sessionQs.length - answeredCount} unanswered. Submit anyway?`)) return;
