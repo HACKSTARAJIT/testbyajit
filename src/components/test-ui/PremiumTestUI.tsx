@@ -362,8 +362,8 @@ export function FloatingAIStatus({ text = "Watching your performance…" }: { te
 /* -------------------------------- Bottom nav ------------------------------- */
 export function TestBottomNav({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-background/80 p-3 backdrop-blur-2xl">
-      <div className="mx-auto flex max-w-[1600px] items-center gap-2">{children}</div>
+    <div className="test-bottom-nav fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-background/80 px-2 pt-2 backdrop-blur-2xl sm:px-3 sm:pt-3">
+      <div className="mx-auto grid w-full max-w-[1600px] grid-cols-2 gap-2 sm:flex sm:items-center">{children}</div>
     </div>
   );
 }
@@ -559,7 +559,7 @@ export function QuestionNavigator({
           )}
         >
           <ListOrdered className="h-4 w-4 text-primary" />
-          <span className={floating ? "" : "hidden sm:inline"}>Questions</span>
+          <span>Questions</span>
           <span className="text-xs font-bold tabular-nums text-muted-foreground">
             {current + 1}/{total}
           </span>

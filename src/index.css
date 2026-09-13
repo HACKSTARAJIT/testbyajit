@@ -140,7 +140,7 @@
   /* Full-bleed, distraction-free test surface: escapes the app container padding
      and stretches to the full viewport height. */
   .test-shell {
-    @apply relative -mx-4 w-[calc(100%+2rem)] px-3 pb-32 sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-5 lg:px-8;
+    @apply relative -mx-4 w-[calc(100%+2rem)] px-3 pb-40 sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-5 sm:pb-32 lg:px-8;
     min-height: calc(100dvh - 8rem);
   }
   .test-shell > .test-shell-body,
@@ -194,6 +194,15 @@
   .test-option-dim { @apply opacity-50; }
   .test-chip {
     @apply inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground;
+  }
+  .test-bottom-nav {
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (min-width: 640px) {
+  .test-bottom-nav {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
