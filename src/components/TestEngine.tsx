@@ -636,7 +636,7 @@ export function TestEngine({
       <FloatingAIStatus />
 
       <TestBottomNav>
-        <div className={cn("order-1 min-w-0 sm:order-none", focus ? "block" : "xl:hidden")}>
+        <div className="order-1 min-w-0 sm:order-none">
           <QuestionNavigator
             total={sessionQs.length}
             current={current}
