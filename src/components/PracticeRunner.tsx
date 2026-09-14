@@ -648,26 +648,47 @@ export function PracticeRunner({
       <FloatingAIStatus />
 
       <TestBottomNav>
-        <div className={focus ? "block" : "xl:hidden"}>
-
+        <div className="order-1 min-w-0 sm:order-none xl:hidden">
           <QuestionNavigator
             total={questions.length}
             current={idx}
             statusFor={navStatus}
             onJump={(i) => setIdx(i)}
+            triggerClassName="w-full min-w-0 px-2 sm:w-auto sm:px-3"
           />
         </div>
 
-        <Button variant="outline" className="h-12 flex-1 rounded-2xl" disabled={idx === 0} onClick={() => setIdx((i) => i - 1)}>
+        <Button
+          variant="outline"
+          className="order-3 h-12 min-w-0 rounded-2xl px-2 sm:order-none sm:flex-1 sm:px-4"
+          disabled={idx === 0}
+          onClick={() => setIdx((i) => i - 1)}
+        >
           Previous
         </Button>
 
+        <Button
+          variant={isMarked ? "default" : "outline"}
+          className="order-2 h-12 min-w-0 rounded-2xl px-2 text-xs sm:hidden"
+          onClick={() => toggleMark(q.id)}
+        >
+          <Bookmark className="mr-1 h-4 w-4 shrink-0" /> Review &amp; Mark
+        </Button>
+
         {idx < questions.length - 1 ? (
-          <Button className="h-12 flex-1 rounded-2xl bg-gradient-neon text-white" disabled={!revealed} onClick={() => setIdx((i) => i + 1)}>
-            Next Question
+          <Button
+            className="order-4 h-12 min-w-0 rounded-2xl bg-gradient-neon px-2 text-white sm:order-none sm:flex-1 sm:px-4"
+            disabled={!revealed}
+            onClick={() => setIdx((i) => i + 1)}
+          >
+            Next
           </Button>
         ) : (
-          <Button className="h-12 flex-1 rounded-2xl bg-gradient-neon text-white" disabled={!revealed} onClick={finish}>
+          <Button
+            className="order-4 h-12 min-w-0 rounded-2xl bg-gradient-neon px-2 text-white sm:order-none sm:flex-1 sm:px-4"
+            disabled={!revealed}
+            onClick={finish}
+          >
             Finish
           </Button>
         )}
