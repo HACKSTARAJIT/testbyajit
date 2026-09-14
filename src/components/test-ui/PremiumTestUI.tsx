@@ -362,8 +362,8 @@ export function FloatingAIStatus({ text = "Watching your performance…" }: { te
 /* -------------------------------- Bottom nav ------------------------------- */
 export function TestBottomNav({ children }: { children: ReactNode }) {
   return (
-    <div className="test-bottom-nav fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-background/80 px-2 pt-2 backdrop-blur-2xl sm:px-3 sm:pt-3">
-      <div className="mx-auto grid w-full max-w-[1600px] grid-cols-2 gap-2 sm:flex sm:items-center">{children}</div>
+    <div className="test-bottom-nav fixed inset-x-0 bottom-0 z-30 overflow-x-clip border-t border-white/10 bg-background/80 px-2 pt-2 backdrop-blur-2xl sm:px-3 sm:pt-3">
+      <div className="mx-auto grid w-full min-w-0 max-w-[1600px] grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 sm:flex sm:items-center">{children}</div>
     </div>
   );
 }
