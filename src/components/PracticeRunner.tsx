@@ -648,7 +648,7 @@ export function PracticeRunner({
       <FloatingAIStatus />
 
       <TestBottomNav>
-        <div className="order-1 min-w-0 sm:order-none">
+        <div className="order-1 min-w-0 sm:order-none xl:hidden">
           <QuestionNavigator
             total={questions.length}
             current={idx}
@@ -669,7 +669,7 @@ export function PracticeRunner({
 
         <Button
           variant={isMarked ? "default" : "outline"}
-          className="order-2 h-12 min-w-0 rounded-2xl px-2 text-xs sm:order-none sm:flex-1 sm:px-4 sm:text-sm"
+          className="order-2 h-12 min-w-0 rounded-2xl px-2 text-xs sm:hidden"
           onClick={() => toggleMark(q.id)}
         >
           <Bookmark className="mr-1 h-4 w-4 shrink-0" /> Review &amp; Mark
