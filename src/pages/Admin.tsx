@@ -154,7 +154,7 @@ function SubjectsTab({ subjects, reload, del }: any) {
     <CardContent className="space-y-2">
       {subjects.length === 0 && <p className="text-sm text-muted-foreground">No subjects yet.</p>}
       {subjects.map((s: any) => (
-        <Row key={s.id} title={s.name} sub={s.name_hi} onDelete={() => del("subjects", s.id)}>
+        <Row key={s.id} title={s.name} sub={s.name_hi} onDelete={() => del("subjects", s.id, `Subject: ${s.name}`)}>
           <Button size="sm" variant={s.is_pinned ? "default" : "outline"} onClick={() => toggle(s, "is_pinned")}>Pin</Button>
           <Button size="sm" variant={s.is_popular ? "secondary" : "outline"} onClick={() => toggle(s, "is_popular")}>Popular</Button>
         </Row>
@@ -339,7 +339,7 @@ function PdfsTab({ subjects, chapters, pdfs, reload, del }: any) {
     <CardContent className="space-y-2">
       {pdfs.length === 0 && <p className="text-sm text-muted-foreground">No PDFs yet.</p>}
       {pdfs.map((p: any) => (
-        <Row key={p.id} title={p.title} sub={p.subjects?.name} onDelete={() => del("pdfs", p.id)}>
+        <Row key={p.id} title={p.title} sub={p.subjects?.name} onDelete={() => del("pdfs", p.id, `PDF: ${p.title}`)}>
           <EditPdfDialog pdf={p} subjects={subjects} chapters={chapters} reload={reload} />
         </Row>
       ))}
@@ -414,7 +414,7 @@ function TestsTab({ subjects, chapters, tests, reload, del }: any) {
     <CardContent className="space-y-2">
       {tests.length === 0 && <p className="text-sm text-muted-foreground">No tests yet.</p>}
       {tests.map((t: any) => (
-        <Row key={t.id} title={t.title} sub={t.subjects?.name} onDelete={() => del("tests", t.id)}>
+        <Row key={t.id} title={t.title} sub={t.subjects?.name} onDelete={() => del("tests", t.id, `Test: ${t.title}`)}>
           <TestAIReviewDialog test={t} />
           <TestSimilarityDialog test={t} />
           <EditTestDialog test={t} subjects={subjects} chapters={chapters} reload={reload} />
@@ -551,7 +551,7 @@ function PerformanceTab({ subjects, chapters, performance, reload, del }: any) {
     <CardContent className="space-y-2">
       {performance.length === 0 && <p className="text-sm text-muted-foreground">No performance entries yet.</p>}
       {performance.map((p: any) => (
-        <Row key={p.id} title={p.title || (p.text_content ? p.text_content.split("\n")[0] : "Result image")} sub={p.subjects?.name} onDelete={() => del("performance", p.id)}>
+        <Row key={p.id} title={p.title || (p.text_content ? p.text_content.split("\n")[0] : "Result image")} sub={p.subjects?.name} onDelete={() => del("performance", p.id, "Result entry")}>
           <EditPerformanceDialog item={p} subjects={subjects} chapters={chapters} reload={reload} />
         </Row>
       ))}
