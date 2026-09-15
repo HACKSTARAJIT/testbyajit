@@ -20,6 +20,7 @@ import { TestAIReviewDialog } from "@/components/TestAIReviewDialog";
 import { TestSimilarityDialog } from "@/components/TestSimilarityDialog";
 import { AppIntroTab } from "@/components/admin/AppIntroTab";
 import { VoiceFeedbackTab } from "@/components/admin/VoiceFeedbackTab";
+import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 
 export default function Admin() {
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -27,6 +28,7 @@ export default function Admin() {
   const [tests, setTests] = useState<any[]>([]);
   const [pdfs, setPdfs] = useState<any[]>([]);
   const [performance, setPerformance] = useState<any[]>([]);
+  const confirmDelete = useConfirmDelete();
 
   const load = async () => {
     const [s, c, t, p, perf] = await Promise.all([
@@ -40,9 +42,10 @@ export default function Admin() {
   };
   useEffect(() => { load(); }, []);
 
-  const del = async (table: string, id: string) => {
+  const del = async (table: string, id: string, label?: string) => {
+    if (!(await confirmDelete({ itemLabel: label }))) return;
     const { error } = await supabase.from(table as any).delete().eq("id", id);
-    if (error) toast.error(error.message); else { toast.success("Deleted"); load(); }
+    if (error) toast.error(error.message); else { toast.success("Deleted successfully"); load(); }
   };
 
   return (
