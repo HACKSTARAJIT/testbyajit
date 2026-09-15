@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
 import { ProtectedRoute, AdminRoute } from "@/components/RouteGuards";
 import { SaveGateProvider } from "@/hooks/useSaveGate";
+import { ConfirmDeleteProvider } from "@/hooks/useConfirmDelete";
 import { Loader2 } from "lucide-react";
 import { IntroSplash } from "@/components/IntroSplash";
 
