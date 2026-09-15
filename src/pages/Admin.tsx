@@ -235,8 +235,72 @@ function ChaptersTab({ subjects, chapters, reload, del }: any) {
     </CardHeader>
     <CardContent className="space-y-2">
       {chapters.length === 0 && <p className="text-sm text-muted-foreground">No chapters yet.</p>}
-      {chapters.map((c: any) => <Row key={c.id} title={c.name} sub={c.subjects?.name} onDelete={() => del("chapters", c.id)} />)}
+      {chapters.map((c: any) => (
+        <Row key={c.id} title={c.name} sub={c.subjects?.name} onDelete={() => del("chapters", c.id, `Chapter: ${c.name}`)}>
+          <EditChapterDialog chapter={c} reload={reload} />
+        </Row>
+      ))}
     </CardContent></Card>
+  );
+}
+
+/** Renames a chapter only — chapter id, subject link, questions, tests, PDFs and history stay untouched. */
+function EditChapterDialog({ chapter, reload }: any) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(chapter.name ?? "");
+  const [nameHi, setNameHi] = useState(chapter.name_hi ?? "");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (open) { setName(chapter.name ?? ""); setNameHi(chapter.name_hi ?? ""); }
+  }, [open, chapter.name, chapter.name_hi]);
+
+  const save = async () => {
+    if (!name.trim()) return toast.error("Chapter name required");
+    setBusy(true);
+    const { error } = await supabase
+      .from("chapters")
+      .update({ name: name.trim(), name_hi: nameHi.trim() || null })
+      .eq("id", chapter.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Chapter name updated");
+    setOpen(false);
+    reload();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="icon" variant="ghost" aria-label="Edit chapter"><Pencil className="h-4 w-4" /></Button>
+      </DialogTrigger>
+      <DialogContent className="rounded-2xl">
+        <DialogHeader><DialogTitle>Edit Chapter Name</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Current Chapter Name</Label>
+            <Input value={chapter.name ?? ""} readOnly disabled />
+          </div>
+          <div>
+            <Label>New Chapter Name</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          </div>
+          <div>
+            <Label>Name (Hindi)</Label>
+            <Input value={nameHi} onChange={(e) => setNameHi(e.target.value)} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            केवल नाम बदलेगा — questions, tests, PDFs, topics, performance और history सुरक्षित रहेंगे।
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={save} disabled={busy || !name.trim()}>
+            {busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
