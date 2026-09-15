@@ -93,6 +93,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <SaveGateProvider>
+         <ConfirmDeleteProvider>
           <IntroSplash />
           <Routes>
             <Route path="/" element={<Index />} />
@@ -190,6 +191,7 @@ const App = () => (
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
+         </ConfirmDeleteProvider>
         </SaveGateProvider>
       </BrowserRouter>
     </TooltipProvider>
