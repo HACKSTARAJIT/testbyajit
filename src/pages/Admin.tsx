@@ -20,6 +20,7 @@ import { TestAIReviewDialog } from "@/components/TestAIReviewDialog";
 import { TestSimilarityDialog } from "@/components/TestSimilarityDialog";
 import { AppIntroTab } from "@/components/admin/AppIntroTab";
 import { VoiceFeedbackTab } from "@/components/admin/VoiceFeedbackTab";
+import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 
 export default function Admin() {
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -27,6 +28,7 @@ export default function Admin() {
   const [tests, setTests] = useState<any[]>([]);
   const [pdfs, setPdfs] = useState<any[]>([]);
   const [performance, setPerformance] = useState<any[]>([]);
+  const confirmDelete = useConfirmDelete();
 
   const load = async () => {
     const [s, c, t, p, perf] = await Promise.all([
@@ -40,9 +42,10 @@ export default function Admin() {
   };
   useEffect(() => { load(); }, []);
 
-  const del = async (table: string, id: string) => {
+  const del = async (table: string, id: string, label?: string) => {
+    if (!(await confirmDelete({ itemLabel: label }))) return;
     const { error } = await supabase.from(table as any).delete().eq("id", id);
-    if (error) toast.error(error.message); else { toast.success("Deleted"); load(); }
+    if (error) toast.error(error.message); else { toast.success("Deleted successfully"); load(); }
   };
 
   return (
@@ -151,7 +154,7 @@ function SubjectsTab({ subjects, reload, del }: any) {
     <CardContent className="space-y-2">
       {subjects.length === 0 && <p className="text-sm text-muted-foreground">No subjects yet.</p>}
       {subjects.map((s: any) => (
-        <Row key={s.id} title={s.name} sub={s.name_hi} onDelete={() => del("subjects", s.id)}>
+        <Row key={s.id} title={s.name} sub={s.name_hi} onDelete={() => del("subjects", s.id, `Subject: ${s.name}`)}>
           <Button size="sm" variant={s.is_pinned ? "default" : "outline"} onClick={() => toggle(s, "is_pinned")}>Pin</Button>
           <Button size="sm" variant={s.is_popular ? "secondary" : "outline"} onClick={() => toggle(s, "is_popular")}>Popular</Button>
         </Row>
@@ -232,8 +235,72 @@ function ChaptersTab({ subjects, chapters, reload, del }: any) {
     </CardHeader>
     <CardContent className="space-y-2">
       {chapters.length === 0 && <p className="text-sm text-muted-foreground">No chapters yet.</p>}
-      {chapters.map((c: any) => <Row key={c.id} title={c.name} sub={c.subjects?.name} onDelete={() => del("chapters", c.id)} />)}
+      {chapters.map((c: any) => (
+        <Row key={c.id} title={c.name} sub={c.subjects?.name} onDelete={() => del("chapters", c.id, `Chapter: ${c.name}`)}>
+          <EditChapterDialog chapter={c} reload={reload} />
+        </Row>
+      ))}
     </CardContent></Card>
+  );
+}
+
+/** Renames a chapter only — chapter id, subject link, questions, tests, PDFs and history stay untouched. */
+function EditChapterDialog({ chapter, reload }: any) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(chapter.name ?? "");
+  const [nameHi, setNameHi] = useState(chapter.name_hi ?? "");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (open) { setName(chapter.name ?? ""); setNameHi(chapter.name_hi ?? ""); }
+  }, [open, chapter.name, chapter.name_hi]);
+
+  const save = async () => {
+    if (!name.trim()) return toast.error("Chapter name required");
+    setBusy(true);
+    const { error } = await supabase
+      .from("chapters")
+      .update({ name: name.trim(), name_hi: nameHi.trim() || null })
+      .eq("id", chapter.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Chapter name updated");
+    setOpen(false);
+    reload();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="icon" variant="ghost" aria-label="Edit chapter"><Pencil className="h-4 w-4" /></Button>
+      </DialogTrigger>
+      <DialogContent className="rounded-2xl">
+        <DialogHeader><DialogTitle>Edit Chapter Name</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Current Chapter Name</Label>
+            <Input value={chapter.name ?? ""} readOnly disabled />
+          </div>
+          <div>
+            <Label>New Chapter Name</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          </div>
+          <div>
+            <Label>Name (Hindi)</Label>
+            <Input value={nameHi} onChange={(e) => setNameHi(e.target.value)} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            केवल नाम बदलेगा — questions, tests, PDFs, topics, performance और history सुरक्षित रहेंगे।
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={save} disabled={busy || !name.trim()}>
+            {busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -272,7 +339,7 @@ function PdfsTab({ subjects, chapters, pdfs, reload, del }: any) {
     <CardContent className="space-y-2">
       {pdfs.length === 0 && <p className="text-sm text-muted-foreground">No PDFs yet.</p>}
       {pdfs.map((p: any) => (
-        <Row key={p.id} title={p.title} sub={p.subjects?.name} onDelete={() => del("pdfs", p.id)}>
+        <Row key={p.id} title={p.title} sub={p.subjects?.name} onDelete={() => del("pdfs", p.id, `PDF: ${p.title}`)}>
           <EditPdfDialog pdf={p} subjects={subjects} chapters={chapters} reload={reload} />
         </Row>
       ))}
@@ -347,7 +414,7 @@ function TestsTab({ subjects, chapters, tests, reload, del }: any) {
     <CardContent className="space-y-2">
       {tests.length === 0 && <p className="text-sm text-muted-foreground">No tests yet.</p>}
       {tests.map((t: any) => (
-        <Row key={t.id} title={t.title} sub={t.subjects?.name} onDelete={() => del("tests", t.id)}>
+        <Row key={t.id} title={t.title} sub={t.subjects?.name} onDelete={() => del("tests", t.id, `Test: ${t.title}`)}>
           <TestAIReviewDialog test={t} />
           <TestSimilarityDialog test={t} />
           <EditTestDialog test={t} subjects={subjects} chapters={chapters} reload={reload} />
@@ -484,7 +551,7 @@ function PerformanceTab({ subjects, chapters, performance, reload, del }: any) {
     <CardContent className="space-y-2">
       {performance.length === 0 && <p className="text-sm text-muted-foreground">No performance entries yet.</p>}
       {performance.map((p: any) => (
-        <Row key={p.id} title={p.title || (p.text_content ? p.text_content.split("\n")[0] : "Result image")} sub={p.subjects?.name} onDelete={() => del("performance", p.id)}>
+        <Row key={p.id} title={p.title || (p.text_content ? p.text_content.split("\n")[0] : "Result image")} sub={p.subjects?.name} onDelete={() => del("performance", p.id, "Result entry")}>
           <EditPerformanceDialog item={p} subjects={subjects} chapters={chapters} reload={reload} />
         </Row>
       ))}

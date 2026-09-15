@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, ClipboardPaste, Play, Trash2 } from "lucide-react";
+import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { toast } from "@/hooks/use-toast";
 import { IMPORT_TEMPLATE, parseMockMistakes } from "@/lib/mockMistakes";
 import { PracticeHistory } from "@/components/PracticeHistory";
@@ -74,8 +75,10 @@ export default function MockMistakesMock() {
   };
 
   const clearQuestions = async () => {
+    if (!(await confirmDelete({ itemLabel: `${total} imported question(s)`, confirmLabel: "DELETE PERMANENTLY" }))) return;
     const { error } = await supabase.from("mock_mistake_questions").delete().eq("mock_id", mockId);
     if (error) { toast({ title: "Delete failed", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Deleted successfully" });
     load();
   };
 

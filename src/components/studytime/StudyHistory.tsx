@@ -5,11 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { ChevronRight, Pencil, Trash2, Loader2 } from "lucide-react";
 import {
   StudyEntry, deleteEntry, formatDuration, prettyDate, splitDuration, toSeconds, totalsByDate, updateEntry,
@@ -21,7 +18,7 @@ export default function StudyHistory({
   const { toast } = useToast();
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [editing, setEditing] = useState<StudyEntry | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<StudyEntry | null>(null);
+  const confirmDelete = useConfirmDelete();
   const [busy, setBusy] = useState(false);
 
   const [form, setForm] = useState({ date: "", subject: "", h: "0", m: "0", s: "0" });
@@ -56,13 +53,15 @@ export default function StudyHistory({
     } finally { setBusy(false); }
   };
 
-  const confirmDelete = async () => {
-    if (!deleteTarget) return;
+  const askDelete = async (entry: StudyEntry) => {
+    const ok = await confirmDelete({
+      itemLabel: `${entry.subject_name} · ${formatDuration(entry.duration_seconds)} · ${prettyDate(entry.study_date)}`,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
-      await deleteEntry(deleteTarget.id, userId);
-      toast({ title: "Entry deleted" });
-      setDeleteTarget(null);
+      await deleteEntry(entry.id, userId);
+      toast({ title: "Entry deleted successfully" });
       onChanged();
     } catch (err) {
       toast({ title: "Could not delete", description: err instanceof Error ? err.message : "", variant: "destructive" });
@@ -109,7 +108,7 @@ export default function StudyHistory({
                       <Button variant="ghost" size="icon" onClick={() => startEdit(e)} aria-label="Edit entry">
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(e)} aria-label="Delete entry">
+                      <Button variant="ghost" size="icon" onClick={() => askDelete(e)} aria-label="Delete entry">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -153,21 +152,6 @@ export default function StudyHistory({
           </DialogContent>
         </Dialog>
 
-        {/* Delete */}
-        <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete this study-time entry?</AlertDialogTitle>
-              <AlertDialogDescription>
-                {deleteTarget && `${deleteTarget.subject_name} · ${formatDuration(deleteTarget.duration_seconds)} · ${prettyDate(deleteTarget.study_date)}`}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </CardContent>
     </Card>
   );

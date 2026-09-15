@@ -85,7 +85,7 @@ export default function AICoachChat() {
   }
 
   async function deleteThread(id: string) {
-    if (!confirm("Delete this conversation?")) return;
+    if (!(await confirmDelete({ itemLabel: "1 AI conversation" }))) return;
     await (supabase as any).from("ai_chat_threads").delete().eq("id", id);
     setThreads((prev) => prev.filter((t) => t.id !== id));
     if (id === threadId) {

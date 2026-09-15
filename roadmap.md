@@ -4,3 +4,5 @@
 - [x] App Test Mistakes: 2-correct mastery + Subject→Chapter→Test→Question hierarchy
 - [x] Fix mobile test navigation overflow and verify all controls from 320px–430px
 - [x] Verify the dedicated Practice Mode runner uses the same four-control mobile navigation at 320px–430px
+- [ ] Admin: chapter name edit dialog (name only, keep IDs/relations)
+- [ ] Global double-confirm dialog for all destructive delete/reset actions

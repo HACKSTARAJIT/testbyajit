@@ -110,6 +110,7 @@ export function AppIntroTab() {
 
   const removeIntro = async () => {
     if (!row) return;
+    if (!(await confirmDelete({ itemLabel: "App intro video" }))) return;
     setBusy(true);
     try {
       await removeBranding(row.file_path);

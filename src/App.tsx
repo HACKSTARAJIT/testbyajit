@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
 import { ProtectedRoute, AdminRoute } from "@/components/RouteGuards";
 import { SaveGateProvider } from "@/hooks/useSaveGate";
+import { ConfirmDeleteProvider } from "@/hooks/useConfirmDelete";
 import { Loader2 } from "lucide-react";
 import { IntroSplash } from "@/components/IntroSplash";
 
@@ -92,6 +93,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <SaveGateProvider>
+         <ConfirmDeleteProvider>
           <IntroSplash />
           <Routes>
             <Route path="/" element={<Index />} />
@@ -189,6 +191,7 @@ const App = () => (
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
+         </ConfirmDeleteProvider>
         </SaveGateProvider>
       </BrowserRouter>
     </TooltipProvider>

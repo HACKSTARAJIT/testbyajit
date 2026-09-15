@@ -65,12 +65,13 @@ export function VoiceFeedbackTab() {
   };
 
   const removeItem = async (row: FeedbackMediaRow) => {
+    if (!(await confirmDelete({ itemLabel: "1 feedback media file" }))) return;
     setBusy(true);
     try {
       await removeBranding(row.file_path);
       const { error } = await supabase.from("feedback_media").delete().eq("id", row.id);
       if (error) throw error;
-      toast.success("Deleted");
+      toast.success("Deleted successfully");
       await load();
     } catch (e: any) {
       toast.error(e.message);
