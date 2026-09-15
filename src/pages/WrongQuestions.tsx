@@ -84,8 +84,10 @@ export default function WrongQuestions() {
   };
 
   const remove = async (id: string) => {
+    if (!(await confirmDelete({ itemLabel: "1 saved wrong question" }))) return;
     const { error } = await supabase.from("wrong_questions").delete().eq("id", id);
     if (error) return toast.error("Could not delete");
+    toast.success("Deleted successfully");
   };
 
   const subjects = useMemo(() => {

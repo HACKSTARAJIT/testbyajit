@@ -69,7 +69,7 @@ export function TestSimilarityDialog({ test }: { test: any }) {
   };
 
   const deleteQuestion = async (questionId: string) => {
-    if (!confirm("Delete this uploaded question? This cannot be undone.")) return;
+    if (!(await confirmDelete({ itemLabel: "1 uploaded question" }))) return;
     const { error } = await supabase.from("questions").delete().eq("id", questionId);
     if (error) return toast.error(error.message);
     toast.success("Question deleted");
