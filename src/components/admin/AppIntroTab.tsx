@@ -12,6 +12,7 @@ import {
   type AppIntroRow,
 } from "@/lib/branding";
 import { LottiePlayer } from "@/components/LottiePlayer";
+import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 
 /** Detect whether a video file actually carries an audio track (best-effort, browser APIs). */
 async function hasAudioTrack(file: File): Promise<boolean | null> {
@@ -42,6 +43,7 @@ async function hasAudioTrack(file: File): Promise<boolean | null> {
 }
 
 export function AppIntroTab() {
+  const confirmDelete = useConfirmDelete();
   const [row, setRow] = useState<AppIntroRow | null>(null);
   const [enabled, setEnabled] = useState(true);
   const [skip, setSkip] = useState(true);

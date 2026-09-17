@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { BookMarked, CheckCircle2, Trophy, Trash2, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 
 type WQ = {
   id: string;
@@ -45,6 +46,7 @@ const PRIORITY_META: Record<string, { label: string; dot: string; rank: number }
 };
 
 export default function WrongQuestions() {
+  const confirmDelete = useConfirmDelete();
   const { user } = useAuth();
   const [rows, setRows] = useState<WQ[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
