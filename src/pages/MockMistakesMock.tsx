@@ -13,6 +13,7 @@ import { PracticeHistory } from "@/components/PracticeHistory";
 import { loadAttempts, type AttemptRow } from "@/lib/revisionPractice";
 
 export default function MockMistakesMock() {
+  const confirmDelete = useConfirmDelete();
   const { subject = "", mockId = "" } = useParams();
   const subjectName = decodeURIComponent(subject);
   const { user } = useAuth();

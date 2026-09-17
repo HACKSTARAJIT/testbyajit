@@ -14,8 +14,10 @@ import {
   type FeedbackMediaRow, type FeedbackSettingsRow,
 } from "@/lib/branding";
 import { LottiePlayer } from "@/components/LottiePlayer";
+import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 
 export function VoiceFeedbackTab() {
+  const confirmDelete = useConfirmDelete();
   const [settings, setSettings] = useState<FeedbackSettingsRow | null>(null);
   const [media, setMedia] = useState<FeedbackMediaRow[]>([]);
   const [busy, setBusy] = useState(false);
