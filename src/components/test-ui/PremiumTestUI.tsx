@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useDeviceExperience } from "@/hooks/useDeviceExperience";
 import { APP_NAME } from "@/lib/brand";
 import {
   Brain, CheckCircle2, XCircle, Lightbulb, Zap, Sparkles, ChevronDown,
@@ -624,18 +625,20 @@ export function FocusModeButton({ focus, onToggle }: { focus: boolean; onToggle:
 export function TestWorkspace({
   children, sidebar, showSidebar = true,
 }: { children: ReactNode; sidebar?: ReactNode; showSidebar?: boolean }) {
+  const { experience, viewportWidth } = useDeviceExperience();
+  const useDesktopWorkspace = experience === "desktop" && viewportWidth >= 1024;
   return (
     <div
       className={cn(
         "mx-auto grid w-full items-start gap-5",
-        showSidebar && sidebar
-          ? "max-w-[1600px] xl:grid-cols-[minmax(0,1fr)_340px]"
+        showSidebar && sidebar && useDesktopWorkspace
+          ? "max-w-[1600px] lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px]"
           : "max-w-4xl grid-cols-1",
       )}
     >
       <div className="min-w-0 space-y-4">{children}</div>
-      {showSidebar && sidebar && (
-        <aside className="test-glass sticky top-[104px] hidden max-h-[calc(100dvh-11rem)] p-4 xl:block">
+      {showSidebar && sidebar && useDesktopWorkspace && (
+        <aside className="test-glass sticky top-[104px] hidden max-h-[calc(100dvh-11rem)] p-4 lg:block">
           {sidebar}
         </aside>
       )}

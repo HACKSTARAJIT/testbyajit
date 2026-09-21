@@ -11,11 +11,12 @@ import {
   Home, Shield, LogOut, Menu, User, Moon, Sun, XCircle, LogIn, Info, Sparkles, LayoutDashboard, Target, Upload, NotebookPen, Timer,
 } from "lucide-react";
 import {
-  Sheet, SheetContent, SheetTrigger,
+  Sheet, SheetClose, SheetContent, SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { SplashScreen } from "@/components/SplashScreen";
 import { APP_NAME, APP_TAGLINE, APP_LOGO, APP_LOGO_ALT } from "@/lib/brand";
+import { useDeviceExperience } from "@/hooks/useDeviceExperience";
 
 const navItems = [
   { to: "/dashboard", label: "होम / Home", icon: Home },
@@ -25,7 +26,7 @@ const navItems = [
   { to: "/study-time", label: "⏱ Study Time", icon: Timer },
 ];
 
-function NavItems({ onNavigate }: { onNavigate?: () => void }) {
+function NavItems() {
   const location = useLocation();
   return (
     <>
@@ -35,7 +36,6 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
           <Link
             key={to}
             to={to}
-            onClick={onNavigate}
             className={cn(
               "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
               active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -69,6 +69,8 @@ function ThemeToggle() {
 export function AppLayout({ children }: { children: ReactNode }) {
   const { user, isAdmin, isGuest, signOut } = useAuth();
   const navigate = useNavigate();
+  const { experience, viewportWidth } = useDeviceExperience();
+  const showDesktopNavigation = experience === "desktop" && viewportWidth >= 1024;
 
   const handleSignOut = async () => {
     await signOut();
@@ -78,17 +80,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? (isGuest ? "GT" : "ST");
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="min-h-dvh overflow-x-clip bg-background" data-app-experience={experience}>
       <SplashScreen />
       <header className="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-lg">
-        <div className="container flex h-16 items-center justify-between gap-4">
+        <div className="app-container flex h-14 items-center justify-between gap-2 sm:h-16 sm:gap-4">
           <Link to="/dashboard" className="flex items-center gap-2">
             <img src={APP_LOGO} alt={APP_LOGO_ALT} width={36} height={36} className="h-9 w-9 rounded-xl" />
-            <span className="text-base font-bold font-display leading-tight">{APP_NAME}</span>
+            <span className="hidden text-base font-bold font-display leading-tight min-[360px]:inline">{APP_NAME}</span>
           </Link>
 
 
-          <nav className="hidden items-center gap-1 md:flex">
+          {showDesktopNavigation && <nav className="flex items-center gap-1">
             <NavItems />
             {isAdmin && (
               <Link
@@ -98,7 +100,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 <Shield className="h-4 w-4" /> Admin
               </Link>
             )}
-          </nav>
+          </nav>}
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -146,25 +148,25 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </DropdownMenu>
 
 
-            <Sheet>
-              <SheetTrigger asChild className="md:hidden">
+            {!showDesktopNavigation && <Sheet>
+              <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Open navigation menu"><Menu className="h-5 w-5" /></Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-64">
+              <SheetContent side="right" className="w-[min(19rem,88vw)] overflow-y-auto px-4">
                 <div className="mt-8 flex flex-col gap-1">
-                  <SheetClose><NavItems /></SheetClose>
+                  <NavItems />
                   {isAdmin && (
-                    <Link to="/admin" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-secondary hover:bg-muted">
+                    <SheetClose asChild><Link to="/admin" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-secondary hover:bg-muted">
                       <Shield className="h-4 w-4" /> Admin
-                    </Link>
+                    </Link></SheetClose>
                   )}
                 </div>
               </SheetContent>
-            </Sheet>
+            </Sheet>}
           </div>
         </div>
       </header>
-      <main className="container py-6 animate-fade-in">{children}</main>
+      <main className="app-container animate-fade-in py-4 sm:py-6">{children}</main>
       <footer className="border-t py-6 text-center text-xs text-muted-foreground">
         <img src={APP_LOGO} alt={APP_LOGO_ALT} width={28} height={28} className="mx-auto mb-2 h-7 w-7 rounded-lg" loading="lazy" />
         <p className="font-semibold text-primary">Learn • Practice • Analyze • Succeed</p>
@@ -177,7 +179,3 @@ export function AppLayout({ children }: { children: ReactNode }) {
   );
 }
 
-// Simple wrapper so NavItems closes the sheet on click
-function SheetClose({ children }: { children: ReactNode }) {
-  return <>{children}</>;
-}
