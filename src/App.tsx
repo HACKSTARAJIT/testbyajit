@@ -10,6 +10,7 @@ import { SaveGateProvider } from "@/hooks/useSaveGate";
 import { ConfirmDeleteProvider } from "@/hooks/useConfirmDelete";
 import { Loader2 } from "lucide-react";
 import { IntroSplash } from "@/components/IntroSplash";
+import { DeviceSetup } from "@/components/DeviceSetup";
 
 // Eagerly-loaded (small / critical-path)
 import Index from "./pages/Index.tsx";
@@ -94,6 +95,7 @@ const App = () => (
       <BrowserRouter>
         <SaveGateProvider>
          <ConfirmDeleteProvider>
+           <DeviceSetup />
           <IntroSplash />
           <Routes>
             <Route path="/" element={<Index />} />

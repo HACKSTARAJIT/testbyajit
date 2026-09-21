@@ -172,7 +172,7 @@ export default function Dashboard() {
         </div>
 
         {loading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-52 rounded-3xl" />)}
           </div>
         ) : filtered.length === 0 ? (
@@ -183,7 +183,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((s, i) => {
               const c = counts[s.id] ?? { chapters: 0, pdfs: 0, tests: 0 };
               const st = subjectStats[s.id] ?? { completionPct: 0, lastOpened: undefined as string | undefined };
