@@ -26,18 +26,18 @@ const navItems = [
   { to: "/study-time", label: "⏱ Study Time", icon: Timer },
 ];
 
-function NavItems() {
+function NavItems({ closeOnSelect = false }: { closeOnSelect?: boolean }) {
   const location = useLocation();
   return (
     <>
       {navItems.map(({ to, label, icon: Icon }) => {
         const active = location.pathname === to || location.pathname.startsWith(to + "/");
-        return (
+        const item = (
           <Link
             key={to}
             to={to}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors lg:px-2 lg:text-xs xl:px-3 xl:text-sm",
               active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >
@@ -45,6 +45,7 @@ function NavItems() {
             {label}
           </Link>
         );
+        return closeOnSelect ? <SheetClose asChild key={to}>{item}</SheetClose> : item;
       })}
     </>
   );
@@ -154,7 +155,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </SheetTrigger>
               <SheetContent side="right" className="w-[min(19rem,88vw)] overflow-y-auto px-4">
                 <div className="mt-8 flex flex-col gap-1">
-                  <NavItems />
+                  <NavItems closeOnSelect />
                   {isAdmin && (
                     <SheetClose asChild><Link to="/admin" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-secondary hover:bg-muted">
                       <Shield className="h-4 w-4" /> Admin

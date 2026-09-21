@@ -114,6 +114,44 @@
 }
 
 @layer components {
+  .app-container {
+    @apply mx-auto w-full px-4;
+    max-width: 100rem;
+  }
+
+  [data-device-experience="mobile"] .app-container {
+    max-width: 30rem;
+  }
+
+  [data-device-experience="tablet"] .app-container {
+    max-width: 64rem;
+  }
+
+  @media (min-width: 640px) {
+    .app-container { @apply px-6; }
+  }
+
+  @media (min-width: 1024px) {
+    [data-device-experience="desktop"] .app-container { @apply px-8; }
+  }
+
+  /* A manually selected Mobile experience stays one-column on wide screens. */
+  [data-device-experience="mobile"] main .sm\:grid-cols-2,
+  [data-device-experience="mobile"] main .sm\:grid-cols-3,
+  [data-device-experience="mobile"] main .md\:grid-cols-2,
+  [data-device-experience="mobile"] main .md\:grid-cols-3,
+  [data-device-experience="mobile"] main .lg\:grid-cols-2,
+  [data-device-experience="mobile"] main .lg\:grid-cols-3,
+  [data-device-experience="mobile"] main .lg\:grid-cols-4,
+  [data-device-experience="mobile"] main .xl\:grid-cols-4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  [data-device-experience="mobile"] main .sm\:flex-row,
+  [data-device-experience="mobile"] main .md\:flex-row {
+    flex-direction: column;
+  }
+
   .gradient-text {
     @apply bg-clip-text text-transparent;
     background-image: var(--gradient-hero);
@@ -173,7 +211,7 @@
     background-image: var(--gradient-neon);
   }
   .test-option {
-    @apply relative flex w-full items-center gap-4 rounded-2xl border p-5 text-left transition-all duration-200;
+    @apply relative flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition-all duration-200 sm:gap-4 sm:p-5;
     @apply border-white/10 bg-white/5 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/10;
     will-change: transform;
   }
