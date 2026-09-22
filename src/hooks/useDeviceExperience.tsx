@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 export type DevicePreference = "mobile" | "desktop" | "auto";
 export type DeviceExperience = "mobile" | "tablet" | "desktop";
 
-const STORAGE_KEY = "pwa-device-preference";
+const STORAGE_KEY = "device_preference";
 
 function readPreference(): DevicePreference | null {
   if (typeof window === "undefined") return null;
