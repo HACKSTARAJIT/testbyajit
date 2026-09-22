@@ -8,16 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Clock, BookOpen, Save, ChevronRight, Laptop, Smartphone, MonitorCog } from "lucide-react";
+import { Clock, BookOpen, Save, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import { useDeviceExperience, type DevicePreference } from "@/hooks/useDeviceExperience";
 
 export default function Profile() {
   const { user, isAdmin } = useAuth();
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [recent, setRecent] = useState<any[]>([]);
-  const { preference, experience, setPreference } = useDeviceExperience();
 
   useEffect(() => {
     (async () => {
@@ -60,46 +58,6 @@ export default function Profile() {
             <p className="text-sm text-muted-foreground">{user?.email}</p>
 
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <MonitorCog className="h-5 w-5 text-primary" /> Display / Device Experience
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-3" role="radiogroup" aria-label="Device experience">
-            {([
-              ["mobile", "Mobile", "Touch-friendly, compact layout", Smartphone],
-              ["desktop", "Laptop / Desktop", "Wider workspace and full navigation", Laptop],
-              ["auto", "Auto Detect", "Adapts to the current screen", MonitorCog],
-            ] as Array<[DevicePreference, string, string, typeof Smartphone]>).map(([value, title, description, Icon]) => {
-              const selected = preference === value;
-              return (
-                <Button
-                  key={value}
-                  type="button"
-                  variant={selected ? "default" : "outline"}
-                  role="radio"
-                  aria-checked={selected}
-                  onClick={() => {
-                    setPreference(value);
-                    toast.success(`${title} experience selected`);
-                  }}
-                  className="h-auto min-h-28 w-full justify-start whitespace-normal p-4 text-left"
-                >
-                  <Icon className="mr-3 h-6 w-6 shrink-0" />
-                  <span>
-                    <span className="block font-semibold">{title}</span>
-                    <span className={selected ? "block text-xs opacity-80" : "block text-xs text-muted-foreground"}>{description}</span>
-                  </span>
-                </Button>
-              );
-            })}
-          </div>
-          <p className="mt-3 text-xs text-muted-foreground">Active layout: {experience}. Switching does not affect your tests or progress.</p>
         </CardContent>
       </Card>
 

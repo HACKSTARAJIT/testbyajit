@@ -14,10 +14,8 @@ import {
   type FeedbackMediaRow, type FeedbackSettingsRow,
 } from "@/lib/branding";
 import { LottiePlayer } from "@/components/LottiePlayer";
-import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 
 export function VoiceFeedbackTab() {
-  const confirmDelete = useConfirmDelete();
   const [settings, setSettings] = useState<FeedbackSettingsRow | null>(null);
   const [media, setMedia] = useState<FeedbackMediaRow[]>([]);
   const [busy, setBusy] = useState(false);
@@ -67,13 +65,12 @@ export function VoiceFeedbackTab() {
   };
 
   const removeItem = async (row: FeedbackMediaRow) => {
-    if (!(await confirmDelete({ itemLabel: "1 feedback media file" }))) return;
     setBusy(true);
     try {
       await removeBranding(row.file_path);
       const { error } = await supabase.from("feedback_media").delete().eq("id", row.id);
       if (error) throw error;
-      toast.success("Deleted successfully");
+      toast.success("Deleted");
       await load();
     } catch (e: any) {
       toast.error(e.message);

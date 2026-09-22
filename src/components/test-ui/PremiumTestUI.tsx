@@ -2,7 +2,6 @@ import { ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useDeviceExperience } from "@/hooks/useDeviceExperience";
 import { APP_NAME } from "@/lib/brand";
 import {
   Brain, CheckCircle2, XCircle, Lightbulb, Zap, Sparkles, ChevronDown,
@@ -363,8 +362,8 @@ export function FloatingAIStatus({ text = "Watching your performance…" }: { te
 /* -------------------------------- Bottom nav ------------------------------- */
 export function TestBottomNav({ children }: { children: ReactNode }) {
   return (
-    <div className="test-bottom-nav fixed inset-x-0 bottom-0 z-30 overflow-x-clip border-t border-white/10 bg-background/80 px-2 pt-2 backdrop-blur-2xl sm:px-3 sm:pt-3">
-      <div className="mx-auto grid w-full min-w-0 max-w-[1600px] grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 sm:flex sm:items-center">{children}</div>
+    <div className="test-bottom-nav fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-background/80 px-2 pt-2 backdrop-blur-2xl sm:px-3 sm:pt-3">
+      <div className="mx-auto grid w-full max-w-[1600px] grid-cols-2 gap-2 sm:flex sm:items-center">{children}</div>
     </div>
   );
 }
@@ -625,20 +624,18 @@ export function FocusModeButton({ focus, onToggle }: { focus: boolean; onToggle:
 export function TestWorkspace({
   children, sidebar, showSidebar = true,
 }: { children: ReactNode; sidebar?: ReactNode; showSidebar?: boolean }) {
-  const { experience, viewportWidth } = useDeviceExperience();
-  const useDesktopWorkspace = experience === "desktop" && viewportWidth >= 1024;
   return (
     <div
       className={cn(
         "mx-auto grid w-full items-start gap-5",
-        showSidebar && sidebar && useDesktopWorkspace
-          ? "max-w-[1600px] lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px]"
+        showSidebar && sidebar
+          ? "max-w-[1600px] xl:grid-cols-[minmax(0,1fr)_340px]"
           : "max-w-4xl grid-cols-1",
       )}
     >
       <div className="min-w-0 space-y-4">{children}</div>
-      {showSidebar && sidebar && useDesktopWorkspace && (
-        <aside className="test-glass sticky top-[104px] hidden max-h-[calc(100dvh-11rem)] p-4 lg:block">
+      {showSidebar && sidebar && (
+        <aside className="test-glass sticky top-[104px] hidden max-h-[calc(100dvh-11rem)] p-4 xl:block">
           {sidebar}
         </aside>
       )}

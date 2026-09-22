@@ -21,7 +21,6 @@ import {
   Eye, FileText, History, Loader2, Pencil, Plus, Search, Sparkles, Trash2,
   ClipboardList, AlertTriangle, CheckCircle2,
 } from "lucide-react";
-import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { toast } from "sonner";
 
 // ============================================================
@@ -72,7 +71,6 @@ type ListRow = Test & {
 };
 
 function TestList() {
-  const confirmDelete = useConfirmDelete();
   const [rows, setRows] = useState<ListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -149,7 +147,7 @@ function TestList() {
   }
 
   async function deleteTest(t: Test) {
-    if (!(await confirmDelete({ itemLabel: `Test: ${t.title}`, description: "इस test के सारे questions भी delete हो जाएंगे।" }))) return;
+    if (!confirm(`Delete "${t.title}" and all its questions? This cannot be undone.`)) return;
     const { error } = await supabase.from("tests").delete().eq("id", t.id);
     if (error) toast.error(error.message);
     else { toast.success("Test deleted"); load(); }
@@ -291,7 +289,6 @@ function TestList() {
 // ============================================================
 
 function TestEditor({ testId }: { testId: string }) {
-  const confirmDelete = useConfirmDelete();
   const { user } = useAuth();
   const [test, setTest] = useState<Test | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -391,7 +388,7 @@ function TestEditor({ testId }: { testId: string }) {
   }
 
   async function deleteQuestion(q: Question) {
-    if (!(await confirmDelete({ itemLabel: "1 question" }))) return;
+    if (!confirm("Delete this question?")) return;
     await supabase.from("questions").delete().eq("id", q.id);
     await logHistory("delete", q.id, [], { question_text: q.question_text });
     toast.success("Deleted"); load();
@@ -433,7 +430,7 @@ function TestEditor({ testId }: { testId: string }) {
 
   async function bulkDelete() {
     if (!selected.size) return;
-    if (!(await confirmDelete({ itemLabel: `${selected.size} question(s)` }))) return;
+    if (!confirm(`Delete ${selected.size} question(s)?`)) return;
     await supabase.from("questions").delete().in("id", [...selected]);
     await logHistory("bulk_delete", null, [], { count: selected.size, ids: [...selected] });
     setSelected(new Set()); toast.success("Deleted"); load();

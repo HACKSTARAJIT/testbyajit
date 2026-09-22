@@ -10,7 +10,6 @@ import {
   CheckCircle2, EyeOff, GitCompare, Search,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 
 const STATUS_META: Record<string, { label: string; cls: string; icon: any; tone: "danger" | "warn" | "info" | "ok" }> = {
   exact_duplicate: { label: "Exact Duplicate", cls: "bg-rose-500/15 text-rose-700 border-rose-500/30", icon: Copy, tone: "danger" },
@@ -23,7 +22,6 @@ const STATUS_META: Record<string, { label: string; cls: string; icon: any; tone:
 const nice = (s?: string | null) => (!s ? "—" : s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()));
 
 export function TestSimilarityDialog({ test }: { test: any }) {
-  const confirmDelete = useConfirmDelete();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -71,7 +69,7 @@ export function TestSimilarityDialog({ test }: { test: any }) {
   };
 
   const deleteQuestion = async (questionId: string) => {
-    if (!(await confirmDelete({ itemLabel: "1 uploaded question" }))) return;
+    if (!confirm("Delete this uploaded question? This cannot be undone.")) return;
     const { error } = await supabase.from("questions").delete().eq("id", questionId);
     if (error) return toast.error(error.message);
     toast.success("Question deleted");

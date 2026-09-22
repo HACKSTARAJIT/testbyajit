@@ -7,10 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
 import { ProtectedRoute, AdminRoute } from "@/components/RouteGuards";
 import { SaveGateProvider } from "@/hooks/useSaveGate";
-import { ConfirmDeleteProvider } from "@/hooks/useConfirmDelete";
 import { Loader2 } from "lucide-react";
 import { IntroSplash } from "@/components/IntroSplash";
-import { DeviceSetup } from "@/components/DeviceSetup";
 
 // Eagerly-loaded (small / critical-path)
 import Index from "./pages/Index.tsx";
@@ -94,8 +92,6 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <SaveGateProvider>
-         <ConfirmDeleteProvider>
-           <DeviceSetup />
           <IntroSplash />
           <Routes>
             <Route path="/" element={<Index />} />
@@ -193,7 +189,6 @@ const App = () => (
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
-         </ConfirmDeleteProvider>
         </SaveGateProvider>
       </BrowserRouter>
     </TooltipProvider>

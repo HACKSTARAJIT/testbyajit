@@ -8,7 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, MessageSquare, Send, Loader2, Brain } from "lucide-react";
-import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 
 type Thread = { id: string; title: string; last_message_at: string };
 type Msg = { id: string; role: "user" | "assistant" | "system"; content: string; created_at: string };
@@ -21,7 +20,6 @@ const SUGGESTIONS = [
 ];
 
 export default function AICoachChat() {
-  const confirmDelete = useConfirmDelete();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { threadId } = useParams<{ threadId: string }>();
@@ -87,7 +85,7 @@ export default function AICoachChat() {
   }
 
   async function deleteThread(id: string) {
-    if (!(await confirmDelete({ itemLabel: "1 AI conversation" }))) return;
+    if (!confirm("Delete this conversation?")) return;
     await (supabase as any).from("ai_chat_threads").delete().eq("id", id);
     setThreads((prev) => prev.filter((t) => t.id !== id));
     if (id === threadId) {

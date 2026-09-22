@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { BookMarked, CheckCircle2, Trophy, Trash2, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
-import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 
 type WQ = {
   id: string;
@@ -46,7 +45,6 @@ const PRIORITY_META: Record<string, { label: string; dot: string; rank: number }
 };
 
 export default function WrongQuestions() {
-  const confirmDelete = useConfirmDelete();
   const { user } = useAuth();
   const [rows, setRows] = useState<WQ[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
@@ -86,10 +84,8 @@ export default function WrongQuestions() {
   };
 
   const remove = async (id: string) => {
-    if (!(await confirmDelete({ itemLabel: "1 saved wrong question" }))) return;
     const { error } = await supabase.from("wrong_questions").delete().eq("id", id);
     if (error) return toast.error("Could not delete");
-    toast.success("Deleted successfully");
   };
 
   const subjects = useMemo(() => {

@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft, Brain, CheckCircle2, ChevronRight, FileText, FolderTree, History as HistoryIcon, Pause, Play, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import {
   loadAIChapters, loadTopicStats, topicRouteKey, topicSourceKey, STATUS_META,
   type ChapterNode, type OrganizeStatus, type TopicTestStats,
@@ -52,7 +51,6 @@ export default function MockMistakesSubject() {
   const subjectName = decodeURIComponent(subject);
   const { user } = useAuth();
   const navigate = useNavigate();
-  const confirmDelete = useConfirmDelete();
   const [mocks, setMocks] = useState<MockRow[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [classified, setClassified] = useState<Record<string, number>>({});
@@ -159,11 +157,9 @@ export default function MockMistakesSubject() {
     navigate(`/mock-mistakes/${encodeURIComponent(subjectName)}/${data.id}`);
   };
 
-  const removeMock = async (id: string, label: string) => {
-    if (!(await confirmDelete({ itemLabel: `Mock: ${label}`, description: "इस mock के सारे imported questions भी delete हो जाएंगे।" }))) return;
+  const removeMock = async (id: string) => {
     const { error } = await supabase.from("mock_mistake_mocks").delete().eq("id", id);
     if (error) { toast({ title: "Delete failed", description: error.message, variant: "destructive" }); return; }
-    toast({ title: "Deleted successfully" });
     setMocks((m) => m.filter((x) => x.id !== id));
   };
 
@@ -291,7 +287,7 @@ export default function MockMistakesSubject() {
                         </div>
                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
                       </button>
-                      <Button variant="ghost" size="icon" onClick={() => removeMock(m.id, m.name)} aria-label="Delete mock">
+                      <Button variant="ghost" size="icon" onClick={() => removeMock(m.id)} aria-label="Delete mock">
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
