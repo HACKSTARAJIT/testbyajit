@@ -20,7 +20,7 @@ import {
   AnswerFeedback, FloatingAIStatus, TestBottomNav, AIAnalyzingLoader,
   ResultHero, ResultStatGrid, gradeFor, xpFor, buildInsight,
   QuestionNavigator, NavigatorPanel, TestWorkspace, FocusModeButton, useFocusMode,
-  type NavItemStatus,
+  TestTextSizeControl, useTestTextSize, type NavItemStatus,
 } from "@/components/test-ui/PremiumTestUI";
 
 
@@ -109,6 +109,7 @@ export function TestEngine({
   const attemptId = useRef<string | null>(resume?.attemptId ?? null);
   const savedWrong = useRef<Set<string>>(new Set());
   const { focus, toggle: toggleFocus } = useFocusMode();
+  const textSize = useTestTextSize();
 
 
 
@@ -227,6 +228,23 @@ export function TestEngine({
       }
     }
   };
+
+  useEffect(() => {
+    if (submitted) return;
+    const handleKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
+      if (event.key === "ArrowLeft" && current > 0) { event.preventDefault(); setCurrent((c) => c - 1); }
+      if (event.key === "ArrowRight" && current < sessionQs.length - 1) { event.preventDefault(); setCurrent((c) => c + 1); }
+      const optionIndex = Number(event.key) - 1;
+      if (optionIndex >= 0 && optionIndex < 4) {
+        const letter = orderFor(q.id)[optionIndex];
+        if (letter) { event.preventDefault(); choose(letter); }
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [submitted, current, sessionQs.length, q.id, mode, revealed, optionOrder, guessArmed]);
 
   const toggleGuess = () =>
     setGuessArmed((g) => {
@@ -449,6 +467,7 @@ export function TestEngine({
     if (mode === "practice" && revealed[item.id]) {
       return a === item.correct_option ? "correct" : "wrong";
     }
+    if ((mk === "review" || mk === "doubt") && a) return "answered-marked";
     if (mk === "review" || mk === "doubt") return "marked";
     if (a) return "answered";
     return i < current ? "skipped" : "unvisited";
@@ -469,14 +488,16 @@ export function TestEngine({
   })();
 
   return (
-    <div className="test-shell">
+    <div className="test-shell" data-test-text-size={textSize.size}>
       <TestHeader
         title={test.title}
         current={current + 1}
         total={sessionQs.length}
         progress={((current + 1) / sessionQs.length) * 100}
         subtitle={`${mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}${shuffle ? " · 🔀 Shuffled" : ""}`}
+        section={test.test_part || test.subjectName}
         timer={<CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
+        textSizeControl={<TestTextSizeControl {...textSize} />}
         // EXAM MODE: never pass correctness/score data to the header.
         stats={
           mode === "practice"
@@ -491,7 +512,7 @@ export function TestEngine({
         }
         right={
           <div className="flex items-center gap-2">
-            <div className={cn(focus ? "block" : "hidden")}>
+            <div className="md:hidden">
               <QuestionNavigator
                 total={sessionQs.length}
                 current={current}
@@ -500,6 +521,7 @@ export function TestEngine({
                 onJump={goto}
               />
             </div>
+            <div className="md:hidden"><TestTextSizeControl {...textSize} compact /></div>
             <FocusModeButton focus={focus} onToggle={toggleFocus} />
           </div>
         }
@@ -549,7 +571,7 @@ export function TestEngine({
           meta={[test.subjectName, test.test_part]}
           question={q.question_text}
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-1">
               <button
                 type="button"
                 onClick={toggleGuess}
@@ -633,23 +655,10 @@ export function TestEngine({
       </TestWorkspace>
 
 
-      <FloatingAIStatus />
-
       <TestBottomNav>
-        <div className="order-1 min-w-0 sm:order-none">
-          <QuestionNavigator
-            total={sessionQs.length}
-            current={current}
-            statusFor={navStatus}
-            hideCorrectness={mode === "exam"}
-            onJump={goto}
-            triggerClassName="w-full min-w-0 px-2 sm:w-auto sm:px-3"
-          />
-        </div>
-
         <Button
           variant="outline"
-          className="order-3 h-12 min-w-0 rounded-2xl px-2 sm:order-none sm:flex-1 sm:px-4"
+          className="h-12 min-w-0 rounded-md px-2 md:px-4"
           disabled={current === 0}
           onClick={() => setCurrent((c) => c - 1)}
         >
@@ -658,19 +667,19 @@ export function TestEngine({
 
         <Button
           variant="outline"
-          className={cn("order-2 h-12 min-w-0 rounded-2xl px-2 text-xs sm:order-none sm:flex-1 sm:px-4 sm:text-sm", marked[q.id] === "review" && "border-amber-500/60 bg-amber-500/15 text-amber-400")}
+          className={cn("h-12 min-w-0 rounded-md px-1 text-xs md:px-4 md:text-sm", marked[q.id] === "review" && "border-secondary/60 bg-secondary/15 text-secondary")}
           onClick={() => toggleMark("review")}
         >
           <Flag className="mr-1 h-4 w-4" /> Review &amp; Mark
         </Button>
 
         {current < sessionQs.length - 1 ? (
-          <Button className="order-4 h-12 min-w-0 rounded-2xl bg-gradient-neon px-2 text-white sm:order-none sm:flex-1 sm:px-4" onClick={() => setCurrent((c) => c + 1)}>
+          <Button className="h-12 min-w-0 rounded-md px-2 md:px-4" onClick={() => setCurrent((c) => c + 1)}>
             Next <ArrowRight className="ml-1 h-4 w-4" />
           </Button>
         ) : (
           <Button
-            className="order-4 h-12 min-w-0 rounded-2xl bg-gradient-neon px-2 text-white sm:order-none sm:flex-1 sm:px-4"
+            className="h-12 min-w-0 rounded-md px-2 md:px-4"
             onClick={() => {
               if (mode === "exam" && answeredCount < sessionQs.length &&
                 !confirm(`${sessionQs.length - answeredCount} unanswered. Submit anyway?`)) return;
