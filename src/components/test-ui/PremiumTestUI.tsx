@@ -2,10 +2,11 @@ import { ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { APP_NAME } from "@/lib/brand";
+import { APP_LOGO, APP_LOGO_ALT, APP_NAME } from "@/lib/brand";
 import {
   Brain, CheckCircle2, XCircle, Lightbulb, Zap, Sparkles, ChevronDown,
   ArrowLeft, ArrowRight, Flag, Timer, ListOrdered, Maximize2, Minimize2,
+  Minus, Plus,
 } from "lucide-react";
 
 /**
@@ -46,40 +47,43 @@ export function CircularTimer({
 
 /* --------------------------------- Header --------------------------------- */
 export function TestHeader({
-  title, current, total, progress, right, subtitle, timer, stats,
+  title, current, total, progress, right, subtitle, section, timer, stats, textSizeControl,
 }: {
   title: string; current: number; total: number; progress: number;
-  right?: ReactNode; subtitle?: string; timer?: ReactNode; stats?: LiveStats;
+  right?: ReactNode; subtitle?: string; section?: string | null; timer?: ReactNode;
+  stats?: LiveStats; textSizeControl?: ReactNode;
 }) {
   return (
-    <div className="sticky top-0 z-30 -mx-3 mb-4 border-b border-white/10 bg-background/80 px-3 py-2.5 backdrop-blur-2xl sm:-mx-5 sm:px-5">
-      <div className="mx-auto flex max-w-[1600px] items-center gap-3">
+    <header className="test-header sticky top-0 z-30 -mx-3 mb-3 border-b bg-background/95 px-3 py-2 backdrop-blur-xl sm:-mx-5 sm:px-5">
+      <div className="mx-auto flex max-w-[1600px] items-center gap-2 md:gap-3">
         {/* Brand */}
-        <div className="hidden items-center gap-2 pr-3 md:flex">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-neon text-[10px] font-black text-white">
-            360
-          </span>
-          <span className="text-sm font-bold tracking-tight">{APP_NAME}</span>
+        <div className="hidden min-w-0 items-center gap-2 pr-2 lg:flex">
+          <img src={APP_LOGO} alt={APP_LOGO_ALT} className="h-8 w-8 shrink-0 object-contain" />
+          <span className="max-w-36 text-xs font-bold leading-tight">{APP_NAME}</span>
         </div>
-        <div className="hidden h-8 w-px bg-white/10 md:block" />
+        <div className="hidden h-8 w-px bg-border lg:block" />
 
         {/* Test name */}
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-display text-sm font-bold sm:text-base">{title}</h1>
-          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-            Question {current} / {total}{subtitle ? ` · ${subtitle}` : ""}
+          <h1 className="truncate font-display text-sm font-bold">{title}</h1>
+          <p className="truncate text-[11px] text-muted-foreground">
+            <span className="md:hidden">Q {current} / {total}</span>
+            <span className="hidden md:inline">{section ? `${section} · ` : ""}Question {current} / {total}</span>
+            {subtitle ? <span className="hidden lg:inline"> · {subtitle}</span> : null}
           </p>
         </div>
 
         {/* Timer */}
         {timer && (
-          <div className="flex shrink-0 items-center gap-2 border-white/10 px-3 lg:border-x">
+          <div className="flex shrink-0 items-center gap-2 px-1 md:border-x md:border-border md:px-3">
             {timer}
             <div className="hidden leading-tight lg:block">
               <p className="text-[11px] text-muted-foreground">Time Left</p>
             </div>
           </div>
         )}
+
+        {textSizeControl && <div className="hidden shrink-0 md:block">{textSizeControl}</div>}
 
         {/* Inline stat strip (desktop) */}
         {stats && (
@@ -97,12 +101,52 @@ export function TestHeader({
         {right && <div className="shrink-0">{right}</div>}
       </div>
 
-      <div className="mx-auto mt-2 h-1 max-w-[1600px] overflow-hidden rounded-full bg-white/10">
+      <div className="mx-auto mt-2 h-0.5 max-w-[1600px] overflow-hidden bg-muted">
         <div
-          className="h-full rounded-full bg-gradient-neon transition-all duration-500"
+          className="h-full bg-primary transition-[width] duration-300"
           style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
         />
       </div>
+    </header>
+  );
+}
+
+export type TestTextSize = "xs" | "s" | "m" | "l" | "xl";
+const TEXT_SIZES: TestTextSize[] = ["xs", "s", "m", "l", "xl"];
+const TEXT_SIZE_KEY = "practice-with-ajit:test-text-size";
+
+export function useTestTextSize() {
+  const [size, setSize] = useState<TestTextSize>(() => {
+    if (typeof window === "undefined") return "m";
+    const saved = window.localStorage.getItem(TEXT_SIZE_KEY) as TestTextSize | null;
+    return saved && TEXT_SIZES.includes(saved) ? saved : "m";
+  });
+  useEffect(() => { window.localStorage.setItem(TEXT_SIZE_KEY, size); }, [size]);
+  const index = TEXT_SIZES.indexOf(size);
+  return {
+    size,
+    decrease: () => setSize(TEXT_SIZES[Math.max(0, index - 1)]),
+    reset: () => setSize("m"),
+    increase: () => setSize(TEXT_SIZES[Math.min(TEXT_SIZES.length - 1, index + 1)]),
+    canDecrease: index > 0,
+    canIncrease: index < TEXT_SIZES.length - 1,
+  };
+}
+
+export function TestTextSizeControl({
+  size, decrease, reset, increase, canDecrease, canIncrease, compact = false,
+}: ReturnType<typeof useTestTextSize> & { compact?: boolean }) {
+  return (
+    <div className="inline-flex h-11 items-center overflow-hidden rounded-md border bg-card" aria-label="Question text size">
+      <button type="button" onClick={decrease} disabled={!canDecrease} aria-label="Decrease question text size" className="flex h-11 w-11 items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-40">
+        <Minus className="h-3.5 w-3.5" /><span className="text-xs font-bold">A</span>
+      </button>
+      <button type="button" onClick={reset} aria-label={`Question text size ${size.toUpperCase()}; reset to medium`} className="flex h-11 min-w-11 items-center justify-center border-x px-2 text-xs font-bold hover:bg-muted">
+        {compact ? "A" : size.toUpperCase()}
+      </button>
+      <button type="button" onClick={increase} disabled={!canIncrease} aria-label="Increase question text size" className="flex h-11 w-11 items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-40">
+        <span className="text-sm font-bold">A</span><Plus className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 }
@@ -140,9 +184,9 @@ export function ExamProgressPanel({
   ];
   if (marked !== undefined) cells.push(["Review", marked, "text-purple-300"]);
   return (
-    <div className={cn("test-glass grid grid-cols-4 gap-1 p-3 text-center", className)}>
+    <div className={cn("grid grid-cols-4 gap-px overflow-hidden rounded-md border bg-border text-center", className)}>
       {cells.map(([label, value, tone]) => (
-        <div key={label} className="rounded-xl px-1 py-1.5">
+        <div key={label} className="bg-card px-1 py-2">
           <p className={cn("text-sm font-extrabold leading-none tabular-nums", tone)}>{value}</p>
           <p className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
         </div>
@@ -163,9 +207,9 @@ export function LivePerformancePanel({ stats, className }: { stats: LiveStats; c
   if (stats.bestStreak !== undefined) cells.push(["Best", stats.bestStreak, "text-amber-400"]);
   if (stats.remaining !== undefined) cells.push(["Left", stats.remaining, "text-muted-foreground"]);
   return (
-    <div className={cn("test-glass grid grid-cols-4 gap-1 p-3 text-center", className)}>
+    <div className={cn("grid grid-cols-4 gap-px overflow-hidden rounded-md border bg-border text-center", className)}>
       {cells.map(([label, value, tone]) => (
-        <div key={label} className="rounded-xl px-1 py-1.5">
+        <div key={label} className="bg-card px-1 py-2">
           <p className={cn("text-sm font-extrabold leading-none tabular-nums", tone)}>{value}</p>
           <p className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
         </div>
@@ -188,9 +232,9 @@ export function QuestionCard({
 }) {
   const tags = (meta ?? []).filter(Boolean) as string[];
   return (
-    <div className="test-glass animate-test-slide p-5 sm:p-7">
-      <div className="mb-5 flex flex-wrap items-center gap-x-2 gap-y-2">
-        <span className="rounded-lg border border-primary/40 bg-primary/15 px-2.5 py-1 text-xs font-bold text-primary">
+    <section className="test-question-card animate-test-slide rounded-md border bg-card p-4 shadow-sm sm:p-5">
+      <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-2">
+        <span className="rounded border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
           Q{index}
         </span>
         {tags.map((t, i) => (
@@ -204,11 +248,11 @@ export function QuestionCard({
             {difficultyStars(difficulty)}
           </span>
         )}
-        {actions && <div className="ml-auto">{actions}</div>}
+        {actions && <div className="ml-auto max-w-full">{actions}</div>}
       </div>
-      <p className="text-[19px] font-semibold leading-[1.75] sm:text-[21px]">{question}</p>
-      <div className="mt-6 space-y-3.5">{children}</div>
-    </div>
+      <p className="test-question-text break-words font-semibold">{question}</p>
+      <div className="test-supporting-content mt-5 space-y-3">{children}</div>
+    </section>
 
   );
 }
@@ -237,6 +281,7 @@ export function OptionCard({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      aria-pressed={state === "selected" || state === "correct" || state === "wrong"}
       className={cn(
         "test-option",
         state === "selected" && "test-option-selected",
@@ -258,7 +303,7 @@ export function OptionCard({
         {letter}
       </span>
 
-      <span className="flex-1 text-[16px] leading-relaxed sm:text-[17px]">{text}</span>
+      <span className="test-option-text min-w-0 flex-1 break-words">{text}</span>
       {state === "correct" && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />}
       {state === "wrong" && <XCircle className="h-5 w-5 shrink-0 text-destructive" />}
     </button>
@@ -362,20 +407,21 @@ export function FloatingAIStatus({ text = "Watching your performance…" }: { te
 /* -------------------------------- Bottom nav ------------------------------- */
 export function TestBottomNav({ children }: { children: ReactNode }) {
   return (
-    <div className="test-bottom-nav fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-background/80 px-2 pt-2 backdrop-blur-2xl sm:px-3 sm:pt-3">
-      <div className="mx-auto grid w-full max-w-[1600px] grid-cols-2 gap-2 sm:flex sm:items-center">{children}</div>
+    <div className="test-bottom-nav fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-2 pt-2 backdrop-blur-xl md:px-4">
+      <div className="mx-auto grid w-full max-w-[1600px] grid-cols-3 gap-2">{children}</div>
     </div>
   );
 }
 
 /* --------------------------- Question navigator ---------------------------- */
-export type NavItemStatus = "answered" | "correct" | "wrong" | "marked" | "skipped" | "unvisited";
+export type NavItemStatus = "answered" | "answered-marked" | "correct" | "wrong" | "marked" | "skipped" | "unvisited";
 
 const NAV_STATUS_CLASS: Record<NavItemStatus, string> = {
   correct: "border-emerald-500/60 bg-emerald-500/20 text-emerald-300",
   answered: "border-emerald-500/60 bg-emerald-500/20 text-emerald-300",
+  "answered-marked": "border-primary bg-primary/20 text-primary",
   wrong: "border-destructive/60 bg-destructive/20 text-destructive",
-  marked: "border-purple-500/60 bg-purple-500/20 text-purple-300",
+  marked: "border-secondary/60 bg-secondary/15 text-secondary",
   skipped: "border-amber-500/50 bg-amber-500/15 text-amber-300",
   unvisited: "border-white/10 bg-white/5 text-muted-foreground",
 };
@@ -384,18 +430,19 @@ const NAV_LEGEND: Array<[string, string]> = [
   ["bg-emerald-500", "Answered"],
   ["bg-destructive", "Wrong"],
   ["bg-amber-400", "Skipped"],
-  ["bg-purple-500", "Review"],
+  ["bg-secondary", "Review"],
+  ["bg-primary", "Answered + Review"],
   ["bg-muted-foreground", "Not Visited"],
 ];
 
 type NavFilter = "all" | "answered" | "unanswered" | "review" | "skipped";
 
-const ANSWERED_STATES: NavItemStatus[] = ["answered", "correct", "wrong"];
+const ANSWERED_STATES: NavItemStatus[] = ["answered", "answered-marked", "correct", "wrong"];
 
 function matchesFilter(st: NavItemStatus, filter: NavFilter) {
   if (filter === "answered") return ANSWERED_STATES.includes(st);
   if (filter === "unanswered") return st === "unvisited" || st === "skipped";
-  if (filter === "review") return st === "marked";
+  if (filter === "review") return st === "marked" || st === "answered-marked";
   if (filter === "skipped") return st === "skipped";
   return true;
 }
@@ -424,7 +471,7 @@ export function NavigatorPanel({
     all: total,
     answered: all.filter((i) => ANSWERED_STATES.includes(statusFor(i))).length,
     unanswered: all.filter((i) => ["unvisited", "skipped"].includes(statusFor(i))).length,
-    review: all.filter((i) => statusFor(i) === "marked").length,
+    review: all.filter((i) => ["marked", "answered-marked"].includes(statusFor(i))).length,
     skipped: all.filter((i) => statusFor(i) === "skipped").length,
   };
   const visible = all.filter((i) => matchesFilter(statusFor(i), filter));
@@ -456,6 +503,7 @@ export function NavigatorPanel({
             key={key}
             type="button"
             onClick={() => setFilter(key)}
+            aria-pressed={filter === key}
             className={cn(
               "rounded-lg border px-2 py-1 text-[11px] font-semibold transition-colors",
               filter === key
@@ -471,14 +519,17 @@ export function NavigatorPanel({
       <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1 py-2">
         <div className="grid grid-cols-5 gap-2">
           {visible.map((i) => {
-            const st = statusFor(i);
+            const rawStatus = statusFor(i);
+            const st = hideCorrectness && (rawStatus === "correct" || rawStatus === "wrong") ? "answered" : rawStatus;
             return (
               <button
                 key={i}
                 type="button"
                 onClick={() => onJump(i)}
+                aria-current={i === current ? "step" : undefined}
+                aria-label={`Question ${i + 1}, ${st.replace("-", " and ")}`}
                 className={cn(
-                  "flex h-10 items-center justify-center rounded-xl border text-sm font-bold transition-transform hover:scale-105",
+                  "flex h-11 items-center justify-center rounded-md border text-sm font-bold transition-colors hover:border-primary",
                   NAV_STATUS_CLASS[st],
                   i === current && "ring-2 ring-primary ring-offset-2 ring-offset-background",
                 )}
@@ -515,10 +566,10 @@ export function NavigatorPanel({
         </button>
       </form>
 
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-white/10 pt-3 text-[10px] text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t pt-3 text-[10px] text-muted-foreground">
         {NAV_LEGEND.filter(([, l]) => !(hideCorrectness && l === "Wrong")).map(([dot, label]) => (
           <span key={label} className="flex items-center gap-1.5">
-            <span className={cn("h-2 w-2 rounded-full", dot)} />
+            <span className={cn("h-2 w-2 rounded-full", dot)} aria-hidden="true" />
             {label}
           </span>
         ))}
@@ -553,8 +604,8 @@ export function QuestionNavigator({
           type="button"
           aria-label="Open question navigator"
           className={cn(
-            "inline-flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 text-sm font-semibold text-foreground backdrop-blur-2xl transition-colors hover:border-primary hover:bg-primary/20",
-            floating ? "fixed bottom-24 left-3 z-30 h-11 shadow-lg" : "h-11 shrink-0",
+            "inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 text-sm font-semibold text-foreground transition-colors hover:border-primary hover:bg-primary/20",
+            floating ? "fixed bottom-24 left-3 z-30 shadow-lg" : "shrink-0",
             triggerClassName,
           )}
         >
@@ -569,7 +620,7 @@ export function QuestionNavigator({
         side={isMobile ? "bottom" : "right"}
         className={cn(
           "border-white/10 bg-background/95 backdrop-blur-2xl",
-          isMobile ? "h-[82dvh] rounded-t-3xl" : "w-[340px] sm:max-w-sm",
+          isMobile ? "h-[88dvh] rounded-t-2xl pb-[calc(1rem+env(safe-area-inset-bottom,0px))]" : "w-[340px] sm:max-w-sm",
         )}
       >
         <NavigatorPanel
@@ -627,15 +678,15 @@ export function TestWorkspace({
   return (
     <div
       className={cn(
-        "mx-auto grid w-full items-start gap-5",
+        "mx-auto grid w-full items-start gap-4",
         showSidebar && sidebar
-          ? "max-w-[1600px] xl:grid-cols-[minmax(0,1fr)_340px]"
+          ? "max-w-[1600px] md:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_330px]"
           : "max-w-4xl grid-cols-1",
       )}
     >
       <div className="min-w-0 space-y-4">{children}</div>
       {showSidebar && sidebar && (
-        <aside className="test-glass sticky top-[104px] hidden max-h-[calc(100dvh-11rem)] p-4 xl:block">
+        <aside className="sticky top-[76px] hidden max-h-[calc(100dvh-9rem)] rounded-md border bg-card p-4 shadow-sm md:block">
           {sidebar}
         </aside>
       )}

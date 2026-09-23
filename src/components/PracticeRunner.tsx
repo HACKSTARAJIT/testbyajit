@@ -20,7 +20,7 @@ import {
   TestHeader, LivePerformancePanel, QuestionCard, OptionCard, AnswerFeedback,
   FloatingAIStatus, TestBottomNav, AIAnalyzingLoader, ResultHero, ResultStatGrid,
   gradeFor, xpFor, buildInsight, QuestionNavigator, NavigatorPanel, TestWorkspace,
-  FocusModeButton, useFocusMode, type NavItemStatus,
+  FocusModeButton, useFocusMode, TestTextSizeControl, useTestTextSize, type NavItemStatus,
 } from "@/components/test-ui/PremiumTestUI";
 
 
@@ -76,6 +76,7 @@ export function PracticeRunner({
   const runStart = useRef<number | null>(null);
   const fx = useFeedbackFX();
   const { focus, toggle: toggleFocus } = useFocusMode();
+  const textSize = useTestTextSize();
 
 
   const orderFor = (id: string) => optionOrder[id] ?? [...OPTION_LETTERS];
@@ -246,6 +247,24 @@ export function PracticeRunner({
   function toggleMark(qid: string) {
     setMarked((m) => (m.includes(qid) ? m.filter((x) => x !== qid) : [...m, qid]));
   }
+
+  useEffect(() => {
+    if (!started || paused || finished) return;
+    const handleKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
+      if (event.key === "ArrowLeft" && idx > 0) { event.preventDefault(); setIdx((i) => i - 1); }
+      if (event.key === "ArrowRight" && idx < questions.length - 1) { event.preventDefault(); setIdx((i) => i + 1); }
+      const optionIndex = Number(event.key) - 1;
+      if (optionIndex >= 0 && optionIndex < 4 && !answers[questions[idx]?.id]) {
+        const activeQuestion = questions[idx];
+        const letter = activeQuestion ? orderFor(activeQuestion.id)[optionIndex] : undefined;
+        if (activeQuestion && letter) { event.preventDefault(); selectAnswer(activeQuestion.id, letter, activeQuestion.correct_answer); }
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [started, paused, finished, idx, questions, answers, optionOrder]);
 
   async function finish() {
     setFinished(true);
@@ -508,6 +527,7 @@ export function PracticeRunner({
     const item = questions[i];
     if (!item) return "unvisited";
     const a = answers[item.id];
+    if (a && marked.includes(item.id)) return "answered-marked";
     if (a) return a === item.correct_answer ? "correct" : "wrong";
     if (marked.includes(item.id)) return "marked";
     return i < idx ? "skipped" : "unvisited";
@@ -515,13 +535,15 @@ export function PracticeRunner({
 
 
   return (
-    <div className="test-shell">
+    <div className="test-shell" data-test-text-size={textSize.size}>
       <TestHeader
         title={title}
         current={idx + 1}
         total={questions.length}
         progress={((idx + (revealed ? 1 : 0)) / questions.length) * 100}
         subtitle={`${shuffle ? "⚡ Practice Mode · 🔀 Shuffled" : "⚡ Practice Mode"} · ⏱ ${formatClock(clock)}`}
+        section={chapter || subject}
+        textSizeControl={<TestTextSizeControl {...textSize} />}
         stats={{
           correct: stats.correct,
           wrong: stats.wrong,
@@ -541,7 +563,7 @@ export function PracticeRunner({
               <Pause className="h-4 w-4 sm:mr-1" />
               <span className="hidden sm:inline">Pause</span>
             </Button>
-            <div className={focus ? "block" : "hidden"}>
+            <div className="md:hidden">
               <QuestionNavigator
                 total={questions.length}
                 current={idx}
@@ -549,6 +571,7 @@ export function PracticeRunner({
                 onJump={(i) => setIdx(i)}
               />
             </div>
+            <div className="md:hidden"><TestTextSizeControl {...textSize} compact /></div>
             <FocusModeButton focus={focus} onToggle={toggleFocus} />
           </div>
         }
@@ -608,18 +631,6 @@ export function PracticeRunner({
           })}
         </QuestionCard>
 
-        <div className="flex justify-center">
-          <Button
-            size="sm"
-            variant={isMarked ? "default" : "outline"}
-            className="rounded-2xl"
-            onClick={() => toggleMark(q.id)}
-          >
-            <Bookmark className="mr-1 h-4 w-4" />
-            {isMarked ? "Marked for Review" : "Mark for Review"}
-          </Button>
-        </div>
-
         {revealed && (
           <AnswerFeedback
             correct={isCorrect}
@@ -645,29 +656,20 @@ export function PracticeRunner({
         )}
       </TestWorkspace>
 
-      <FloatingAIStatus />
-
       <TestBottomNav>
-        <div className={focus ? "block" : "xl:hidden"}>
-
-          <QuestionNavigator
-            total={questions.length}
-            current={idx}
-            statusFor={navStatus}
-            onJump={(i) => setIdx(i)}
-          />
-        </div>
-
-        <Button variant="outline" className="h-12 flex-1 rounded-2xl" disabled={idx === 0} onClick={() => setIdx((i) => i - 1)}>
+        <Button variant="outline" className="h-12 min-w-0 rounded-md px-2" disabled={idx === 0} onClick={() => setIdx((i) => i - 1)}>
           Previous
+        </Button>
+        <Button variant={isMarked ? "secondary" : "outline"} className="h-12 min-w-0 rounded-md px-1 text-xs md:px-3 md:text-sm" onClick={() => toggleMark(q.id)}>
+          <Bookmark className="h-4 w-4" /> Review &amp; Mark
         </Button>
 
         {idx < questions.length - 1 ? (
-          <Button className="h-12 flex-1 rounded-2xl bg-gradient-neon text-white" disabled={!revealed} onClick={() => setIdx((i) => i + 1)}>
-            Next Question
+          <Button className="h-12 min-w-0 rounded-md px-2" disabled={!revealed} onClick={() => setIdx((i) => i + 1)}>
+            Next
           </Button>
         ) : (
-          <Button className="h-12 flex-1 rounded-2xl bg-gradient-neon text-white" disabled={!revealed} onClick={finish}>
+          <Button className="h-12 min-w-0 rounded-md px-2" disabled={!revealed} onClick={finish}>
             Finish
           </Button>
         )}

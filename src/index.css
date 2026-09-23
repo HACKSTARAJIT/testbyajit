@@ -140,9 +140,19 @@
   /* Full-bleed, distraction-free test surface: escapes the app container padding
      and stretches to the full viewport height. */
   .test-shell {
-    @apply relative -mx-4 w-[calc(100%+2rem)] px-3 pb-40 sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-5 sm:pb-32 lg:px-8;
+    @apply relative -mx-4 w-[calc(100%+2rem)] px-3 pb-28 sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-5 lg:px-8;
     min-height: calc(100dvh - 8rem);
+    --test-question-size: 1.125rem;
+    --test-option-size: 1rem;
+    --test-supporting-size: 0.925rem;
   }
+  .test-shell[data-test-text-size="xs"] { --test-question-size: 0.925rem; --test-option-size: 0.875rem; --test-supporting-size: 0.825rem; }
+  .test-shell[data-test-text-size="s"] { --test-question-size: 1rem; --test-option-size: 0.925rem; --test-supporting-size: 0.875rem; }
+  .test-shell[data-test-text-size="l"] { --test-question-size: 1.3rem; --test-option-size: 1.125rem; --test-supporting-size: 1rem; }
+  .test-shell[data-test-text-size="xl"] { --test-question-size: 1.5rem; --test-option-size: 1.3rem; --test-supporting-size: 1.125rem; }
+  .test-question-text { font-size: var(--test-question-size); line-height: 1.65; overflow-wrap: anywhere; }
+  .test-option-text { font-size: var(--test-option-size); line-height: 1.55; overflow-wrap: anywhere; }
+  .test-supporting-content { font-size: var(--test-supporting-size); }
   .test-shell > .test-shell-body,
   .test-shell-body {
     @apply mx-auto w-full max-w-4xl;
@@ -173,12 +183,11 @@
     background-image: var(--gradient-neon);
   }
   .test-option {
-    @apply relative flex w-full items-center gap-4 rounded-2xl border p-5 text-left transition-all duration-200;
-    @apply border-white/10 bg-white/5 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/10;
-    will-change: transform;
+    @apply relative flex min-h-14 w-full items-center gap-3 rounded-md border p-3 text-left transition-colors duration-150 sm:p-4;
+    @apply border-border bg-background hover:border-primary/50 hover:bg-primary/5;
   }
 
-  .test-option:active { transform: scale(0.985); }
+  .test-option:active { @apply bg-muted; }
   .test-option-selected {
     @apply border-primary/70 bg-primary/15;
     box-shadow: var(--glow-blue);
@@ -200,7 +209,7 @@
   }
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   .test-bottom-nav {
     padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
   }
