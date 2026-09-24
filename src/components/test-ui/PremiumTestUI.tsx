@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { APP_LOGO, APP_LOGO_ALT, APP_NAME } from "@/lib/brand";
