@@ -105,6 +105,11 @@ export function TestHeader({
         )}
 
         {right && <div className="hidden shrink-0 md:block">{right}</div>}
+        {onExit && (
+          <Button type="button" variant="outline" onClick={onExit} className="hidden h-11 shrink-0 md:inline-flex" aria-label="Exit test">
+            Exit
+          </Button>
+        )}
       </div>
 
       {mobileTools && <div className="mx-auto mt-2 flex max-w-[1600px] items-center justify-between gap-2 md:hidden">{mobileTools}</div>}
