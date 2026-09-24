@@ -17,7 +17,7 @@ import {
 
 import {
   TestHeader, CircularTimer, LivePerformancePanel, ExamProgressPanel, QuestionCard, OptionCard,
-  AnswerFeedback, FloatingAIStatus, TestBottomNav, AIAnalyzingLoader,
+  AnswerFeedback, TestBottomNav, AIAnalyzingLoader,
   ResultHero, ResultStatGrid, gradeFor, xpFor, buildInsight,
   QuestionNavigator, NavigatorPanel, TestWorkspace, FocusModeButton, useFocusMode,
   TestTextSizeControl, useTestTextSize, type NavItemStatus,
@@ -491,6 +491,7 @@ export function TestEngine({
     <div className="test-shell" data-test-text-size={textSize.size}>
       <TestHeader
         title={test.title}
+        onExit={onExit}
         current={current + 1}
         total={sessionQs.length}
         progress={((current + 1) / sessionQs.length) * 100}
@@ -498,6 +499,19 @@ export function TestEngine({
         section={test.test_part || test.subjectName}
         timer={<CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
         textSizeControl={<TestTextSizeControl {...textSize} />}
+        mobileTools={
+          <>
+            <QuestionNavigator
+              total={sessionQs.length}
+              current={current}
+              statusFor={navStatus}
+              hideCorrectness={mode === "exam"}
+              onJump={goto}
+              triggerClassName="h-10"
+            />
+            <TestTextSizeControl {...textSize} compact />
+          </>
+        }
         // EXAM MODE: never pass correctness/score data to the header.
         stats={
           mode === "practice"
@@ -512,16 +526,6 @@ export function TestEngine({
         }
         right={
           <div className="flex items-center gap-2">
-            <div className="md:hidden">
-              <QuestionNavigator
-                total={sessionQs.length}
-                current={current}
-                statusFor={navStatus}
-                hideCorrectness={mode === "exam"}
-                onJump={goto}
-              />
-            </div>
-            <div className="md:hidden"><TestTextSizeControl {...textSize} compact /></div>
             <FocusModeButton focus={focus} onToggle={toggleFocus} />
           </div>
         }
@@ -541,7 +545,7 @@ export function TestEngine({
       >
         {mode === "practice" ? (
           <LivePerformancePanel
-            className="xl:hidden"
+            className="md:hidden"
             stats={{
               correct: stats.correct,
               wrong: stats.incorrect,

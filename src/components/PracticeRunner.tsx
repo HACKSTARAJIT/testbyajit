@@ -18,7 +18,7 @@ import {
 
 import {
   TestHeader, LivePerformancePanel, QuestionCard, OptionCard, AnswerFeedback,
-  FloatingAIStatus, TestBottomNav, AIAnalyzingLoader, ResultHero, ResultStatGrid,
+  TestBottomNav, AIAnalyzingLoader, ResultHero, ResultStatGrid,
   gradeFor, xpFor, buildInsight, QuestionNavigator, NavigatorPanel, TestWorkspace,
   FocusModeButton, useFocusMode, TestTextSizeControl, useTestTextSize, type NavItemStatus,
 } from "@/components/test-ui/PremiumTestUI";
@@ -538,12 +538,25 @@ export function PracticeRunner({
     <div className="test-shell" data-test-text-size={textSize.size}>
       <TestHeader
         title={title}
+        onExit={onExit}
         current={idx + 1}
         total={questions.length}
         progress={((idx + (revealed ? 1 : 0)) / questions.length) * 100}
         subtitle={`${shuffle ? "⚡ Practice Mode · 🔀 Shuffled" : "⚡ Practice Mode"} · ⏱ ${formatClock(clock)}`}
         section={chapter || subject}
         textSizeControl={<TestTextSizeControl {...textSize} />}
+        mobileTools={
+          <>
+            <QuestionNavigator
+              total={questions.length}
+              current={idx}
+              statusFor={navStatus}
+              onJump={(i) => setIdx(i)}
+              triggerClassName="h-10"
+            />
+            <TestTextSizeControl {...textSize} compact />
+          </>
+        }
         stats={{
           correct: stats.correct,
           wrong: stats.wrong,
@@ -563,15 +576,6 @@ export function PracticeRunner({
               <Pause className="h-4 w-4 sm:mr-1" />
               <span className="hidden sm:inline">Pause</span>
             </Button>
-            <div className="md:hidden">
-              <QuestionNavigator
-                total={questions.length}
-                current={idx}
-                statusFor={navStatus}
-                onJump={(i) => setIdx(i)}
-              />
-            </div>
-            <div className="md:hidden"><TestTextSizeControl {...textSize} compact /></div>
             <FocusModeButton focus={focus} onToggle={toggleFocus} />
           </div>
         }
@@ -589,7 +593,7 @@ export function PracticeRunner({
         }
       >
         <LivePerformancePanel
-          className="xl:hidden"
+          className="md:hidden"
           stats={{
             correct: stats.correct,
             wrong: stats.wrong,
