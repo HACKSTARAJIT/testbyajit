@@ -69,6 +69,11 @@ function ThemeToggle() {
 export function AppLayout({ children }: { children: ReactNode }) {
   const { user, isAdmin, isGuest, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isTestExperience = /^\/test\//.test(location.pathname)
+    || /^\/revise\//.test(location.pathname)
+    || /^\/mock-auto-test\//.test(location.pathname)
+    || /\/(test|practice)$/.test(location.pathname);
 
   const handleSignOut = async () => {
     await signOut();
@@ -80,7 +85,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-background">
       <SplashScreen />
-      <header className="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-lg">
+      {!isTestExperience && <header className="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-lg">
         <div className="container flex h-16 items-center justify-between gap-4">
           <Link to="/dashboard" className="flex items-center gap-2">
             <img src={APP_LOGO} alt={APP_LOGO_ALT} width={36} height={36} className="h-9 w-9 rounded-xl" />
@@ -163,15 +168,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </Sheet>
           </div>
         </div>
-      </header>
-      <main className="container py-6 animate-fade-in">{children}</main>
-      <footer className="border-t py-6 text-center text-xs text-muted-foreground">
+      </header>}
+      <main className={cn(isTestExperience ? "px-4 py-0 sm:px-6" : "container py-6 animate-fade-in")}>{children}</main>
+      {!isTestExperience && <footer className="border-t py-6 text-center text-xs text-muted-foreground">
         <img src={APP_LOGO} alt={APP_LOGO_ALT} width={28} height={28} className="mx-auto mb-2 h-7 w-7 rounded-lg" loading="lazy" />
         <p className="font-semibold text-primary">Learn • Practice • Analyze • Succeed</p>
         <p className="mt-1">© {new Date().getFullYear()} {APP_NAME} — {APP_TAGLINE}</p>
         <p className="mt-0.5">Designed &amp; Developed by Ajit Singh</p>
         <Link to="/about" className="story-link mt-1 inline-block text-primary">About</Link>
-      </footer>
+      </footer>}
 
     </div>
   );

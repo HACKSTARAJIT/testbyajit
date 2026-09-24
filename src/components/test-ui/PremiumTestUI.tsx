@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { APP_LOGO, APP_LOGO_ALT, APP_NAME } from "@/lib/brand";
@@ -47,15 +48,20 @@ export function CircularTimer({
 
 /* --------------------------------- Header --------------------------------- */
 export function TestHeader({
-  title, current, total, progress, right, subtitle, section, timer, stats, textSizeControl,
+  title, current, total, progress, right, mobileTools, onExit, subtitle, section, timer, stats, textSizeControl,
 }: {
   title: string; current: number; total: number; progress: number;
   right?: ReactNode; subtitle?: string; section?: string | null; timer?: ReactNode;
-  stats?: LiveStats; textSizeControl?: ReactNode;
+  stats?: LiveStats; textSizeControl?: ReactNode; mobileTools?: ReactNode; onExit?: () => void;
 }) {
   return (
     <header className="test-header sticky top-0 z-30 -mx-3 mb-3 border-b bg-background/95 px-3 py-2 backdrop-blur-xl sm:-mx-5 sm:px-5">
       <div className="mx-auto flex max-w-[1600px] items-center gap-2 md:gap-3">
+        {onExit && (
+          <Button type="button" variant="ghost" size="icon" onClick={onExit} aria-label="Exit test" className="h-11 w-11 shrink-0 md:hidden">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        )}
         {/* Brand */}
         <div className="hidden min-w-0 items-center gap-2 pr-2 lg:flex">
           <img src={APP_LOGO} alt={APP_LOGO_ALT} className="h-8 w-8 shrink-0 object-contain" />
@@ -98,8 +104,15 @@ export function TestHeader({
           </div>
         )}
 
-        {right && <div className="shrink-0">{right}</div>}
+        {right && <div className="hidden shrink-0 md:block">{right}</div>}
+        {onExit && (
+          <Button type="button" variant="outline" onClick={onExit} className="hidden h-11 shrink-0 md:inline-flex" aria-label="Exit test">
+            Exit
+          </Button>
+        )}
       </div>
+
+      {mobileTools && <div className="mx-auto mt-2 flex max-w-[1600px] items-center justify-between gap-2 md:hidden">{mobileTools}</div>}
 
       <div className="mx-auto mt-2 h-0.5 max-w-[1600px] overflow-hidden bg-muted">
         <div
@@ -137,14 +150,14 @@ export function TestTextSizeControl({
   size, decrease, reset, increase, canDecrease, canIncrease, compact = false,
 }: ReturnType<typeof useTestTextSize> & { compact?: boolean }) {
   return (
-    <div className="inline-flex h-11 items-center overflow-hidden rounded-md border bg-card" aria-label="Question text size">
-      <button type="button" onClick={decrease} disabled={!canDecrease} aria-label="Decrease question text size" className="flex h-11 w-11 items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-40">
+    <div className={cn("inline-flex h-11 items-center overflow-hidden rounded-md border bg-card", compact && "h-10")} aria-label="Question text size">
+      <button type="button" onClick={decrease} disabled={!canDecrease} aria-label="Decrease question text size" className={cn("flex h-11 w-11 items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-40", compact && "h-10 w-10")}>
         <Minus className="h-3.5 w-3.5" /><span className="text-xs font-bold">A</span>
       </button>
-      <button type="button" onClick={reset} aria-label={`Question text size ${size.toUpperCase()}; reset to medium`} className="flex h-11 min-w-11 items-center justify-center border-x px-2 text-xs font-bold hover:bg-muted">
+      <button type="button" onClick={reset} aria-label={`Question text size ${size.toUpperCase()}; reset to medium`} className={cn("flex h-11 min-w-11 items-center justify-center border-x px-2 text-xs font-bold hover:bg-muted", compact && "h-10 min-w-10")}>
         {compact ? "A" : size.toUpperCase()}
       </button>
-      <button type="button" onClick={increase} disabled={!canIncrease} aria-label="Increase question text size" className="flex h-11 w-11 items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-40">
+      <button type="button" onClick={increase} disabled={!canIncrease} aria-label="Increase question text size" className={cn("flex h-11 w-11 items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-40", compact && "h-10 w-10")}>
         <span className="text-sm font-bold">A</span><Plus className="h-3.5 w-3.5" />
       </button>
     </div>
