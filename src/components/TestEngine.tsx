@@ -666,7 +666,7 @@ export function TestEngine({
           disabled={current === 0}
           onClick={() => setCurrent((c) => c - 1)}
         >
-          <ArrowLeft className="mr-1 h-4 w-4" /> Previous
+          <ArrowLeft className="h-4 w-4" /> Previous
         </Button>
 
         <Button
@@ -674,12 +674,12 @@ export function TestEngine({
           className={cn("h-12 min-w-0 rounded-md px-1 text-xs md:px-4 md:text-sm", marked[q.id] === "review" && "border-secondary/60 bg-secondary/15 text-secondary")}
           onClick={() => toggleMark("review")}
         >
-          <Flag className="mr-1 h-4 w-4" /> Review &amp; Mark
+          <Flag className="h-4 w-4" /> Review &amp; Mark
         </Button>
 
         {current < sessionQs.length - 1 ? (
           <Button className="h-12 min-w-0 rounded-md px-2 md:px-4" onClick={() => setCurrent((c) => c + 1)}>
-            Next <ArrowRight className="ml-1 h-4 w-4" />
+            Next <ArrowRight className="h-4 w-4" />
           </Button>
         ) : (
           <Button

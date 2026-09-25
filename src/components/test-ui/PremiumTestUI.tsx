@@ -245,7 +245,7 @@ export function QuestionCard({
 }) {
   const tags = (meta ?? []).filter(Boolean) as string[];
   return (
-    <section className="test-question-card animate-test-slide rounded-md border bg-card p-4 shadow-sm sm:p-5">
+    <section className="test-question-card rounded-md border bg-card p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-2">
         <span className="rounded border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
           Q{index}
