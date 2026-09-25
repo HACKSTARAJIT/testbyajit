@@ -46,6 +46,17 @@ export function CircularTimer({
   );
 }
 
+export function Stopwatch({ seconds }: { seconds: number }) {
+  const h = Math.floor(seconds / 3600);
+  const mm = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
+  const ss = String(seconds % 60).padStart(2, "0");
+  return (
+    <div className="flex h-10 shrink-0 items-center gap-1 rounded-md border bg-background px-2 text-sm font-bold tabular-nums" aria-label="Time taken" role="timer">
+      <span aria-hidden>⏱</span>{h > 0 ? `${h}:` : ""}{mm}:{ss}
+    </div>
+  );
+}
+
 /* --------------------------------- Header --------------------------------- */
 export function TestHeader({
   title, current, total, progress, right, mobileTools, onExit, subtitle, section, timer, stats, textSizeControl,
