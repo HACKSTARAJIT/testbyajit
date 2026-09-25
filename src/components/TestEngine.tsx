@@ -16,7 +16,7 @@ import {
 } from "@/lib/shuffleMode";
 
 import {
-  TestHeader, CircularTimer, LivePerformancePanel, ExamProgressPanel, QuestionCard, OptionCard,
+  TestHeader, CircularTimer, Stopwatch, LivePerformancePanel, ExamProgressPanel, QuestionCard, OptionCard,
   AnswerFeedback, TestBottomNav, AIAnalyzingLoader,
   ResultHero, ResultStatGrid, gradeFor, xpFor, buildInsight,
   QuestionNavigator, NavigatorPanel, TestWorkspace, FocusModeButton, useFocusMode,
@@ -81,6 +81,7 @@ export function TestEngine({
     answers: Record<string, string>;
     current_index: number;
     marked: Record<string, MarkState>;
+    elapsed_seconds?: number;
   };
 }) {
   // Shuffle is applied only to the display order of this session; question IDs,
@@ -104,6 +105,11 @@ export function TestEngine({
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [secondsLeft, setSecondsLeft] = useState((test.duration_minutes ?? 30) * 60);
+  const isPractice = mode === "practice";
+  // Practice Mode stopwatch: counts only active (visible, unsubmitted) time.
+  const [elapsed, setElapsed] = useState<number>(isPractice ? (resume?.elapsed_seconds ?? 0) : 0);
+  const elapsedRef = useRef(elapsed);
+  elapsedRef.current = elapsed;
   const startTime = useRef<number>(Date.now());
   const qStartTime = useRef<number>(Date.now());
   const attemptId = useRef<string | null>(resume?.attemptId ?? null);
@@ -156,7 +162,7 @@ export function TestEngine({
       answers,
       marked,
       guesses,
-      time_taken_seconds: timeTaken ?? Math.round((Date.now() - startTime.current) / 1000),
+      time_taken_seconds: timeTaken ?? (isPractice ? elapsedRef.current : Math.round((Date.now() - startTime.current) / 1000)),
     };
     if (attemptId.current) {
       await supabase.from("test_attempts").update(payload).eq("id", attemptId.current);
@@ -191,7 +197,7 @@ export function TestEngine({
   const submit = useCallback(async () => {
     if (submitted) return;
     setSubmitted(true);
-    const timeTaken = Math.round((Date.now() - startTime.current) / 1000);
+    const timeTaken = isPractice ? elapsedRef.current : Math.round((Date.now() - startTime.current) / 1000);
     const final = { ...stats };
     setResult({ ...final, timeTaken });
     await persist("completed", final, timeTaken);
@@ -204,9 +210,18 @@ export function TestEngine({
     }
   }, [submitted, stats, persist, userId, isPreview, onSubmit, autoRecord, test, sessionQs, answers]);
 
-  // timer
+  // Practice stopwatch — no limit, no auto-submit; pauses while the tab is hidden.
   useEffect(() => {
-    if (submitted) return;
+    if (!isPractice || submitted) return;
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") setElapsed((e) => e + 1);
+    }, 1000);
+    return () => clearInterval(t);
+  }, [isPractice, submitted]);
+
+  // Exam countdown timer (unchanged behaviour)
+  useEffect(() => {
+    if (isPractice || submitted) return;
     if (secondsLeft <= 0) { submit(); return; }
     const t = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
     return () => clearTimeout(t);
@@ -280,6 +295,7 @@ export function TestEngine({
     setSubmitted(false);
     setResult(null);
     setSecondsLeft((test.duration_minutes ?? 30) * 60);
+    setElapsed(0);
     startTime.current = Date.now();
     qStartTime.current = Date.now();
     attemptId.current = null;
@@ -346,7 +362,7 @@ export function TestEngine({
             { label: "Skipped", value: result.skipped },
             { label: "Accuracy", value: `${result.accuracy}%` },
             { label: "Best Streak", value: bestStreak },
-            { label: "Total Time", value: `${tm}:${ts}` },
+            { label: "Time Taken", value: `${tm}:${ts}` },
             { label: "XP Earned", value: xpFor(result.correct, result.accuracy) },
             { label: "Grade", value: gradeFor(result.accuracy) },
           ]}
@@ -497,7 +513,9 @@ export function TestEngine({
         progress={((current + 1) / sessionQs.length) * 100}
         subtitle={`${mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}${shuffle ? " · 🔀 Shuffled" : ""}`}
         section={test.test_part || test.subjectName}
-        timer={<CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
+        timer={isPractice
+          ? <Stopwatch seconds={elapsed} />
+          : <CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
         textSizeControl={<TestTextSizeControl {...textSize} />}
         mobileTools={
           <>

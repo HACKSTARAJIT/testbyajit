@@ -90,6 +90,7 @@ export default function TestRunner() {
           answers: resume.answers ?? {},
           current_index: resume.current_index ?? 0,
           marked: resume.marked ?? {},
+          elapsed_seconds: resume.time_taken_seconds ?? 0,
         } : undefined}
       />
     );
