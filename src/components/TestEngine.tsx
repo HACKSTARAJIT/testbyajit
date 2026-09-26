@@ -528,6 +528,16 @@ export function TestEngine({
               triggerClassName="h-10"
             />
             <TestTextSizeControl {...textSize} compact />
+            {isPractice && canSave && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 px-3"
+                onClick={async () => { await persist("in_progress"); onExit(); }}
+              >
+                <Pause className="mr-1 h-4 w-4" /> Pause
+              </Button>
+            )}
           </>
         }
         // EXAM MODE: never pass correctness/score data to the header.
