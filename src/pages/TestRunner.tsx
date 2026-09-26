@@ -129,7 +129,7 @@ export default function TestRunner() {
 
       {resume && (
         <button
-          onClick={() => { setMode(resume.mode); setStarted(true); }}
+          onClick={() => { setShuffle(!!resume.shuffle_mode); setMode(resume.mode); setStarted(true); }}
           className="btn-ripple flex w-full items-center gap-3 rounded-2xl border-2 border-primary bg-primary/5 p-4 text-left"
         >
           <PlayCircle className="h-6 w-6 text-primary" />
