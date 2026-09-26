@@ -36,11 +36,15 @@ export default function TestRunner() {
       setQuestions(loaded.questions);
       setLoadError(loaded.testError || loaded.questionsError);
       if (user && !isAdmin) {
-        const { data: att } = await supabase
+        const { data: atts } = await supabase
           .from("test_attempts")
           .select("*")
           .eq("user_id", user.id).eq("test_id", id).eq("status", "in_progress")
-          .order("updated_at", { ascending: false }).limit(1).maybeSingle();
+          .order("updated_at", { ascending: false }).limit(20);
+        // Prefer the latest attempt that actually has progress (empty ones are created on start).
+        const hasProgress = (a: any) =>
+          Object.keys(a?.answers ?? {}).length > 0 || (a?.current_index ?? 0) > 0 || Object.keys(a?.marked ?? {}).length > 0;
+        const att = (atts ?? []).find(hasProgress) ?? null;
         if (att) setResume(att);
       }
       setLoading(false);
@@ -125,7 +129,7 @@ export default function TestRunner() {
 
       {resume && (
         <button
-          onClick={() => { setMode(resume.mode); setStarted(true); }}
+          onClick={() => { setShuffle(!!resume.shuffle_mode); setMode(resume.mode); setStarted(true); }}
           className="btn-ripple flex w-full items-center gap-3 rounded-2xl border-2 border-primary bg-primary/5 p-4 text-left"
         >
           <PlayCircle className="h-6 w-6 text-primary" />
