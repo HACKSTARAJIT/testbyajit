@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   Clock, CheckCircle2, XCircle, ArrowLeft, ArrowRight, Trophy, Flag,
-  Target, RotateCcw, ListChecks, Sparkles, Info, Dice5, Brain, Star,
+  Target, RotateCcw, ListChecks, Sparkles, Info, Dice5, Brain, Star, Pause,
 } from "lucide-react";
 import { recordAttempt } from "@/lib/revisionEngine";
 import { TopAccuracyRanking } from "@/components/test-ui/TopAccuracyRanking";
@@ -528,6 +528,16 @@ export function TestEngine({
               triggerClassName="h-10"
             />
             <TestTextSizeControl {...textSize} compact />
+            {isPractice && canSave && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 px-3"
+                onClick={async () => { await persist("in_progress"); onExit(); }}
+              >
+                <Pause className="mr-1 h-4 w-4" /> Pause
+              </Button>
+            )}
           </>
         }
         // EXAM MODE: never pass correctness/score data to the header.
@@ -544,6 +554,16 @@ export function TestEngine({
         }
         right={
           <div className="flex items-center gap-2">
+            {isPractice && canSave && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-11"
+                onClick={async () => { await persist("in_progress"); onExit(); }}
+              >
+                <Pause className="mr-1 h-4 w-4" /> Pause
+              </Button>
+            )}
             <FocusModeButton focus={focus} onToggle={toggleFocus} />
           </div>
         }
