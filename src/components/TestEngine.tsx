@@ -544,6 +544,16 @@ export function TestEngine({
         }
         right={
           <div className="flex items-center gap-2">
+            {isPractice && canSave && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-11"
+                onClick={async () => { await persist("in_progress"); onExit(); }}
+              >
+                <Pause className="mr-1 h-4 w-4" /> Pause
+              </Button>
+            )}
             <FocusModeButton focus={focus} onToggle={toggleFocus} />
           </div>
         }
