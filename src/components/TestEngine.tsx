@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   Clock, CheckCircle2, XCircle, ArrowLeft, ArrowRight, Trophy, Flag,
   Target, RotateCcw, ListChecks, Sparkles, Info, Dice5, Brain, Star, Pause,
@@ -12,7 +13,7 @@ import { recordAttempt } from "@/lib/revisionEngine";
 import { TopAccuracyRanking } from "@/components/test-ui/TopAccuracyRanking";
 import { RepeatMistakePanel } from "@/components/test-ui/RepeatMistakePanel";
 import {
-  shuffleArray, buildOptionOrder, displayLetter, OPTION_LETTERS, type OptionLetter,
+  shuffleArray, shuffleForAttempt, buildOptionOrder, displayLetter, OPTION_LETTERS, type OptionLetter,
 } from "@/lib/shuffleMode";
 
 import {
@@ -84,13 +85,15 @@ export function TestEngine({
     elapsed_seconds?: number;
   };
 }) {
+  // A saved attempt must present the same shuffled question and option sequence.
+  const [shuffleSeed] = useState(() => resume?.attemptId ?? crypto.randomUUID());
   // Shuffle is applied only to the display order of this session; question IDs,
   // option texts and correct answers are never modified.
   const [sessionQs, setSessionQs] = useState<EngineQuestion[]>(() =>
-    shuffle ? shuffleArray(questions) : questions
+    shuffle ? shuffleForAttempt(questions, shuffleSeed) : questions
   );
   const [optionOrder, setOptionOrder] = useState<Record<string, OptionLetter[]>>(() =>
-    buildOptionOrder(questions.map((x) => x.id), shuffle)
+    buildOptionOrder(questions.map((x) => x.id), shuffle, shuffleSeed)
   );
   const [current, setCurrent] = useState(resume?.current_index ?? 0);
   const [answers, setAnswers] = useState<Record<string, string>>(resume?.answers ?? {});
@@ -113,6 +116,9 @@ export function TestEngine({
   const startTime = useRef<number>(Date.now());
   const qStartTime = useRef<number>(Date.now());
   const attemptId = useRef<string | null>(resume?.attemptId ?? null);
+  const pendingInsert = useRef<Promise<string> | null>(null);
+  const pendingSave = useRef<Promise<void>>(Promise.resolve());
+  const latestSave = useRef(0);
   const savedWrong = useRef<Set<string>>(new Set());
   const { focus, toggle: toggleFocus } = useFocusMode();
   const textSize = useTestTextSize();
@@ -143,7 +149,7 @@ export function TestEngine({
   const canSave = !!userId && !isPreview && saveAttempt;
 
   const persist = useCallback(async (status: "in_progress" | "completed", finalStats?: typeof stats, timeTaken?: number) => {
-    if (!canSave) return;
+    if (!canSave) return true;
     const s = finalStats ?? stats;
     const payload: any = {
       user_id: userId,
@@ -164,17 +170,35 @@ export function TestEngine({
       guesses,
       time_taken_seconds: timeTaken ?? (isPractice ? elapsedRef.current : Math.round((Date.now() - startTime.current) / 1000)),
     };
-    if (attemptId.current) {
-      await supabase.from("test_attempts").update(payload).eq("id", attemptId.current);
-    } else {
-      const { data } = await supabase.from("test_attempts").insert(payload).select("id").single();
-      if (data) attemptId.current = data.id;
+    const saveNumber = ++latestSave.current;
+    const save = async () => {
+      if (!attemptId.current) {
+        pendingInsert.current ??= (async () => {
+          const { data, error } = await supabase.from("test_attempts").insert(payload).select("id").single();
+          if (error) throw error;
+          if (!data) throw new Error("Could not create the test attempt.");
+          attemptId.current = data.id;
+          return data.id;
+        })();
+        try { await pendingInsert.current; } finally { pendingInsert.current = null; }
+      }
+      if (saveNumber < latestSave.current && status === "in_progress") return;
+      const { error } = await supabase.from("test_attempts").update(payload).eq("id", attemptId.current);
+      if (error) throw error;
+    };
+    const task = pendingSave.current.catch(() => undefined).then(save);
+    pendingSave.current = task;
+    try { await task; return true; }
+    catch (error) {
+      console.error("Could not save test progress", error);
+      toast.error("Could not save your progress. Please try Pause again.");
+      return false;
     }
   }, [canSave, userId, test.id, stats, sessionQs.length, mode, shuffle, current, answers, marked, guesses]);
 
   // create/resume attempt on mount
   useEffect(() => {
-    if (canSave && !attemptId.current) persist("in_progress");
+    if (canSave && !attemptId.current) void persist("in_progress");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -300,7 +324,7 @@ export function TestEngine({
     qStartTime.current = Date.now();
     attemptId.current = null;
     savedWrong.current = new Set();
-    if (canSave) persist("in_progress");
+    if (canSave) void persist("in_progress");
   };
 
   // ---------- GUESS INTELLIGENCE ----------
