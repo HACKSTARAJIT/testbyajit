@@ -87,6 +87,7 @@ export function TestEngine({
 }) {
   // A saved attempt must present the same shuffled question and option sequence.
   const [shuffleSeed] = useState(() => resume?.attemptId ?? crypto.randomUUID());
+  const [retrySeed, setRetrySeed] = useState<string | null>(null);
   // Shuffle is applied only to the display order of this session; question IDs,
   // option texts and correct answers are never modified.
   const [sessionQs, setSessionQs] = useState<EngineQuestion[]>(() =>
@@ -119,6 +120,7 @@ export function TestEngine({
   const pendingInsert = useRef<Promise<string> | null>(null);
   const pendingSave = useRef<Promise<void>>(Promise.resolve());
   const latestSave = useRef(0);
+  const [pausing, setPausing] = useState(false);
   const savedWrong = useRef<Set<string>>(new Set());
   const { focus, toggle: toggleFocus } = useFocusMode();
   const textSize = useTestTextSize();
@@ -307,8 +309,10 @@ export function TestEngine({
       ? questions.filter((item) => answers[item.id] !== item.correct_option)
       : questions;
     // Fresh randomisation on every new shuffled attempt.
-    setSessionQs(shuffle ? shuffleArray(base) : base);
-    setOptionOrder(buildOptionOrder(base.map((x) => x.id), shuffle));
+    const nextSeed = crypto.randomUUID();
+    setRetrySeed(nextSeed);
+    setSessionQs(shuffle ? shuffleForAttempt(base, nextSeed) : base);
+    setOptionOrder(buildOptionOrder(base.map((x) => x.id), shuffle, nextSeed));
 
     setAnswers({});
     setMarked({});
@@ -324,7 +328,14 @@ export function TestEngine({
     qStartTime.current = Date.now();
     attemptId.current = null;
     savedWrong.current = new Set();
-    if (canSave) void persist("in_progress");
+  };
+
+  const pause = async () => {
+    if (pausing) return;
+    setPausing(true);
+    const saved = await persist("in_progress");
+    if (saved) onExit();
+    else setPausing(false);
   };
 
   // ---------- GUESS INTELLIGENCE ----------
@@ -531,7 +542,7 @@ export function TestEngine({
     <div className="test-shell" data-test-text-size={textSize.size}>
       <TestHeader
         title={test.title}
-        onExit={onExit}
+        onExit={isPractice && canSave ? pause : onExit}
         current={current + 1}
         total={sessionQs.length}
         progress={((current + 1) / sessionQs.length) * 100}
@@ -557,7 +568,8 @@ export function TestEngine({
                 variant="outline"
                 size="sm"
                 className="h-10 px-3"
-                onClick={async () => { await persist("in_progress"); onExit(); }}
+                onClick={pause}
+                disabled={pausing}
               >
                 <Pause className="mr-1 h-4 w-4" /> Pause
               </Button>
@@ -583,7 +595,8 @@ export function TestEngine({
                 variant="outline"
                 size="sm"
                 className="h-11"
-                onClick={async () => { await persist("in_progress"); onExit(); }}
+                onClick={pause}
+                disabled={pausing}
               >
                 <Pause className="mr-1 h-4 w-4" /> Pause
               </Button>
