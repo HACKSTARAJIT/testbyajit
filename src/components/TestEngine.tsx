@@ -87,7 +87,6 @@ export function TestEngine({
 }) {
   // A saved attempt must present the same shuffled question and option sequence.
   const [shuffleSeed] = useState(() => resume?.attemptId ?? crypto.randomUUID());
-  const [retrySeed, setRetrySeed] = useState<string | null>(null);
   // Shuffle is applied only to the display order of this session; question IDs,
   // option texts and correct answers are never modified.
   const [sessionQs, setSessionQs] = useState<EngineQuestion[]>(() =>
@@ -310,7 +309,6 @@ export function TestEngine({
       : questions;
     // Fresh randomisation on every new shuffled attempt.
     const nextSeed = crypto.randomUUID();
-    setRetrySeed(nextSeed);
     setSessionQs(shuffle ? shuffleForAttempt(base, nextSeed) : base);
     setOptionOrder(buildOptionOrder(base.map((x) => x.id), shuffle, nextSeed));
 
