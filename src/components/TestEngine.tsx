@@ -119,6 +119,7 @@ export function TestEngine({
   const attemptId = useRef<string | null>(resume?.attemptId ?? null);
   const pendingInsert = useRef<Promise<string> | null>(null);
   const pendingSave = useRef<Promise<void>>(Promise.resolve());
+  const saveGeneration = useRef(0);
   const [pausing, setPausing] = useState(false);
   const savedWrong = useRef<Set<string>>(new Set());
   const { focus, toggle: toggleFocus } = useFocusMode();
@@ -171,7 +172,9 @@ export function TestEngine({
       guesses,
       time_taken_seconds: timeTaken ?? (isPractice ? elapsedRef.current : Math.round((Date.now() - startTime.current) / 1000)),
     };
+    const generation = saveGeneration.current;
     const save = async () => {
+      if (generation !== saveGeneration.current) return;
       if (!attemptId.current) {
         pendingInsert.current ??= (async () => {
           const { data, error } = await supabase.from("test_attempts").insert({ ...payload, answers: {}, marked: {}, current_index: 0, time_taken_seconds: 0 }).select("id").single();
@@ -182,6 +185,7 @@ export function TestEngine({
         })();
         try { await pendingInsert.current; } finally { pendingInsert.current = null; }
       }
+      if (generation !== saveGeneration.current) return;
       const { error } = await supabase.from("test_attempts").update(payload).eq("id", attemptId.current);
       if (error) throw error;
     };
@@ -324,6 +328,7 @@ export function TestEngine({
     startTime.current = Date.now();
     qStartTime.current = Date.now();
     attemptId.current = null;
+    saveGeneration.current += 1;
     savedWrong.current = new Set();
   };
 
