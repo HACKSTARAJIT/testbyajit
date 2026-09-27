@@ -26,26 +26,27 @@ export default function TestRunner() {
   const [started, setStarted] = useState(false);
   const [shuffle, setShuffle] = useState(false);
   const [resume, setResume] = useState<any>(null);
+  const [activeResume, setActiveResume] = useState<any>(null);
 
 
   useEffect(() => {
     (async () => {
       // Single shared loader — identical to Admin validation & debug panel
-      const loaded = await loadTestWithQuestions(id!, user?.id ?? null, { isAdmin });
+       if (!id) return;
+       const loaded = await loadTestWithQuestions(id, user?.id ?? null, { isAdmin });
       setTest(loaded.test);
       setQuestions(loaded.questions);
       setLoadError(loaded.testError || loaded.questionsError);
-      if (user && !isAdmin) {
+       if (user) {
         const { data: atts } = await supabase
           .from("test_attempts")
           .select("*")
           .eq("user_id", user.id).eq("test_id", id).eq("status", "in_progress")
           .order("updated_at", { ascending: false }).limit(20);
-        // Prefer the latest attempt that actually has progress (empty ones are created on start).
-        const hasProgress = (a: any) =>
-          Object.keys(a?.answers ?? {}).length > 0 || (a?.current_index ?? 0) > 0 || Object.keys(a?.marked ?? {}).length > 0;
-        const att = (atts ?? []).find(hasProgress) ?? null;
-        if (att) setResume(att);
+         // Prefer a paused session with progress; question one with no answer is also resumable.
+         const practiceAttempts = (atts ?? []).filter((a: any) => a.mode === "practice");
+         const hasProgress = (a: any) => Object.keys(a.answers ?? {}).length > 0 || a.current_index > 0 || a.time_taken_seconds > 0;
+         setResume(practiceAttempts.find(hasProgress) ?? practiceAttempts[0] ?? null);
       }
       setLoading(false);
     })();
@@ -88,13 +89,14 @@ export default function TestRunner() {
         mode={mode}
         userId={user?.id}
         shuffle={shuffle}
+        key={activeResume?.id ?? `new-${mode}`}
         onExit={() => navigate(-1)}
-        resume={resume && resume.mode === mode ? {
-          attemptId: resume.id,
-          answers: resume.answers ?? {},
-          current_index: resume.current_index ?? 0,
-          marked: resume.marked ?? {},
-          elapsed_seconds: resume.time_taken_seconds ?? 0,
+        resume={activeResume ? {
+          attemptId: activeResume.id,
+          answers: activeResume.answers ?? {},
+          current_index: activeResume.current_index ?? 0,
+          marked: activeResume.marked ?? {},
+          elapsed_seconds: activeResume.time_taken_seconds ?? 0,
         } : undefined}
       />
     );
@@ -128,16 +130,17 @@ export default function TestRunner() {
       />
 
       {resume && (
-        <button
-          onClick={() => { setShuffle(!!resume.shuffle_mode); setMode(resume.mode); setStarted(true); }}
-          className="btn-ripple flex w-full items-center gap-3 rounded-2xl border-2 border-primary bg-primary/5 p-4 text-left"
+        <Button
+          variant="outline"
+          onClick={() => { setActiveResume(resume); setShuffle(!!resume.shuffle_mode); setMode(resume.mode); setStarted(true); }}
+          className="btn-ripple h-auto min-h-16 w-full justify-start gap-3 border-2 border-primary bg-primary/5 p-4 text-left"
         >
           <PlayCircle className="h-6 w-6 text-primary" />
           <div>
             <p className="font-semibold">Resume previous attempt</p>
             <p className="text-xs text-muted-foreground">Continue from question {(resume.current_index ?? 0) + 1} · {resume.mode} mode</p>
           </div>
-        </button>
+        </Button>
       )}
 
       <ShuffleModeSetting value={shuffle} onChange={setShuffle} />
@@ -146,18 +149,20 @@ export default function TestRunner() {
         <p className="mb-3 text-center font-semibold">Choose Test Mode</p>
 
         <div className="grid gap-3">
-          <button
-            onClick={() => { setMode("practice"); setStarted(true); }}
+          <Button
+            onClick={() => { setActiveResume(resume?.mode === "practice" ? resume : null); setShuffle(resume?.mode === "practice" ? !!resume.shuffle_mode : shuffle); setMode("practice"); setStarted(true); }}
+            variant="default"
             className="btn-ripple flex items-center gap-4 rounded-2xl bg-gradient-practice p-5 text-left text-white shadow-md"
           >
             <Zap className="h-8 w-8 shrink-0" />
             <div>
-              <p className="text-lg font-bold">🟢 Practice Mode</p>
-              <p className="text-sm text-white/90">Instant feedback after each question, explanations & auto-saved mistakes.</p>
+              <p className="text-lg font-bold">🟢 {resume?.mode === "practice" ? "Continue Practice Mode" : "Practice Mode"}</p>
+              <p className="text-sm text-white/90">{resume?.mode === "practice" ? `Continue from question ${(resume.current_index ?? 0) + 1}.` : "Instant feedback after each question, explanations & auto-saved mistakes."}</p>
             </div>
-          </button>
-          <button
-            onClick={() => { setMode("exam"); setStarted(true); }}
+          </Button>
+          <Button
+            onClick={() => { setActiveResume(null); setMode("exam"); setStarted(true); }}
+            variant="default"
             className="btn-ripple flex items-center gap-4 rounded-2xl bg-gradient-exam p-5 text-left text-white shadow-md"
           >
             <GraduationCap className="h-8 w-8 shrink-0" />
@@ -165,7 +170,7 @@ export default function TestRunner() {
               <p className="text-lg font-bold">🔵 Exam Mode</p>
               <p className="text-sm text-white/90">Real exam feel. Results revealed only after you submit.</p>
             </div>
-          </button>
+          </Button>
         </div>
       </div>
       {!user && <p className="text-center text-xs text-muted-foreground">Sign in to save your progress, scores and wrong questions across devices.</p>}

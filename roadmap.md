@@ -6,3 +6,4 @@
 - [x] Redesign the shared test interface for competitive-exam desktop and mobile use
 - [x] Add persistent five-level test content sizing
 - [x] Verify Practice and Exam modes across 320px–1920px
+- [ ] Verify signed-in Practice Pause → leave → Resume restores the exact question and time
