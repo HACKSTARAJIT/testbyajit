@@ -87,13 +87,14 @@ export function TestEngine({
 }) {
   // A saved attempt must present the same shuffled question and option sequence.
   const [shuffleSeed] = useState(() => resume?.attemptId ?? crypto.randomUUID());
+  const shuffleSeedRef = useRef(shuffleSeed);
   // Shuffle is applied only to the display order of this session; question IDs,
   // option texts and correct answers are never modified.
   const [sessionQs, setSessionQs] = useState<EngineQuestion[]>(() =>
-    shuffle ? shuffleForAttempt(questions, shuffleSeed) : questions
+    shuffle ? shuffleForAttempt(questions, shuffleSeedRef.current) : questions
   );
   const [optionOrder, setOptionOrder] = useState<Record<string, OptionLetter[]>>(() =>
-    buildOptionOrder(questions.map((x) => x.id), shuffle, shuffleSeed)
+    buildOptionOrder(questions.map((x) => x.id), shuffle, shuffleSeedRef.current)
   );
   const [current, setCurrent] = useState(resume?.current_index ?? 0);
   const [answers, setAnswers] = useState<Record<string, string>>(resume?.answers ?? {});
@@ -118,7 +119,6 @@ export function TestEngine({
   const attemptId = useRef<string | null>(resume?.attemptId ?? null);
   const pendingInsert = useRef<Promise<string> | null>(null);
   const pendingSave = useRef<Promise<void>>(Promise.resolve());
-  const latestSave = useRef(0);
   const [pausing, setPausing] = useState(false);
   const savedWrong = useRef<Set<string>>(new Set());
   const { focus, toggle: toggleFocus } = useFocusMode();
@@ -171,11 +171,10 @@ export function TestEngine({
       guesses,
       time_taken_seconds: timeTaken ?? (isPractice ? elapsedRef.current : Math.round((Date.now() - startTime.current) / 1000)),
     };
-    const saveNumber = ++latestSave.current;
     const save = async () => {
       if (!attemptId.current) {
         pendingInsert.current ??= (async () => {
-          const { data, error } = await supabase.from("test_attempts").insert(payload).select("id").single();
+          const { data, error } = await supabase.from("test_attempts").insert({ ...payload, answers: {}, marked: {}, current_index: 0, time_taken_seconds: 0 }).select("id").single();
           if (error) throw error;
           if (!data) throw new Error("Could not create the test attempt.");
           attemptId.current = data.id;
@@ -183,7 +182,6 @@ export function TestEngine({
         })();
         try { await pendingInsert.current; } finally { pendingInsert.current = null; }
       }
-      if (saveNumber < latestSave.current && status === "in_progress") return;
       const { error } = await supabase.from("test_attempts").update(payload).eq("id", attemptId.current);
       if (error) throw error;
     };
@@ -309,6 +307,7 @@ export function TestEngine({
       : questions;
     // Fresh randomisation on every new shuffled attempt.
     const nextSeed = crypto.randomUUID();
+    shuffleSeedRef.current = nextSeed;
     setSessionQs(shuffle ? shuffleForAttempt(base, nextSeed) : base);
     setOptionOrder(buildOptionOrder(base.map((x) => x.id), shuffle, nextSeed));
 
