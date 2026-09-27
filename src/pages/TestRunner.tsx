@@ -43,8 +43,10 @@ export default function TestRunner() {
           .select("*")
           .eq("user_id", user.id).eq("test_id", id).eq("status", "in_progress")
           .order("updated_at", { ascending: false }).limit(20);
-         // An unanswered first question is also a valid paused attempt.
-         setResume((atts ?? []).find((a: any) => a.mode === "practice") ?? null);
+         // Prefer a paused session with progress; question one with no answer is also resumable.
+         const practiceAttempts = (atts ?? []).filter((a: any) => a.mode === "practice");
+         const hasProgress = (a: any) => Object.keys(a.answers ?? {}).length > 0 || a.current_index > 0 || a.time_taken_seconds > 0;
+         setResume(practiceAttempts.find(hasProgress) ?? practiceAttempts[0] ?? null);
       }
       setLoading(false);
     })();
@@ -148,14 +150,14 @@ export default function TestRunner() {
 
         <div className="grid gap-3">
           <Button
-            onClick={() => { setActiveResume(null); setMode("practice"); setStarted(true); }}
+            onClick={() => { setActiveResume(resume?.mode === "practice" ? resume : null); setShuffle(resume?.mode === "practice" ? !!resume.shuffle_mode : shuffle); setMode("practice"); setStarted(true); }}
             variant="default"
             className="btn-ripple flex items-center gap-4 rounded-2xl bg-gradient-practice p-5 text-left text-white shadow-md"
           >
             <Zap className="h-8 w-8 shrink-0" />
             <div>
-              <p className="text-lg font-bold">🟢 Practice Mode</p>
-              <p className="text-sm text-white/90">Instant feedback after each question, explanations & auto-saved mistakes.</p>
+              <p className="text-lg font-bold">🟢 {resume?.mode === "practice" ? "Continue Practice Mode" : "Practice Mode"}</p>
+              <p className="text-sm text-white/90">{resume?.mode === "practice" ? `Continue from question ${(resume.current_index ?? 0) + 1}.` : "Instant feedback after each question, explanations & auto-saved mistakes."}</p>
             </div>
           </Button>
           <Button
