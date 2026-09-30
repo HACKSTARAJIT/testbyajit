@@ -122,6 +122,8 @@ export function TestEngine({
   const saveGeneration = useRef(0);
   const [pausing, setPausing] = useState(false);
   const savedWrong = useRef<Set<string>>(new Set());
+  // Completed attempts of this test (oldest first) — each row is one attempt's history.
+  const [history, setHistory] = useState<Array<{ id: string; answers: Record<string, string> | null; created_at: string }>>([]);
   const { focus, toggle: toggleFocus } = useFocusMode();
   const textSize = useTestTextSize();
 
@@ -309,11 +311,14 @@ export function TestEngine({
     const base = onlyIncorrect
       ? questions.filter((item) => answers[item.id] !== item.correct_option)
       : questions;
-    // Fresh randomisation on every new shuffled attempt.
-    const nextSeed = crypto.randomUUID();
-    shuffleSeedRef.current = nextSeed;
-    setSessionQs(shuffle ? shuffleForAttempt(base, nextSeed) : base);
-    setOptionOrder(buildOptionOrder(base.map((x) => x.id), shuffle, nextSeed));
+    // Full reattempt keeps the same question order; incorrect-only gets a fresh order.
+    if (onlyIncorrect) {
+      const nextSeed = crypto.randomUUID();
+      shuffleSeedRef.current = nextSeed;
+      setSessionQs(shuffle ? shuffleForAttempt(base, nextSeed) : base);
+      setOptionOrder(buildOptionOrder(base.map((x) => x.id), shuffle, nextSeed));
+    }
+    setHistory([]);
 
     setAnswers({});
     setMarked({});
@@ -394,6 +399,9 @@ export function TestEngine({
 
         <ResultStatGrid
           items={[
+            { label: "Total Questions", value: sessionQs.length },
+            { label: "Attempted", value: result.correct + result.incorrect },
+            { label: "Score", value: result.score },
             { label: "Correct", value: result.correct },
             { label: "Wrong", value: result.incorrect },
             { label: "Skipped", value: result.skipped },
@@ -447,7 +455,7 @@ export function TestEngine({
 
         <div className="flex flex-wrap gap-2">
           <Button className="btn-ripple flex-1 bg-gradient-royal text-white" onClick={() => retry(false)}>
-            <RotateCcw className="mr-1 h-4 w-4" /> Retry Full Test
+            <RotateCcw className="mr-1 h-4 w-4" /> 🔄 Reattempt Test
           </Button>
           {result.incorrect + result.skipped > 0 && (
             <Button variant="outline" className="btn-ripple flex-1" onClick={() => retry(true)}>
@@ -462,43 +470,61 @@ export function TestEngine({
         <h3 className="pt-2 font-semibold">Review Answers</h3>
         {sessionQs.map((item, i) => {
           const chosen = answers[item.id];
+          const order = orderFor(item.id);
+          const itemHistory = history
+            .map((h, n) => ({ n: n + 1, sel: h.answers?.[item.id] as string | undefined, at: h.created_at, id: h.id }))
+            .filter((h) => h.sel !== undefined || history.length > 0);
           return (
-            <div key={item.id} className="rounded-2xl border bg-card p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-2">
-                <p className="font-medium">Q{i + 1}. {item.question_text}</p>
-                {guesses[item.id] && (
-                  <Badge variant="secondary" className="shrink-0 gap-1 text-[10px]">
-                    <Dice5 className="h-3 w-3" /> Guess
-                  </Badge>
-                )}
-              </div>
-              <div className="mt-2 space-y-1.5">
-                {orderFor(item.id).map((L, oi) => {
-                  const val = item[`option_${L.toLowerCase()}` as keyof EngineQuestion] as string;
-                  if (!val || val === "-") return null;
-                  const label = LETTERS[oi];
-                  const isCorrect = item.correct_option === L;
-                  const isChosen = chosen === L;
-                  return (
-                    <div key={L} className={cn(
-                      "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm",
-                      isCorrect && "border-success bg-success/10",
-                      isChosen && !isCorrect && "border-destructive bg-destructive/10"
-                    )}>
-                      <span className="font-semibold">{label}.</span> {val}
-                      {isCorrect && <CheckCircle2 className="ml-auto h-4 w-4 text-success" />}
-                      {isChosen && !isCorrect && <XCircle className="ml-auto h-4 w-4 text-destructive" />}
-                    </div>
-                  );
-                })}
-
-              </div>
+            <QuestionCard
+              key={item.id}
+              index={i + 1}
+              meta={[test.subjectName, test.test_part]}
+              question={item.question_text}
+              actions={
+                <div className="flex items-center gap-1">
+                  {guesses[item.id] && (
+                    <Badge variant="secondary" className="gap-1 text-[10px]"><Dice5 className="h-3 w-3" /> Guess</Badge>
+                  )}
+                  {!chosen && <Badge variant="outline" className="text-[10px]">Skipped</Badge>}
+                </div>
+              }
+            >
+              {order.map((L, oi) => {
+                const val = item[`option_${L.toLowerCase()}` as keyof EngineQuestion] as string;
+                if (!val || val === "-") return null;
+                const isCorrect = item.correct_option === L;
+                const state = isCorrect ? "correct" : chosen === L ? "wrong" : "idle";
+                return <OptionCard key={L} letter={LETTERS[oi]} text={val} state={state} disabled />;
+              })}
+              <p className="text-sm">
+                <b>Correct Answer:</b> {displayLetter(order, item.correct_option)}
+                {chosen ? <> · <b>Your Answer:</b> {displayLetter(order, chosen)} {chosen === item.correct_option ? "✅" : "❌"}</> : <> · Skipped</>}
+              </p>
               {item.explanation && (
-                <p className="mt-2 rounded-lg bg-muted/60 p-2 text-xs text-muted-foreground">
-                  <Info className="mr-1 inline h-3 w-3" /><b>Explanation:</b> {item.explanation}
-                </p>
+                <div className="rounded-md border bg-muted/50 p-3 text-sm">
+                  <p className="mb-1 font-semibold">💡 Explanation</p>
+                  <p className="whitespace-pre-wrap text-muted-foreground">{item.explanation}</p>
+                </div>
               )}
-            </div>
+              {itemHistory.length > 1 && (
+                <div className="rounded-md border p-3 text-xs">
+                  <p className="mb-2 font-semibold">Attempt History</p>
+                  <ul className="space-y-1">
+                    {itemHistory.map((h) => {
+                      const latest = h.id === attemptId.current;
+                      return (
+                        <li key={h.id} className={cn("flex flex-wrap items-center gap-2", latest && "font-semibold")}>
+                          <span>Attempt {h.n}{latest ? " (Current)" : h.n === itemHistory.length - 1 ? " (Last)" : ""}</span>
+                          <span>{!h.sel ? "⏭ Skipped" : h.sel === item.correct_option ? "✅ Correct" : "❌ Wrong"}</span>
+                          {h.sel && <span>Selected: {displayLetter(order, h.sel)}</span>}
+                          <span className="text-muted-foreground">{new Date(h.at).toLocaleDateString()}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </QuestionCard>
           );
         })}
         <Button variant="outline" className="w-full" onClick={onExit}>Back</Button>
