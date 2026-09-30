@@ -230,6 +230,14 @@ export function TestEngine({
     const final = { ...stats };
     setResult({ ...final, timeTaken });
     await persist("completed", final, timeTaken);
+    if (canSave) {
+      const { data: past } = await supabase
+        .from("test_attempts")
+        .select("id, answers, created_at")
+        .eq("user_id", userId!).eq("test_id", test.id).eq("mode", "practice").eq("status", "completed")
+        .order("created_at", { ascending: true }).limit(50);
+      setHistory((past as any) ?? []);
+    }
     // Auto-update the smart wrong-question bank & regenerate the revision test
     if (userId && !isPreview) {
       try {
