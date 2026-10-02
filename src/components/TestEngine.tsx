@@ -265,6 +265,7 @@ export function TestEngine({
   }, [submitted, secondsLeft, submit]);
 
   const choose = (letter: string) => {
+    if (solution) return; // read-only review
     if (mode === "practice" && revealed[q.id]) return; // locked after reveal
     const timeMs = Date.now() - qStartTime.current;
     setAnswers((a) => ({ ...a, [q.id]: letter }));
@@ -282,7 +283,7 @@ export function TestEngine({
   };
 
   useEffect(() => {
-    if (submitted) return;
+    if (submitted && !solution) return;
     const handleKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
@@ -377,7 +378,7 @@ export function TestEngine({
 
 
   // ---------- RESULT SCREEN ----------
-  if (submitted && result) {
+  if (submitted && result && !solution) {
     const totalMarks = result.totalMarks || sessionQs.length;
     const pct = totalMarks ? Math.round((result.score / totalMarks) * 100) : 0;
     const tm = String(Math.floor(result.timeTaken / 60)).padStart(2, "0");
@@ -461,6 +462,11 @@ export function TestEngine({
           </Link>
         )}
 
+        {isPractice && (
+          <Button className="btn-ripple h-12 w-full text-base" onClick={openSolution}>
+            📖 View Solution
+          </Button>
+        )}
         <div className="flex flex-wrap gap-2">
           <Button className="btn-ripple flex-1 bg-gradient-royal text-white" onClick={() => retry(false)}>
             <RotateCcw className="mr-1 h-4 w-4" /> 🔄 Reattempt Test
@@ -475,6 +481,7 @@ export function TestEngine({
           <p className="text-center text-xs text-muted-foreground">Sign in to save your result history and wrong questions.</p>
         )}
 
+        {!isPractice && (<>
         <h3 className="pt-2 font-semibold">Review Answers</h3>
         {sessionQs.map((item, i) => {
           const chosen = answers[item.id];
@@ -534,7 +541,7 @@ export function TestEngine({
               )}
             </QuestionCard>
           );
-        })}
+        })}</>)}
         <Button variant="outline" className="w-full" onClick={onExit}>Back</Button>
         </div>
       </div>
