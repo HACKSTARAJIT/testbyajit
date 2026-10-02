@@ -124,6 +124,11 @@ export function TestEngine({
   const savedWrong = useRef<Set<string>>(new Set());
   // Completed attempts of this test (oldest first) — each row is one attempt's history.
   const [history, setHistory] = useState<Array<{ id: string; answers: Record<string, string> | null; created_at: string }>>([]);
+  // Read-only Solution Mode for a completed Practice attempt (reuses the test screen).
+  const [solutionView, setSolutionView] = useState(false);
+  const solution = solutionView && submitted;
+  const openSolution = () => { setCurrent(0); setSolutionView(true); window.scrollTo(0, 0); };
+  const closeSolution = () => { setSolutionView(false); window.scrollTo(0, 0); };
   const { focus, toggle: toggleFocus } = useFocusMode();
   const textSize = useTestTextSize();
 
@@ -265,6 +270,7 @@ export function TestEngine({
   }, [submitted, secondsLeft, submit]);
 
   const choose = (letter: string) => {
+    if (solution) return; // read-only review
     if (mode === "practice" && revealed[q.id]) return; // locked after reveal
     const timeMs = Date.now() - qStartTime.current;
     setAnswers((a) => ({ ...a, [q.id]: letter }));
@@ -282,7 +288,7 @@ export function TestEngine({
   };
 
   useEffect(() => {
-    if (submitted) return;
+    if (submitted && !solution) return;
     const handleKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
@@ -296,7 +302,7 @@ export function TestEngine({
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [submitted, current, sessionQs.length, q.id, mode, revealed, optionOrder, guessArmed]);
+  }, [submitted, solution, current, sessionQs.length, q.id, mode, revealed, optionOrder, guessArmed]);
 
   const toggleGuess = () =>
     setGuessArmed((g) => {
@@ -327,6 +333,7 @@ export function TestEngine({
       setOptionOrder(buildOptionOrder(base.map((x) => x.id), shuffle, nextSeed));
     }
     setHistory([]);
+    setSolutionView(false);
 
     setAnswers({});
     setMarked({});
@@ -377,7 +384,7 @@ export function TestEngine({
 
 
   // ---------- RESULT SCREEN ----------
-  if (submitted && result) {
+  if (submitted && result && !solution) {
     const totalMarks = result.totalMarks || sessionQs.length;
     const pct = totalMarks ? Math.round((result.score / totalMarks) * 100) : 0;
     const tm = String(Math.floor(result.timeTaken / 60)).padStart(2, "0");
@@ -461,6 +468,11 @@ export function TestEngine({
           </Link>
         )}
 
+        {isPractice && (
+          <Button className="btn-ripple h-12 w-full text-base" onClick={openSolution}>
+            📖 View Solution
+          </Button>
+        )}
         <div className="flex flex-wrap gap-2">
           <Button className="btn-ripple flex-1 bg-gradient-royal text-white" onClick={() => retry(false)}>
             <RotateCcw className="mr-1 h-4 w-4" /> 🔄 Reattempt Test
@@ -475,6 +487,7 @@ export function TestEngine({
           <p className="text-center text-xs text-muted-foreground">Sign in to save your result history and wrong questions.</p>
         )}
 
+        {!isPractice && (<>
         <h3 className="pt-2 font-semibold">Review Answers</h3>
         {sessionQs.map((item, i) => {
           const chosen = answers[item.id];
@@ -534,7 +547,7 @@ export function TestEngine({
               )}
             </QuestionCard>
           );
-        })}
+        })}</>)}
         <Button variant="outline" className="w-full" onClick={onExit}>Back</Button>
         </div>
       </div>
@@ -551,6 +564,7 @@ export function TestEngine({
     if (!item) return "unvisited";
     const a = answers[item.id];
     const mk = marked[item.id];
+    if (solution) return !a ? "skipped" : a === item.correct_option ? "correct" : "wrong";
     if (mode === "practice" && revealed[item.id]) {
       return a === item.correct_option ? "correct" : "wrong";
     }
@@ -578,11 +592,11 @@ export function TestEngine({
     <div className="test-shell" data-test-text-size={textSize.size}>
       <TestHeader
         title={test.title}
-        onExit={isPractice && canSave ? pause : onExit}
+        onExit={solution ? closeSolution : isPractice && canSave ? pause : onExit}
         current={current + 1}
         total={sessionQs.length}
         progress={((current + 1) / sessionQs.length) * 100}
-        subtitle={`${mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}${shuffle ? " · 🔀 Shuffled" : ""}`}
+        subtitle={`${solution ? "📖 Solution Mode" : mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}${shuffle ? " · 🔀 Shuffled" : ""}`}
         section={test.test_part || test.subjectName}
         timer={isPractice
           ? <Stopwatch seconds={elapsed} />
@@ -599,7 +613,7 @@ export function TestEngine({
               triggerClassName="h-10"
             />
             <TestTextSizeControl {...textSize} compact />
-            {isPractice && canSave && (
+            {isPractice && canSave && !solution && (
               <Button
                 variant="outline"
                 size="sm"
@@ -626,7 +640,7 @@ export function TestEngine({
         }
         right={
           <div className="flex items-center gap-2">
-            {isPractice && canSave && (
+            {isPractice && canSave && !solution && (
               <Button
                 variant="outline"
                 size="sm"
@@ -685,7 +699,9 @@ export function TestEngine({
           index={current + 1}
           meta={[test.subjectName, test.test_part]}
           question={q.question_text}
-          actions={
+          actions={solution ? (
+            <Badge variant="secondary" className="text-[10px]">📖 Solution Mode</Badge>
+          ) :
             <div className="flex flex-wrap items-center justify-end gap-1">
               <button
                 type="button"
@@ -725,28 +741,70 @@ export function TestEngine({
               {marked[q.id] === "review" ? "🚩 Marked for Review" : "❓ Marked as Doubt"}
             </p>
           )}
+          {solution && !answers[q.id] && (
+            <p className="text-[11px] font-semibold text-muted-foreground">⚪ Skipped</p>
+          )}
           {orderFor(q.id).map((L, oi) => {
             const val = q[`option_${L.toLowerCase()}` as keyof EngineQuestion] as string;
             if (!val || val === "-") return null;
             const selected = answers[q.id] === L;
             const isCorrect = q.correct_option === L;
-            const state = revealedNow
-              ? isCorrect ? "correct" : selected ? "wrong" : "dim"
-              : selected ? "selected" : "idle";
+            const state = solution
+              ? isCorrect ? "correct" : selected ? "wrong" : "idle"
+              : revealedNow
+                ? isCorrect ? "correct" : selected ? "wrong" : "dim"
+                : selected ? "selected" : "idle";
             return (
               <OptionCard
                 key={L}
                 letter={LETTERS[oi]}
                 text={val}
                 state={state as any}
-                disabled={!!revealedNow}
+                disabled={solution || !!revealedNow}
                 onClick={() => choose(L)}
               />
             );
           })}
         </QuestionCard>
 
-        {revealedNow && (
+        {solution ? (
+          <div className="space-y-3">
+            <div className="rounded-md border bg-card p-3 text-sm test-supporting-content">
+              <p>
+                <b>Your answer:</b>{" "}
+                {answers[q.id]
+                  ? `${answers[q.id] === q.correct_option ? "✅" : "❌"} ${displayLetter(orderFor(q.id), answers[q.id])}`
+                  : "⚪ Skipped"}
+              </p>
+              <p><b>Correct answer:</b> ✅ {displayLetter(orderFor(q.id), q.correct_option)}</p>
+            </div>
+            {q.explanation && (
+              <div className="rounded-md border bg-muted/50 p-3 test-supporting-content">
+                <p className="mb-1 font-semibold">💡 Explanation</p>
+                <p className="whitespace-pre-wrap text-muted-foreground">{q.explanation}</p>
+              </div>
+            )}
+            {history.length > 1 && (
+              <div className="rounded-md border p-3 text-xs">
+                <p className="mb-2 font-semibold">Attempt History</p>
+                <ul className="space-y-1">
+                  {history.map((h, n) => {
+                    const sel = h.answers?.[q.id];
+                    const latest = h.id === attemptId.current;
+                    return (
+                      <li key={h.id} className={cn("flex flex-wrap gap-2", latest && "font-semibold")}>
+                        <span>Attempt {n + 1}{latest ? " (Current)" : ""}</span>
+                        <span>{!sel ? "⚪ Skipped" : sel === q.correct_option ? "✅ Correct" : "❌ Wrong"}</span>
+                        {sel && <span>Selected: {displayLetter(orderFor(q.id), sel)}</span>}
+                        <span className="text-muted-foreground">{new Date(h.created_at).toLocaleDateString()}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : revealedNow && (
           <AnswerFeedback
             correct={answers[q.id] === q.correct_option}
             correctOption={displayLetter(orderFor(q.id), q.correct_option)}
@@ -780,17 +838,31 @@ export function TestEngine({
           <ArrowLeft className="h-4 w-4" /> Previous
         </Button>
 
-        <Button
-          variant="outline"
-          className={cn("h-12 min-w-0 rounded-md px-1 text-xs md:px-4 md:text-sm", marked[q.id] === "review" && "border-secondary/60 bg-secondary/15 text-secondary")}
-          onClick={() => toggleMark("review")}
-        >
-          <Flag className="h-4 w-4" /> Review &amp; Mark
-        </Button>
+        {solution ? (
+          <QuestionNavigator
+            total={sessionQs.length}
+            current={current}
+            statusFor={navStatus}
+            onJump={goto}
+            triggerClassName="h-12 w-full"
+          />
+        ) : (
+          <Button
+            variant="outline"
+            className={cn("h-12 min-w-0 rounded-md px-1 text-xs md:px-4 md:text-sm", marked[q.id] === "review" && "border-secondary/60 bg-secondary/15 text-secondary")}
+            onClick={() => toggleMark("review")}
+          >
+            <Flag className="h-4 w-4" /> Review &amp; Mark
+          </Button>
+        )}
 
         {current < sessionQs.length - 1 ? (
           <Button className="h-12 min-w-0 rounded-md px-2 md:px-4" onClick={() => setCurrent((c) => c + 1)}>
             Next <ArrowRight className="h-4 w-4" />
+          </Button>
+        ) : solution ? (
+          <Button className="h-12 min-w-0 rounded-md px-2 text-xs md:px-4 md:text-sm" onClick={closeSolution}>
+            Back to Result
           </Button>
         ) : (
           <Button
