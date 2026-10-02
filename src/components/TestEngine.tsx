@@ -124,6 +124,11 @@ export function TestEngine({
   const savedWrong = useRef<Set<string>>(new Set());
   // Completed attempts of this test (oldest first) — each row is one attempt's history.
   const [history, setHistory] = useState<Array<{ id: string; answers: Record<string, string> | null; created_at: string }>>([]);
+  // Read-only Solution Mode for a completed Practice attempt (reuses the test screen).
+  const [solutionView, setSolutionView] = useState(false);
+  const solution = solutionView && submitted;
+  const openSolution = () => { setCurrent(0); setSolutionView(true); window.scrollTo(0, 0); };
+  const closeSolution = () => { setSolutionView(false); window.scrollTo(0, 0); };
   const { focus, toggle: toggleFocus } = useFocusMode();
   const textSize = useTestTextSize();
 
@@ -297,7 +302,7 @@ export function TestEngine({
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [submitted, current, sessionQs.length, q.id, mode, revealed, optionOrder, guessArmed]);
+  }, [submitted, solution, current, sessionQs.length, q.id, mode, revealed, optionOrder, guessArmed]);
 
   const toggleGuess = () =>
     setGuessArmed((g) => {
@@ -328,6 +333,7 @@ export function TestEngine({
       setOptionOrder(buildOptionOrder(base.map((x) => x.id), shuffle, nextSeed));
     }
     setHistory([]);
+    setSolutionView(false);
 
     setAnswers({});
     setMarked({});
