@@ -551,6 +551,7 @@ export function TestEngine({
     if (!item) return "unvisited";
     const a = answers[item.id];
     const mk = marked[item.id];
+    if (solution) return !a ? "skipped" : a === item.correct_option ? "correct" : "wrong";
     if (mode === "practice" && revealed[item.id]) {
       return a === item.correct_option ? "correct" : "wrong";
     }
@@ -578,11 +579,11 @@ export function TestEngine({
     <div className="test-shell" data-test-text-size={textSize.size}>
       <TestHeader
         title={test.title}
-        onExit={isPractice && canSave ? pause : onExit}
+        onExit={solution ? closeSolution : isPractice && canSave ? pause : onExit}
         current={current + 1}
         total={sessionQs.length}
         progress={((current + 1) / sessionQs.length) * 100}
-        subtitle={`${mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}${shuffle ? " · 🔀 Shuffled" : ""}`}
+        subtitle={`${solution ? "📖 Solution Mode" : mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}${shuffle ? " · 🔀 Shuffled" : ""}`}
         section={test.test_part || test.subjectName}
         timer={isPractice
           ? <Stopwatch seconds={elapsed} />
@@ -599,7 +600,7 @@ export function TestEngine({
               triggerClassName="h-10"
             />
             <TestTextSizeControl {...textSize} compact />
-            {isPractice && canSave && (
+            {isPractice && canSave && !solution && (
               <Button
                 variant="outline"
                 size="sm"
@@ -626,7 +627,7 @@ export function TestEngine({
         }
         right={
           <div className="flex items-center gap-2">
-            {isPractice && canSave && (
+            {isPractice && canSave && !solution && (
               <Button
                 variant="outline"
                 size="sm"
