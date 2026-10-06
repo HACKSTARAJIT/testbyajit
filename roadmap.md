@@ -7,3 +7,4 @@
 - [x] Add persistent five-level test content sizing
 - [x] Verify Practice and Exam modes across 320px–1920px
 - [ ] Verify signed-in Practice Pause → leave → Resume restores the exact question and time
+- [x] Show the existing AI Chapters option for MP Police Mock Mistakes
