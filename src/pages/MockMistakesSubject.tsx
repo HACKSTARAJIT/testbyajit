@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { isMixedPaperCategory } from "@/lib/mockMistakes";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -214,12 +213,10 @@ export default function MockMistakesSubject() {
       </div>
 
       <Tabs defaultValue="mocks" className="w-full">
-        {!isMixedPaperCategory(subjectName) && (
-          <TabsList className="grid w-full grid-cols-2 rounded-2xl">
-            <TabsTrigger value="mocks" className="rounded-xl">📄 Mock Tests</TabsTrigger>
-            <TabsTrigger value="chapters" className="rounded-xl">🧠 AI Chapters</TabsTrigger>
-          </TabsList>
-        )}
+        <TabsList className="grid w-full grid-cols-2 rounded-2xl">
+          <TabsTrigger value="mocks" className="rounded-xl">📄 Mock Tests</TabsTrigger>
+          <TabsTrigger value="chapters" className="rounded-xl">🧠 AI Chapters</TabsTrigger>
+        </TabsList>
 
         <TabsContent value="mocks" className="mt-4 space-y-4">
           <Dialog open={open} onOpenChange={setOpen}>
