@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isMixedPaperCategory } from "@/lib/mockMistakes";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
