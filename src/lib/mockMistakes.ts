@@ -3,7 +3,12 @@ export const MOCK_MISTAKE_SUBJECTS = [
   { key: "English", emoji: "📗" },
   { key: "Reasoning", emoji: "📙" },
   { key: "General Awareness", emoji: "📕" },
+  { key: "MP Police", emoji: "👮" },
 ] as const;
+
+/** Mixed-question paper categories: mocks keep original order, no chapter/topic UI split. */
+export const MIXED_PAPER_CATEGORIES = ["MP Police"];
+export const isMixedPaperCategory = (key: string) => MIXED_PAPER_CATEGORIES.includes(key);
 
 export const IMPORT_TEMPLATE = `Question:
 ....
