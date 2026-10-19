@@ -1665,6 +1665,145 @@ export type Database = {
           },
         ]
       }
+      personal_task_lists: {
+        Row: {
+          category: string | null
+          color: string
+          created_at: string
+          description: string | null
+          icon: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          color?: string
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          category?: string | null
+          color?: string
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      personal_task_status_history: {
+        Row: {
+          changed_at: string
+          id: string
+          previous_status: string | null
+          status: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          changed_at?: string
+          id?: string
+          previous_status?: string | null
+          status: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          changed_at?: string
+          id?: string
+          previous_status?: string | null
+          status?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_task_status_history_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "personal_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personal_tasks: {
+        Row: {
+          attempt_number: number | null
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          list_id: string
+          marks_obtained: number | null
+          maximum_marks: number | null
+          notes: string | null
+          priority: string
+          status: string
+          task_type: string
+          test_date: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempt_number?: number | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          list_id: string
+          marks_obtained?: number | null
+          maximum_marks?: number | null
+          notes?: string | null
+          priority?: string
+          status?: string
+          task_type?: string
+          test_date?: string | null
+          title: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          attempt_number?: number | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          list_id?: string
+          marks_obtained?: number | null
+          maximum_marks?: number | null
+          notes?: string | null
+          priority?: string
+          status?: string
+          task_type?: string
+          test_date?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_tasks_list_id_user_id_fkey"
+            columns: ["list_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "personal_task_lists"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       practice_sessions: {
         Row: {
           answers: Json

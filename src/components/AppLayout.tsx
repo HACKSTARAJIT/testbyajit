@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  Home, Shield, LogOut, Menu, User, Moon, Sun, XCircle, LogIn, Info, Sparkles, LayoutDashboard, Target, Upload, NotebookPen, Timer,
+  Home, Shield, LogOut, Menu, User, Moon, Sun, XCircle, LogIn, Info, Sparkles, LayoutDashboard, Target, Upload, NotebookPen, Timer, ListChecks,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetTrigger,
@@ -23,6 +23,7 @@ const navItems = [
   { to: "/mock-mistakes", label: "🧠 Mock Mistakes", icon: NotebookPen },
   { to: "/app-test-mistakes", label: "❌ App Test Mistakes", icon: XCircle },
   { to: "/study-time", label: "⏱ Study Time", icon: Timer },
+  { to: "/my-tasks", label: "My Tasks", icon: ListChecks },
 ];
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
@@ -93,7 +94,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </Link>
 
 
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-1 xl:flex">
             <NavItems />
             {isAdmin && (
               <Link
@@ -152,7 +153,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
 
             <Sheet>
-              <SheetTrigger asChild className="md:hidden">
+              <SheetTrigger asChild className="xl:hidden">
                 <Button variant="ghost" size="icon" aria-label="Open navigation menu"><Menu className="h-5 w-5" /></Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-64">
