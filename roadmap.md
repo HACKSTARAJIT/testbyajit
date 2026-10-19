@@ -1,5 +1,7 @@
 
 ## Current tasks
+- [ ] Build independent My Tasks lists, tasks, bulk creation, marks, analytics and private persistence
+- [ ] Verify My Tasks workflows, privacy and mobile layout
 - [x] Remove Smart Revision UI/routes
 - [x] App Test Mistakes: 2-correct mastery + Subject→Chapter→Test→Question hierarchy
 - [x] Fix mobile test navigation overflow and verify all controls from 320px–430px
