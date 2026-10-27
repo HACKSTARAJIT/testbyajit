@@ -420,6 +420,24 @@ export type Database = {
         }
         Relationships: []
       }
+      cgl_study_settings: {
+        Row: {
+          settings: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          settings?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          settings?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chapter_views: {
         Row: {
           chapter_id: string
@@ -487,6 +505,7 @@ export type Database = {
       daily_reviews: {
         Row: {
           analysis: string | null
+          command_review: Json | null
           consistency_label: string | null
           consistency_score: number
           created_at: string
@@ -503,6 +522,7 @@ export type Database = {
         }
         Insert: {
           analysis?: string | null
+          command_review?: Json | null
           consistency_label?: string | null
           consistency_score?: number
           created_at?: string
@@ -519,6 +539,7 @@ export type Database = {
         }
         Update: {
           analysis?: string | null
+          command_review?: Json | null
           consistency_label?: string | null
           consistency_score?: number
           created_at?: string
@@ -737,11 +758,14 @@ export type Database = {
           accuracy: number | null
           attempt_percent: number | null
           created_at: string
+          entry_kind: string
           exam_readiness: string | null
           extracted: Json
           extraction_error: string | null
           extraction_status: string
           id: string
+          manual_details: Json | null
+          maximum_marks: number | null
           mock_name: string | null
           negative_marks: number | null
           original_text: string
@@ -760,11 +784,14 @@ export type Database = {
           accuracy?: number | null
           attempt_percent?: number | null
           created_at?: string
+          entry_kind?: string
           exam_readiness?: string | null
           extracted?: Json
           extraction_error?: string | null
           extraction_status?: string
           id?: string
+          manual_details?: Json | null
+          maximum_marks?: number | null
           mock_name?: string | null
           negative_marks?: number | null
           original_text: string
@@ -783,11 +810,14 @@ export type Database = {
           accuracy?: number | null
           attempt_percent?: number | null
           created_at?: string
+          entry_kind?: string
           exam_readiness?: string | null
           extracted?: Json
           extraction_error?: string | null
           extraction_status?: string
           id?: string
+          manual_details?: Json | null
+          maximum_marks?: number | null
           mock_name?: string | null
           negative_marks?: number | null
           original_text?: string
@@ -2316,6 +2346,131 @@ export type Database = {
           },
         ]
       }
+      spaced_revision_attempts: {
+        Row: {
+          confidence: string | null
+          created_at: string
+          due_after: string
+          id: string
+          notes: string | null
+          request_id: string
+          result: string
+          revealed: boolean
+          schedule_id: string
+          selected_answer: string | null
+          stage_before: number
+          time_seconds: number
+          user_id: string
+        }
+        Insert: {
+          confidence?: string | null
+          created_at?: string
+          due_after: string
+          id?: string
+          notes?: string | null
+          request_id: string
+          result: string
+          revealed?: boolean
+          schedule_id: string
+          selected_answer?: string | null
+          stage_before: number
+          time_seconds?: number
+          user_id: string
+        }
+        Update: {
+          confidence?: string | null
+          created_at?: string
+          due_after?: string
+          id?: string
+          notes?: string | null
+          request_id?: string
+          result?: string
+          revealed?: boolean
+          schedule_id?: string
+          selected_answer?: string | null
+          stage_before?: number
+          time_seconds?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spaced_revision_attempts_schedule_id_user_id_fkey"
+            columns: ["schedule_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "spaced_revision_schedules"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      spaced_revision_schedules: {
+        Row: {
+          created_at: string
+          due_date: string
+          failures: number
+          id: string
+          last_attempt_at: string | null
+          mock_question_id: string | null
+          source_key: string
+          stage: number
+          status: string
+          streak: number
+          successes: number
+          updated_at: string
+          user_id: string
+          version: number
+          wrong_question_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          due_date: string
+          failures?: number
+          id?: string
+          last_attempt_at?: string | null
+          mock_question_id?: string | null
+          source_key: string
+          stage?: number
+          status?: string
+          streak?: number
+          successes?: number
+          updated_at?: string
+          user_id: string
+          version?: number
+          wrong_question_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          due_date?: string
+          failures?: number
+          id?: string
+          last_attempt_at?: string | null
+          mock_question_id?: string | null
+          source_key?: string
+          stage?: number
+          status?: string
+          streak?: number
+          successes?: number
+          updated_at?: string
+          user_id?: string
+          version?: number
+          wrong_question_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spaced_revision_schedules_mock_question_id_fkey"
+            columns: ["mock_question_id"]
+            isOneToOne: false
+            referencedRelation: "mock_mistake_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spaced_revision_schedules_wrong_question_id_fkey"
+            columns: ["wrong_question_id"]
+            isOneToOne: false
+            referencedRelation: "wrong_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       study_activity: {
         Row: {
           id: string
@@ -2349,6 +2504,7 @@ export type Database = {
       study_plan_tasks: {
         Row: {
           chapter: string | null
+          command_details: Json | null
           completed_at: string | null
           created_at: string
           day_index: number | null
@@ -2371,6 +2527,7 @@ export type Database = {
         }
         Insert: {
           chapter?: string | null
+          command_details?: Json | null
           completed_at?: string | null
           created_at?: string
           day_index?: number | null
@@ -2393,6 +2550,7 @@ export type Database = {
         }
         Update: {
           chapter?: string | null
+          command_details?: Json | null
           completed_at?: string | null
           created_at?: string
           day_index?: number | null
@@ -3398,6 +3556,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_spaced_revision: {
+        Args: { _question_id: string; _source: string }
+        Returns: string
+      }
       admin_get_user_emails: {
         Args: { _user_ids: string[] }
         Returns: {
@@ -3471,6 +3633,28 @@ export type Database = {
           test_id: string
           topic: string
         }[]
+      }
+      save_cgl_day_review: {
+        Args: { _date: string; _review: Json }
+        Returns: undefined
+      }
+      spaced_revision_question: {
+        Args: { _reveal?: boolean; _schedule_id: string }
+        Returns: Json
+      }
+      submit_spaced_revision: {
+        Args: {
+          _confidence?: string
+          _notes?: string
+          _outcome: string
+          _request_id: string
+          _revealed?: boolean
+          _schedule_id: string
+          _seconds?: number
+          _selected: string
+          _version: number
+        }
+        Returns: Json
       }
       verify_ai_mock_report_data: {
         Args: {
