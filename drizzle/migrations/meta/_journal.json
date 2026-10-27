@@ -8,6 +8,13 @@
       "when": 1792383316828,
       "tag": "0000_create_personal_task_tracker",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793126235346,
+      "tag": "0001_integrated_cgl_preparation",
+      "breakpoints": true
     }
   ]
 }
