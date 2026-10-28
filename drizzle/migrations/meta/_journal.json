@@ -15,6 +15,13 @@
       "when": 1793126235346,
       "tag": "0001_integrated_cgl_preparation",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793212866643,
+      "tag": "0002_protect_cgl_tasks_and_question_adapter",
+      "breakpoints": true
     }
   ]
 }

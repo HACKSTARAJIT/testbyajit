@@ -420,6 +420,78 @@ export type Database = {
         }
         Relationships: []
       }
+      cgl_command_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_minutes: number
+          evidence: string | null
+          id: string
+          locked: boolean
+          notes: string | null
+          priority: string
+          recommendation_key: string | null
+          related_path: string | null
+          start_minute: number | null
+          status: string
+          subject: string | null
+          task_date: string
+          task_type: string
+          title: string
+          topic: string | null
+          typing_accuracy: number | null
+          typing_wpm: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_minutes?: number
+          evidence?: string | null
+          id?: string
+          locked?: boolean
+          notes?: string | null
+          priority?: string
+          recommendation_key?: string | null
+          related_path?: string | null
+          start_minute?: number | null
+          status?: string
+          subject?: string | null
+          task_date: string
+          task_type?: string
+          title: string
+          topic?: string | null
+          typing_accuracy?: number | null
+          typing_wpm?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_minutes?: number
+          evidence?: string | null
+          id?: string
+          locked?: boolean
+          notes?: string | null
+          priority?: string
+          recommendation_key?: string | null
+          related_path?: string | null
+          start_minute?: number | null
+          status?: string
+          subject?: string | null
+          task_date?: string
+          task_type?: string
+          title?: string
+          topic?: string | null
+          typing_accuracy?: number | null
+          typing_wpm?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       cgl_study_settings: {
         Row: {
           settings: Json
