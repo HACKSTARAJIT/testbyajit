@@ -58,6 +58,9 @@ const Accountability = lazy(() => import("./pages/Accountability.tsx"));
 const Profile = lazy(() => import("./pages/Profile.tsx"));
 const StudyTime = lazy(() => import("./pages/StudyTime.tsx"));
 const MyTasks = lazy(() => import("./pages/MyTasks.tsx"));
+const CglCommandCenter = lazy(() => import("./pages/CglCommandCenter.tsx"));
+const ExternalMockTracker = lazy(() => import("./pages/ExternalMockTracker.tsx"));
+const SmartRevisionScheduler = lazy(() => import("./pages/SmartRevisionScheduler.tsx"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -135,6 +138,9 @@ const App = () => (
             <Route path="/study-time" element={withLayout(<StudyTime />)} />
             <Route path="/my-tasks" element={withLayout(<MyTasks />)} />
             <Route path="/my-tasks/:listId" element={withLayout(<MyTasks />)} />
+            <Route path="/cgl-tier2-command-center" element={withLayout(<CglCommandCenter />)} />
+            <Route path="/external-mock-tracker" element={withLayout(<ExternalMockTracker />)} />
+            <Route path="/smart-revision-scheduler" element={withLayout(<SmartRevisionScheduler />)} />
             <Route path="/ai-mock-analyzer" element={<Navigate to="/app-test-mistakes" replace />} />
             <Route path="/analysis-import" element={<Navigate to="/app-test-mistakes" replace />} />
             <Route path="/ai-performance-center" element={<Navigate to="/app-test-mistakes" replace />} />
