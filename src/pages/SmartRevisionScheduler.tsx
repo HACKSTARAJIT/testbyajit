@@ -31,6 +31,7 @@ export default function SmartRevisionScheduler() {
   const repeated = (s: RevisionSchedule) => s.failures > 1 || (metadata?.get(s.source_key)?.wrong ?? 0) > 1;
   const visible = schedules.filter(s => {
     if (view === 'mastered') return s.status === 'mastered'; if (s.status !== 'active') return false;
+    if (view === 'due' && s.due_date > today) return false;
     if (view === 'today' && s.due_date !== today) return false;
     if (view === 'overdue' && s.due_date >= today) return false;
     if (view === 'upcoming' && !(s.due_date > today && s.due_date <= addDays(today, 7))) return false;
@@ -45,7 +46,7 @@ export default function SmartRevisionScheduler() {
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4"><Metric label="Due today" value={due.length} /><Metric label="Overdue" value={overdue.length} /><Metric label="Completed today" value={attempts.filter(a => localDate(new Date(a.created_at), config.timezone) === today).length} /><Metric label="Spaced mastery" value={schedules.filter(s => s.status === 'mastered').length} /></div>
     <Tabs defaultValue="queue"><TabsList><TabsTrigger value="queue">Revision queue</TabsTrigger><TabsTrigger value="statistics">Statistics & history</TabsTrigger></TabsList>
       <TabsContent value="queue" className="space-y-4 pt-3"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Field label="Session mode"><Select value={view} onValueChange={setView}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[['today', 'Due today'], ['overdue', 'Overdue first'], ['upcoming', 'Next seven days'], ['repeated', 'Repeated mistakes'], ['all', 'Subject / topic revision'], ['quick15', 'Quick 15 minutes'], ['quick30', 'Quick 30 minutes'], ['final', 'Final exam revision'], ['mastered', 'Recently mastered']].map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></Field>
+        <Field label="Session mode"><Select value={view} onValueChange={setView}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[['due', 'Due & overdue'], ['today', 'Due today'], ['overdue', 'Overdue first'], ['upcoming', 'Next seven days'], ['repeated', 'Repeated mistakes'], ['all', 'Subject / topic revision'], ['quick15', 'Quick 15 minutes'], ['quick30', 'Quick 30 minutes'], ['final', 'Final exam revision'], ['mastered', 'Recently mastered']].map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></Field>
         <Field label="Subject"><Select value={subject} onValueChange={setSubject}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All subjects</SelectItem>{[...new Set([...metadata?.values() ?? []].map(m => m.subject))].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></Field>
         <Field label="Topic"><Input value={topic} onChange={e => setTopic(e.target.value)} placeholder="Filter topic" /></Field><Field label="Question count"><Input type="number" min={1} max={100} value={count} onChange={e => setCount(Math.min(100, Math.max(1, Number(e.target.value) || 1)))} /></Field>
       </div><Button onClick={start} disabled={!visible.some(s => s.status === 'active')}><Play className="mr-2 h-4 w-4" />Start revision ({Math.min(count, visible.length)})</Button>

@@ -21,7 +21,7 @@ export default function RevisionSession({ schedules, duration, onClose }: { sche
     queryFn: async () => { const { data, error } = await supabase.rpc('spaced_revision_question', { _schedule_id: schedule.id, _reveal: revealed || submitted }); if (error) throw error; return data as unknown as RevisionQuestion; } });
   const submit = async () => {
     if (!schedule) return; setError('');
-    try { await save(() => supabase.rpc('submit_spaced_revision', { _schedule_id: schedule.id, _request_id: request, _version: schedule.version, _selected: answer || undefined, _outcome: outcome, _confidence: confidence === 'none' ? undefined : confidence, _revealed: revealed, _seconds: Math.round((Date.now() - started.current) / 1000), _notes: notes || undefined })); setSubmitted(true); setCompleted(n => n + 1); }
+    try { await save(() => supabase.rpc('submit_spaced_revision', { _schedule_id: schedule.id, _request_id: request, _version: schedule.version, _selected: answer, _outcome: outcome, _confidence: confidence === 'none' ? undefined : confidence, _revealed: revealed, _seconds: Math.round((Date.now() - started.current) / 1000), _notes: notes || undefined })); setSubmitted(true); setCompleted(n => n + 1); }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save this revision.'); }
   };
   const next = () => {
