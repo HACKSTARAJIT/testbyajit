@@ -3639,6 +3639,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      arrange_cgl_tasks: {
+        Args: { _date: string; _placements: Json }
+        Returns: undefined
+      }
       claim_mock_classification_job: {
         Args: { _job_id: string; _lease_seconds?: number; _lease_token: string }
         Returns: boolean
