@@ -55,7 +55,7 @@ export default function CglCommandCenter() {
     if (missing.length) try { await save(() => supabase.from('cgl_command_tasks').upsert(missing.map(p => ({ ...p, user_id: user.id, task_date: date })), { onConflict: 'user_id,task_date,recommendation_key', ignoreDuplicates: true })); } catch {}
   };
   const arrange = async () => { if (!user) return; const result = scheduleTasks(tasks, config); setConflict(result.conflicts);
-    try { await save(async () => { for (const t of tasks) { if (t.locked || t.status === 'completed' || t.status === 'skipped') continue; const res = await supabase.from('cgl_command_tasks').update({ start_minute: result.placed.get(t.id) ?? null }).eq('id', t.id).eq('user_id', user.id); if (res.error) return res; } return { error: null }; }); } catch {}
+    try { await save(() => supabase.rpc('arrange_cgl_tasks', { _date: date, _placements: tasks.filter(t => !t.locked && t.status !== 'completed' && t.status !== 'skipped').map(t => ({ id: t.id, start: result.placed.get(t.id) ?? null })) })); } catch {}
   };
   if (!user || settings.isLoading || query.isLoading || settings.error || query.error) return <PreparationState signedIn={!!user} loading={settings.isLoading || query.isLoading} error={settings.error ?? query.error} retry={() => { void settings.refetch(); void query.refetch(); }} />;
   const scheduled = tasks.filter(t => t.start_minute !== null).sort((a, b) => (a.start_minute ?? 0) - (b.start_minute ?? 0));
