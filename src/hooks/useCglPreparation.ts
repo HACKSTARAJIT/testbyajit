@@ -66,7 +66,7 @@ export function useCommandData(config: StudyConfig) {
       supabase.from('cgl_command_tasks').select('*').eq('user_id', user?.id ?? '').order('task_date', { ascending: false }).limit(500),
       supabase.from('study_time_entries').select('duration_seconds,subject_name').eq('user_id', user?.id ?? '').eq('study_date', calendarDate).eq('needs_confirmation', false),
       supabase.from('daily_reviews').select('command_review').eq('user_id', user?.id ?? '').eq('review_date', date).maybeSingle(),
-      supabase.from('test_attempts').select('id,marks_obtained,accuracy,created_at,tests(title,total_marks,subjects(name))').eq('user_id', user?.id ?? '').eq('status', 'submitted').order('created_at', { ascending: false }).limit(30),
+      supabase.from('test_attempts').select('id,marks_obtained,accuracy,created_at,tests(title,total_marks,subjects(name))').eq('user_id', user?.id ?? '').eq('status', 'completed').order('created_at', { ascending: false }).limit(30),
       supabase.from('cgl_command_tasks').select('task_date,typing_wpm,typing_accuracy').eq('user_id', user?.id ?? '').not('typing_wpm', 'is', null).order('task_date').limit(100),
     ]);
     for (const result of [tasks, study, reviews, internal, typing]) if (result.error) throw result.error;
