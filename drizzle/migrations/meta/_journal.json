@@ -29,6 +29,13 @@
       "when": 1793331298796,
       "tag": "0003_validate_preparation_settings_and_atomic_timetable",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793407032537,
+      "tag": "0004_scope_selected_shared_resource_read_policies",
+      "breakpoints": true
     }
   ]
 }
