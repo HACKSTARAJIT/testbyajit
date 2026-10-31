@@ -1,10 +1,11 @@
 
 ## Current tasks
-- [ ] Audit and integrate CGL Tier-2 Command Center, External Mock Tracker and Smart Revision Scheduler
-- [ ] Add safe user-owned persistence and transactional revision scheduling
-- [ ] Build external mock entry, analytics, comparison and CSV export
-- [ ] Build configurable revision sessions and Command Center timetable/settings
-- [ ] Verify new workflows, ownership, mobile layouts and regressions
+- [x] Audit and integrate the three preparation routes without replacing existing modules
+- [x] Add user-owned persistence and transactional revision submission / timetable arrangement
+- [x] Build external mock manual entry, sections, history, analytics, comparison and CSV export
+- [x] Build configurable revision sessions and Command Center timetable/settings
+- [x] Verify signed-in saves, revision answer gating, task conflicts, duplicate mission prevention, mobile widths and 25 calculation/regression tests
+- [ ] Verify preparation privacy with a second real account — requires an authorized second-account session
 - [x] Build independent My Tasks lists, tasks, bulk creation, marks, analytics and private persistence
 - [x] Verify My Tasks signed-in workflows, ownership rejection and mobile layout
 - [ ] Verify My Tasks cross-account reads with a second real account — needs an authorized second-account session
