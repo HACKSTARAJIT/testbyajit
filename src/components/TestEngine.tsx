@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { adjacentSolutionIndex, solutionIndices, solutionStatus, type SolutionFilter } from "@/lib/solutionFilters";
 import {
   Clock, CheckCircle2, XCircle, ArrowLeft, ArrowRight, Trophy, Flag,
   Target, RotateCcw, ListChecks, Sparkles, Info, Dice5, Brain, Star, Pause,
@@ -126,8 +127,19 @@ export function TestEngine({
   const [history, setHistory] = useState<Array<{ id: string; answers: Record<string, string> | null; created_at: string }>>([]);
   // Read-only Solution Mode for a completed Practice attempt (reuses the test screen).
   const [solutionView, setSolutionView] = useState(false);
+  const [submittedAnswers, setSubmittedAnswers] = useState<Record<string, string>>({});
+  const [solutionFilter, setSolutionFilter] = useState<SolutionFilter>("all");
   const solution = solutionView && submitted;
-  const openSolution = () => { setCurrent(0); setSolutionView(true); window.scrollTo(0, 0); };
+  const filteredIndices = useMemo(() => solutionIndices(sessionQs, submittedAnswers, solutionFilter), [sessionQs, submittedAnswers, solutionFilter]);
+  const changeSolutionFilter = (filter: SolutionFilter) => {
+    setSolutionFilter(filter);
+    const first = solutionIndices(sessionQs, submittedAnswers, filter)[0];
+    if (first !== undefined) setCurrent(first);
+  };
+  const solutionNavigation = solution ? { filter: solutionFilter, onFilterChange: changeSolutionFilter } : undefined;
+  const previousIndex = solution ? adjacentSolutionIndex(filteredIndices, current, -1) : current > 0 ? current - 1 : undefined;
+  const nextIndex = solution ? adjacentSolutionIndex(filteredIndices, current, 1) : current < sessionQs.length - 1 ? current + 1 : undefined;
+  const openSolution = () => { setSolutionFilter("all"); setCurrent(0); setSolutionView(true); window.scrollTo(0, 0); };
   const closeSolution = () => { setSolutionView(false); window.scrollTo(0, 0); };
   const { focus, toggle: toggleFocus } = useFocusMode();
   const textSize = useTestTextSize();
@@ -230,6 +242,7 @@ export function TestEngine({
 
   const submit = useCallback(async () => {
     if (submitted) return;
+    setSubmittedAnswers({ ...answers });
     setSubmitted(true);
     const timeTaken = isPractice ? elapsedRef.current : Math.round((Date.now() - startTime.current) / 1000);
     const final = { ...stats };
@@ -242,6 +255,8 @@ export function TestEngine({
         .eq("user_id", userId!).eq("test_id", test.id).eq("mode", "practice").eq("status", "completed")
         .order("created_at", { ascending: true }).limit(50);
       setHistory((past as any) ?? []);
+      const saved = past?.find((attempt) => attempt.id === attemptId.current);
+      if (saved?.answers) setSubmittedAnswers(saved.answers as Record<string, string>);
     }
     // Auto-update the smart wrong-question bank & regenerate the revision test
     if (userId && !isPreview) {
@@ -289,11 +304,12 @@ export function TestEngine({
 
   useEffect(() => {
     if (submitted && !solution) return;
+    if (solution && filteredIndices.length === 0) return;
     const handleKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
-      if (event.key === "ArrowLeft" && current > 0) { event.preventDefault(); setCurrent((c) => c - 1); }
-      if (event.key === "ArrowRight" && current < sessionQs.length - 1) { event.preventDefault(); setCurrent((c) => c + 1); }
+      if (event.key === "ArrowLeft" && previousIndex !== undefined) { event.preventDefault(); setCurrent(previousIndex); }
+      if (event.key === "ArrowRight" && nextIndex !== undefined) { event.preventDefault(); setCurrent(nextIndex); }
       const optionIndex = Number(event.key) - 1;
       if (optionIndex >= 0 && optionIndex < 4) {
         const letter = orderFor(q.id)[optionIndex];
@@ -302,7 +318,7 @@ export function TestEngine({
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [submitted, solution, current, sessionQs.length, q.id, mode, revealed, optionOrder, guessArmed]);
+  }, [submitted, solution, current, sessionQs.length, q.id, mode, revealed, optionOrder, guessArmed, previousIndex, nextIndex, filteredIndices.length]);
 
   const toggleGuess = () =>
     setGuessArmed((g) => {
@@ -319,7 +335,7 @@ export function TestEngine({
   const toggleMark = (state: MarkState) =>
     setMarked((m) => ({ ...m, [q.id]: m[q.id] === state ? (undefined as any) : state }));
 
-  const goto = (i: number) => setCurrent(i);
+  const goto = (i: number) => { if (!solution || filteredIndices.includes(i)) setCurrent(i); };
 
   const retry = (onlyIncorrect: boolean) => {
     const base = onlyIncorrect
@@ -564,7 +580,7 @@ export function TestEngine({
     if (!item) return "unvisited";
     const a = answers[item.id];
     const mk = marked[item.id];
-    if (solution) return !a ? "skipped" : a === item.correct_option ? "correct" : "wrong";
+    if (solution) return solutionStatus(item, submittedAnswers);
     if (mode === "practice" && revealed[item.id]) {
       return a === item.correct_option ? "correct" : "wrong";
     }
@@ -609,6 +625,7 @@ export function TestEngine({
               current={current}
               statusFor={navStatus}
               hideCorrectness={mode === "exam"}
+              solutionNavigation={solutionNavigation}
               onJump={goto}
               triggerClassName="h-10"
             />
@@ -664,6 +681,7 @@ export function TestEngine({
             current={current}
             statusFor={navStatus}
             hideCorrectness={mode === "exam"}
+            solutionNavigation={solutionNavigation}
             onJump={goto}
           />
         }
@@ -691,9 +709,13 @@ export function TestEngine({
             marked={Object.values(marked).filter(Boolean).length}
           />
         )}
-
-
-
+        {solution && (
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            {filteredIndices.length === 0 ? "No questions found in this category." :
+              `${filteredIndices.indexOf(current) + 1} of ${filteredIndices.length} ${solutionFilter === "all" ? "All" : solutionFilter === "correct" ? "Correct" : solutionFilter === "wrong" ? "Wrong" : "Skipped"} Questions · Original Question: ${current + 1}`}
+          </p>
+        )}
+        {(!solution || filteredIndices.length > 0) && <>
         <QuestionCard
           key={q.id}
           index={current + 1}
@@ -741,13 +763,13 @@ export function TestEngine({
               {marked[q.id] === "review" ? "🚩 Marked for Review" : "❓ Marked as Doubt"}
             </p>
           )}
-          {solution && !answers[q.id] && (
+          {solution && !submittedAnswers[q.id] && (
             <p className="text-[11px] font-semibold text-muted-foreground">⚪ Skipped</p>
           )}
           {orderFor(q.id).map((L, oi) => {
             const val = q[`option_${L.toLowerCase()}` as keyof EngineQuestion] as string;
             if (!val || val === "-") return null;
-            const selected = answers[q.id] === L;
+            const selected = (solution ? submittedAnswers : answers)[q.id] === L;
             const isCorrect = q.correct_option === L;
             const state = solution
               ? isCorrect ? "correct" : selected ? "wrong" : "idle"
@@ -772,8 +794,8 @@ export function TestEngine({
             <div className="rounded-md border bg-card p-3 text-sm test-supporting-content">
               <p>
                 <b>Your answer:</b>{" "}
-                {answers[q.id]
-                  ? `${answers[q.id] === q.correct_option ? "✅" : "❌"} ${displayLetter(orderFor(q.id), answers[q.id])}`
+                {submittedAnswers[q.id]
+                  ? `${submittedAnswers[q.id] === q.correct_option ? "✅" : "❌"} ${displayLetter(orderFor(q.id), submittedAnswers[q.id])}`
                   : "⚪ Skipped"}
               </p>
               <p><b>Correct answer:</b> ✅ {displayLetter(orderFor(q.id), q.correct_option)}</p>
@@ -824,6 +846,7 @@ export function TestEngine({
             }
           />
         )}
+        </>}
 
       </TestWorkspace>
 
@@ -832,8 +855,8 @@ export function TestEngine({
         <Button
           variant="outline"
           className="h-12 min-w-0 rounded-md px-2 md:px-4"
-          disabled={current === 0}
-          onClick={() => setCurrent((c) => c - 1)}
+          disabled={previousIndex === undefined}
+          onClick={() => { if (previousIndex !== undefined) setCurrent(previousIndex); }}
         >
           <ArrowLeft className="h-4 w-4" /> Previous
         </Button>
@@ -843,6 +866,7 @@ export function TestEngine({
             total={sessionQs.length}
             current={current}
             statusFor={navStatus}
+            solutionNavigation={solutionNavigation}
             onJump={goto}
             triggerClassName="h-12 w-full"
           />
@@ -856,13 +880,13 @@ export function TestEngine({
           </Button>
         )}
 
-        {current < sessionQs.length - 1 ? (
-          <Button className="h-12 min-w-0 rounded-md px-2 md:px-4" onClick={() => setCurrent((c) => c + 1)}>
+        {solution ? (
+          <Button className="h-12 min-w-0 rounded-md px-2 md:px-4" disabled={nextIndex === undefined} onClick={() => { if (nextIndex !== undefined) setCurrent(nextIndex); }}>
             Next <ArrowRight className="h-4 w-4" />
           </Button>
-        ) : solution ? (
-          <Button className="h-12 min-w-0 rounded-md px-2 text-xs md:px-4 md:text-sm" onClick={closeSolution}>
-            Back to Result
+        ) : current < sessionQs.length - 1 ? (
+          <Button className="h-12 min-w-0 rounded-md px-2 md:px-4" onClick={() => setCurrent((c) => c + 1)}>
+            Next <ArrowRight className="h-4 w-4" />
           </Button>
         ) : (
           <Button

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { APP_LOGO, APP_LOGO_ALT, APP_NAME } from "@/lib/brand";
+import { type SolutionFilter } from "@/lib/solutionFilters";
 import {
   Brain, CheckCircle2, XCircle, Lightbulb, Zap, Sparkles, ChevronDown,
   ArrowLeft, ArrowRight, Flag, Timer, ListOrdered, Maximize2, Minimize2,
@@ -459,11 +460,16 @@ const NAV_LEGEND: Array<[string, string]> = [
   ["bg-muted-foreground", "Not Visited"],
 ];
 
-type NavFilter = "all" | "answered" | "unanswered" | "review" | "skipped";
+type NavFilter = "all" | "answered" | "unanswered" | "review" | "skipped" | "correct" | "wrong";
+export type SolutionNavigation = {
+  filter: SolutionFilter;
+  onFilterChange: (filter: SolutionFilter) => void;
+};
 
 const ANSWERED_STATES: NavItemStatus[] = ["answered", "answered-marked", "correct", "wrong"];
 
 function matchesFilter(st: NavItemStatus, filter: NavFilter) {
+  if (filter === "correct" || filter === "wrong") return st === filter;
   if (filter === "answered") return ANSWERED_STATES.includes(st);
   if (filter === "unanswered") return st === "unvisited" || st === "skipped";
   if (filter === "review") return st === "marked" || st === "answered-marked";
@@ -476,7 +482,7 @@ function matchesFilter(st: NavItemStatus, filter: NavFilter) {
  * Used inline as the desktop right column and inside the mobile/focus drawer.
  */
 export function NavigatorPanel({
-  total, current, statusFor, onJump, className, title = "Question Navigator", hideCorrectness = false,
+  total, current, statusFor, onJump, className, title = "Question Navigator", hideCorrectness = false, solutionNavigation,
 }: {
   total: number;
   current: number;
@@ -486,8 +492,10 @@ export function NavigatorPanel({
   title?: string;
   /** Exam mode: never surface correct/wrong legend cues. */
   hideCorrectness?: boolean;
+  solutionNavigation?: SolutionNavigation;
 }) {
-  const [filter, setFilter] = useState<NavFilter>("all");
+  const [localFilter, setFilter] = useState<NavFilter>("all");
+  const filter = solutionNavigation?.filter ?? localFilter;
   const [goTo, setGoTo] = useState("");
 
   const all = Array.from({ length: total }, (_, i) => i);
@@ -497,10 +505,17 @@ export function NavigatorPanel({
     unanswered: all.filter((i) => ["unvisited", "skipped"].includes(statusFor(i))).length,
     review: all.filter((i) => ["marked", "answered-marked"].includes(statusFor(i))).length,
     skipped: all.filter((i) => statusFor(i) === "skipped").length,
+    correct: all.filter((i) => statusFor(i) === "correct").length,
+    wrong: all.filter((i) => statusFor(i) === "wrong").length,
   };
   const visible = all.filter((i) => matchesFilter(statusFor(i), filter));
 
-  const filters: Array<[NavFilter, string]> = [
+  const filters: Array<[NavFilter, string]> = solutionNavigation ? [
+    ["all", `All ${counts.all}`],
+    ["correct", `Correct ${counts.correct}`],
+    ["wrong", `Wrong ${counts.wrong}`],
+    ["skipped", `Skipped ${counts.skipped}`],
+  ] : [
     ["all", `All ${counts.all}`],
     ["answered", `Answered ${counts.answered}`],
     ["unanswered", `Unanswered ${counts.unanswered}`],
@@ -511,6 +526,7 @@ export function NavigatorPanel({
   const jump = (n: number) => {
     if (Number.isNaN(n)) return;
     const i = Math.min(total, Math.max(1, n)) - 1;
+    if (solutionNavigation && !visible.includes(i)) return;
     onJump(i);
   };
 
@@ -523,20 +539,25 @@ export function NavigatorPanel({
 
       <div className="flex flex-wrap gap-1.5 pb-3">
         {filters.map(([key, label]) => (
-          <button
+          <Button
             key={key}
             type="button"
-            onClick={() => setFilter(key)}
+            variant="outline"
+            onClick={() => {
+              if (solutionNavigation && (key === "all" || key === "correct" || key === "wrong" || key === "skipped")) {
+                solutionNavigation.onFilterChange(key);
+              } else setFilter(key);
+            }}
             aria-pressed={filter === key}
             className={cn(
-              "rounded-lg border px-2 py-1 text-[11px] font-semibold transition-colors",
+              "min-h-11 rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors",
               filter === key
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/40",
+                : "border-border bg-muted text-muted-foreground hover:border-primary/40",
             )}
           >
             {label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -564,7 +585,7 @@ export function NavigatorPanel({
           })}
           {visible.length === 0 && (
             <p className="col-span-5 py-6 text-center text-xs text-muted-foreground">
-              No questions in this filter.
+              {solutionNavigation ? "No questions found in this category." : "No questions in this filter."}
             </p>
           )}
         </div>
@@ -608,7 +629,7 @@ export function NavigatorPanel({
  * Purely presentational; jumping is delegated to `onJump`.
  */
 export function QuestionNavigator({
-  total, current, statusFor, onJump, triggerClassName, floating = false, hideCorrectness = false,
+  total, current, statusFor, onJump, triggerClassName, floating = false, hideCorrectness = false, solutionNavigation,
 }: {
   total: number;
   current: number;
@@ -617,6 +638,7 @@ export function QuestionNavigator({
   triggerClassName?: string;
   floating?: boolean;
   hideCorrectness?: boolean;
+  solutionNavigation?: SolutionNavigation;
 }) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -652,6 +674,7 @@ export function QuestionNavigator({
           current={current}
           statusFor={statusFor}
           hideCorrectness={hideCorrectness}
+          solutionNavigation={solutionNavigation}
           onJump={(i) => { onJump(i); setOpen(false); }}
         />
       </SheetContent>

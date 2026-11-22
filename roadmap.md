@@ -1,5 +1,6 @@
 
 ## Current tasks
+- [ ] Add read-only Solution Mode filters, original numbering and filtered navigation; verify counts and mobile/desktop behavior
 - [x] Audit and integrate the three preparation routes without replacing existing modules
 - [x] Add user-owned persistence and transactional revision submission / timetable arrangement
 - [x] Build external mock manual entry, sections, history, analytics, comparison and CSV export
