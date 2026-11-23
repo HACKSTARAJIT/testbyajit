@@ -11,6 +11,8 @@ import {
 } from "@/lib/practiceSession";
 import { recordAppTestMistakePractice } from "@/lib/appTestMistakes";
 import { useFeedbackFX } from "@/hooks/useFeedbackFX";
+import { useAnswerCelebration } from "@/hooks/useAnswerCelebration";
+import { FireworksSoundControl } from "@/components/test-ui/AnswerCelebration";
 import { ShuffleModeSetting } from "@/components/test-ui/ShuffleModeSetting";
 import {
   shuffleArray, buildOptionOrder, displayLetter, OPTION_LETTERS, type OptionLetter,
@@ -77,6 +79,7 @@ export function PracticeRunner({
   const fx = useFeedbackFX();
   const { focus, toggle: toggleFocus } = useFocusMode();
   const textSize = useTestTextSize();
+  const celebration = useAnswerCelebration(questions[idx]?.id, started && !paused && !finished);
 
 
   const orderFor = (id: string) => optionOrder[id] ?? [...OPTION_LETTERS];
@@ -103,6 +106,7 @@ export function PracticeRunner({
 
   /** Presentation-only randomisation for this attempt; stored data never changes. */
   async function beginSession(useShuffle: boolean) {
+    celebration.reset();
     const list = useShuffle ? shuffleArray(allQuestions) : allQuestions;
     const order = buildOptionOrder(list.map((x) => x.id), useShuffle);
     setQuestions(list);
@@ -240,7 +244,9 @@ export function PracticeRunner({
   }, [questions, answers]);
 
   function selectAnswer(qid: string, letter: string, correctAnswer: string | null) {
+    if (answers[qid] || paused || finished) return;
     setAnswers((a) => ({ ...a, [qid]: letter }));
+    celebration.trigger(qid, letter === correctAnswer);
     fx.play(letter === correctAnswer ? "correct" : "wrong");
   }
 
@@ -555,6 +561,7 @@ export function PracticeRunner({
               triggerClassName="h-10"
             />
             <TestTextSizeControl {...textSize} compact />
+            <FireworksSoundControl enabled={celebration.soundEnabled} onToggle={celebration.toggleSound} />
           </>
         }
         stats={{
@@ -566,6 +573,7 @@ export function PracticeRunner({
         }}
         right={
           <div className="flex items-center gap-2">
+            <FireworksSoundControl enabled={celebration.soundEnabled} onToggle={celebration.toggleSound} />
             <Button
               size="sm"
               variant="secondary"
@@ -628,6 +636,7 @@ export function PracticeRunner({
                 letter={LETTERS[oi]}
                 text={val}
                 state={state as any}
+                reaction={isMine && celebration.reaction ? (celebration.reaction.correct ? "correct" : "wrong") : undefined}
                 disabled={revealed}
                 onClick={() => selectAnswer(q.id, L, q.correct_answer)}
               />

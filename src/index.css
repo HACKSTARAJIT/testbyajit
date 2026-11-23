@@ -186,6 +186,20 @@
     @apply relative flex min-h-14 w-full items-center gap-3 rounded-md border p-3 text-left transition-colors duration-150 sm:p-4;
     @apply border-border bg-background hover:border-primary/50 hover:bg-primary/5;
   }
+  .test-option:disabled { opacity: 1; }
+  .test-option { height: auto; }
+  .test-option-dim:disabled { opacity: 0.5; }
+  .answer-new-correct .answer-status-icon { animation: answer-icon-pop 250ms 150ms both; }
+  .answer-new-wrong .answer-status-icon { animation: answer-icon-pop 200ms both; }
+  .answer-celebration { position: absolute; inset: -4px; overflow: hidden; pointer-events: none; border-radius: inherit; }
+  .answer-particle {
+    position: absolute; top: 50%; width: 3px; height: 3px;
+    background: hsl(var(--warning)); border-radius: 50%; opacity: 0;
+    animation: answer-particle-burst 1000ms var(--particle-delay) cubic-bezier(.16, .8, .3, 1) both;
+  }
+  .answer-particle-1 { background: hsl(var(--success)); width: 3px; height: 6px; border-radius: 1px; }
+  .answer-particle-2 { background: hsl(var(--accent)); width: 4px; height: 2px; border-radius: 1px; }
+  .answer-particle-3 { background: hsl(var(--primary)); }
 
   .test-option:active { @apply bg-muted; }
   .test-option-selected {
@@ -235,6 +249,17 @@
   from { opacity: 0; transform: translateX(18px); }
   to { opacity: 1; transform: translateX(0); }
 }
+@keyframes answer-icon-pop {
+  from { transform: scale(.4); opacity: 0; }
+  70% { transform: scale(1.18); opacity: 1; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes answer-particle-burst {
+  0% { opacity: 0; transform: translate(0, 0) scale(.4); }
+  15% { opacity: .95; }
+  60% { opacity: .85; transform: translate(var(--particle-x), var(--particle-y)) rotate(var(--particle-turn)); }
+  100% { opacity: 0; transform: translate(var(--particle-x), calc(var(--particle-y) + 8px)) rotate(var(--particle-turn)) scale(.3); }
+}
 @keyframes test-shake {
   0%, 100% { transform: translateX(0); }
   20% { transform: translateX(-6px); }
@@ -251,5 +276,7 @@
   50% { box-shadow: 0 0 22px -4px hsl(231 80% 66% / 0.55); }
 }
 @media (prefers-reduced-motion: reduce) {
+  .answer-celebration { display: none; }
+  .answer-status-icon { animation: none !important; }
   .animate-test-slide, .animate-test-shake, .animate-test-pulse, .animate-soft-glow { animation: none !important; }
 }

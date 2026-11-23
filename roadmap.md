@@ -1,5 +1,6 @@
 
 ## Current tasks
+- [ ] Add event-only correct fireworks, wrong shake and opt-in sound to shared Practice UI; verify non-replay, Exam/Solution safety and mobile controls
 - [x] Add read-only Solution Mode filters, original numbering and filtered navigation; verify counts and mobile/desktop behavior
 - [x] Audit and integrate the three preparation routes without replacing existing modules
 - [x] Add user-owned persistence and transactional revision submission / timetable arrangement

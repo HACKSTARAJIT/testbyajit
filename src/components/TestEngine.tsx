@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { adjacentSolutionIndex, solutionIndices, solutionStatus, type SolutionFilter } from "@/lib/solutionFilters";
+import { CELEBRATION_DURATION, useAnswerCelebration } from "@/hooks/useAnswerCelebration";
+import { FireworksSoundControl } from "@/components/test-ui/AnswerCelebration";
 import {
   Clock, CheckCircle2, XCircle, ArrowLeft, ArrowRight, Trophy, Flag,
   Target, RotateCcw, ListChecks, Sparkles, Info, Dice5, Brain, Star, Pause,
@@ -147,6 +149,9 @@ export function TestEngine({
 
 
   const q = sessionQs[current];
+  const celebration = useAnswerCelebration(q?.id, isPractice && !submitted);
+  const autoAdvance = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(autoAdvance.current), [current, submitted]);
   const orderFor = (id: string) => optionOrder[id] ?? [...OPTION_LETTERS];
   const perQMarks = (item: EngineQuestion) => item.marks ?? 1;
 
@@ -294,8 +299,9 @@ export function TestEngine({
     }
     if (mode === "practice") {
       setRevealed((r) => ({ ...r, [q.id]: true }));
+      celebration.trigger(q.id, letter === q.correct_option);
       if (letter === q.correct_option) {
-        setTimeout(() => setCurrent((c) => Math.min(c + 1, sessionQs.length - 1)), 900);
+        autoAdvance.current = setTimeout(() => setCurrent((c) => Math.min(c + 1, sessionQs.length - 1)), CELEBRATION_DURATION);
       } else {
         saveWrongQuestion(q);
       }
@@ -349,6 +355,7 @@ export function TestEngine({
       setOptionOrder(buildOptionOrder(base.map((x) => x.id), shuffle, nextSeed));
     }
     setHistory([]);
+    celebration.reset();
     setSolutionView(false);
 
     setAnswers({});
@@ -630,6 +637,7 @@ export function TestEngine({
               triggerClassName="h-10"
             />
             <TestTextSizeControl {...textSize} compact />
+            {isPractice && !solution && <FireworksSoundControl enabled={celebration.soundEnabled} onToggle={celebration.toggleSound} />}
             {isPractice && canSave && !solution && (
               <Button
                 variant="outline"
@@ -657,6 +665,7 @@ export function TestEngine({
         }
         right={
           <div className="flex items-center gap-2">
+            {isPractice && !solution && <FireworksSoundControl enabled={celebration.soundEnabled} onToggle={celebration.toggleSound} />}
             {isPractice && canSave && !solution && (
               <Button
                 variant="outline"
@@ -782,6 +791,7 @@ export function TestEngine({
                 letter={LETTERS[oi]}
                 text={val}
                 state={state as any}
+                reaction={!solution && selected && celebration.reaction ? (celebration.reaction.correct ? "correct" : "wrong") : undefined}
                 disabled={solution || !!revealedNow}
                 onClick={() => choose(L)}
               />

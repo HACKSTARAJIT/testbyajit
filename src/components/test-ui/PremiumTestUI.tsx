@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { APP_LOGO, APP_LOGO_ALT, APP_NAME } from "@/lib/brand";
 import { type SolutionFilter } from "@/lib/solutionFilters";
+import { AnswerCelebration } from "./AnswerCelebration";
 import {
   Brain, CheckCircle2, XCircle, Lightbulb, Zap, Sparkles, ChevronDown,
   ArrowLeft, ArrowRight, Flag, Timer, ListOrdered, Maximize2, Minimize2,
@@ -124,7 +125,7 @@ export function TestHeader({
         )}
       </div>
 
-      {mobileTools && <div className="mx-auto mt-2 flex max-w-[1600px] items-center justify-between gap-2 md:hidden">{mobileTools}</div>}
+      {mobileTools && <div className="mx-auto mt-2 flex max-w-[1600px] flex-wrap items-center justify-between gap-2 md:hidden">{mobileTools}</div>}
 
       <div className="mx-auto mt-2 h-0.5 max-w-[1600px] overflow-hidden bg-muted">
         <div
@@ -293,45 +294,49 @@ export function difficultyStars(d?: string | null) {
 
 /* --------------------------------- Option --------------------------------- */
 export function OptionCard({
-  letter, text, state, onClick, disabled,
+  letter, text, state, onClick, disabled, reaction,
 }: {
   letter: string;
   text: string;
   state: "idle" | "selected" | "correct" | "wrong" | "dim";
   onClick?: () => void;
   disabled?: boolean;
+  reaction?: "correct" | "wrong";
 }) {
   return (
-    <button
+    <Button variant="ghost"
       type="button"
       onClick={onClick}
       disabled={disabled}
       aria-pressed={state === "selected" || state === "correct" || state === "wrong"}
       className={cn(
-        "test-option",
+        "test-option whitespace-normal font-normal",
         state === "selected" && "test-option-selected",
-        state === "correct" && "test-option-correct animate-test-pulse",
-        state === "wrong" && "test-option-wrong animate-test-shake",
+        state === "correct" && "test-option-correct",
+        state === "wrong" && "test-option-wrong",
+        reaction === "correct" && "answer-new-correct",
+        reaction === "wrong" && "animate-test-shake answer-new-wrong",
         state === "dim" && "test-option-dim",
       )}
     >
       <span
         className={cn(
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-bold",
-          state === "idle" && "border-white/20 bg-white/5 text-muted-foreground",
-          state === "dim" && "border-white/10 bg-white/5 text-muted-foreground",
+          state === "idle" && "border-border bg-muted text-muted-foreground",
+          state === "dim" && "border-border bg-muted text-muted-foreground",
           state === "selected" && "border-primary bg-primary text-primary-foreground",
-          state === "correct" && "border-emerald-500 bg-emerald-500 text-white",
-          state === "wrong" && "border-destructive bg-destructive text-white",
+          state === "correct" && "border-success bg-success text-success-foreground",
+          state === "wrong" && "border-destructive bg-destructive text-destructive-foreground",
         )}
       >
         {letter}
       </span>
 
       <span className="test-option-text min-w-0 flex-1 break-words">{text}</span>
-      {state === "correct" && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />}
-      {state === "wrong" && <XCircle className="h-5 w-5 shrink-0 text-destructive" />}
-    </button>
+      {state === "correct" && <CheckCircle2 className="answer-status-icon h-5 w-5 shrink-0 text-success" />}
+      {state === "wrong" && <XCircle className="answer-status-icon h-5 w-5 shrink-0 text-destructive" />}
+      {reaction === "correct" && <AnswerCelebration />}
+    </Button>
   );
 }
 
