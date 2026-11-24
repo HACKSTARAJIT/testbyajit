@@ -7,4 +7,5 @@
 - Reference existing mistake records in spaced schedules and submit attempts through owner-checked, idempotent transactional RPCs; scheduler mastery must not alter legacy mistake mastery.
 - Use configured timezone calendar dates for revision and wake-to-wake preparation dates for overnight timetables; actual Study Time remains the recorded calendar-day total, never estimated task time.
 - Scope shared catalog/configuration reads to protected app roles and storage reads to referenced resources; only enabled intro media is anonymous, so unpublished files and private mistake images stay isolated.
+- Deliver branding media through the owner-checked branding-url function with short-lived links, not client storage read policies; server checks preserve enabled intro playback without exposing unpublished files.
 - Keep Solution Mode filters controlled by the existing test engine over submitted-answer snapshots and original session indices; shared navigation stays read-only and cannot change live test modes.

@@ -44,16 +44,18 @@ export type FeedbackMediaRow = {
   enabled: boolean;
 };
 
-const urlCache = new Map<string, string>();
+const urlCache = new Map<string, { url: string; expiresAt: number }>();
 
-/** Signed URL (1 day) with in-memory cache so playback is instant after first load. */
+/** Checked, short-lived media links; direct branding storage reads are private. */
 export async function brandingUrl(path?: string | null): Promise<string | null> {
   if (!path) return null;
-  const hit = urlCache.get(path);
-  if (hit) return hit;
-  const { data } = await supabase.storage.from(BRANDING_BUCKET).createSignedUrl(path, 60 * 60 * 24);
-  if (!data?.signedUrl) return null;
-  urlCache.set(path, data.signedUrl);
+  const { data: session } = await supabase.auth.getSession();
+  const cacheKey = `${session.session?.user.id ?? "anonymous"}:${path}`;
+  const hit = urlCache.get(cacheKey);
+  if (hit && hit.expiresAt > Date.now()) return hit.url;
+  const { data, error } = await supabase.functions.invoke("branding-url", { body: { path } });
+  if (error || !data?.signedUrl) return null;
+  urlCache.set(cacheKey, { url: data.signedUrl, expiresAt: Date.now() + 240_000 });
   return data.signedUrl;
 }
 
@@ -70,7 +72,7 @@ export async function uploadBranding(file: File, folder: string): Promise<string
 
 export async function removeBranding(path?: string | null) {
   if (!path) return;
-  urlCache.delete(path);
+  urlCache.clear();
   await supabase.storage.from(BRANDING_BUCKET).remove([path]);
 }
 
