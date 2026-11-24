@@ -15,25 +15,7 @@ export const lovable = {
       const result = await lovableAuth.signInWithOAuth(provider, {
         redirect_uri: opts?.redirect_uri,
         extraParams: {
-          ...opts?.extraParams,ajir sjig r result
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        saritapyouttube
-      ahut wuq^^^ acces%%%
-            ajit oenfijh configuiure
-        uiakjioguuiiiiiiiiibujjjer6uyu6},
+          ...opts?.extraParams,
       });
 
       if (result.redirected) {
