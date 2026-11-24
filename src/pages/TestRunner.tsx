@@ -9,6 +9,8 @@ import { GraduationCap, Zap, ArrowLeft, Clock, ListChecks, Award, PlayCircle, Al
 import { TestEngine, type EngineQuestion, type EngineTest } from "@/components/TestEngine";
 import { loadTestWithQuestions } from "@/lib/testLoader";
 import { PreTestDashboard } from "@/components/PreTestDashboard";
+import { TestAttemptHistory } from "@/components/TestAttemptHistory";
+import { type NumberedAttempt, type TestAttemptRecord } from "@/lib/attemptHistory";
 import { ShuffleModeSetting } from "@/components/test-ui/ShuffleModeSetting";
 
 
@@ -27,26 +29,32 @@ export default function TestRunner() {
   const [shuffle, setShuffle] = useState(false);
   const [resume, setResume] = useState<any>(null);
   const [activeResume, setActiveResume] = useState<any>(null);
-
+  const [attempts, setAttempts] = useState<TestAttemptRecord[]>([]);
+  const [reviewAttempt, setReviewAttempt] = useState<NumberedAttempt | null>(null);
 
   useEffect(() => {
     (async () => {
       // Single shared loader — identical to Admin validation & debug panel
-       if (!id) return;
-       const loaded = await loadTestWithQuestions(id, user?.id ?? null, { isAdmin });
+      if (!id) return;
+      const loaded = await loadTestWithQuestions(id, user?.id ?? null, { isAdmin });
       setTest(loaded.test);
       setQuestions(loaded.questions);
       setLoadError(loaded.testError || loaded.questionsError);
-       if (user) {
+      if (user) {
         const { data: atts } = await supabase
           .from("test_attempts")
           .select("*")
-          .eq("user_id", user.id).eq("test_id", id).eq("status", "in_progress")
-          .order("updated_at", { ascending: false }).limit(20);
-         // Prefer a paused session with progress; question one with no answer is also resumable.
-         const practiceAttempts = (atts ?? []).filter((a: any) => a.mode === "practice");
-         const hasProgress = (a: any) => Object.keys(a.answers ?? {}).length > 0 || a.current_index > 0 || a.time_taken_seconds > 0;
-         setResume(practiceAttempts.find(hasProgress) ?? practiceAttempts[0] ?? null);
+          .eq("user_id", user.id).eq("test_id", id)
+          .order("created_at", { ascending: true });
+        const allAttempts = (atts ?? []) as TestAttemptRecord[];
+        setAttempts(allAttempts);
+        // Incomplete attempts stay separate from permanent completed history.
+        const practiceAttempts = allAttempts
+          .filter((a) => a.mode === "practice" && a.status === "in_progress")
+          .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
+        const hasProgress = (a: TestAttemptRecord) =>
+          Object.keys(a.answers ?? {}).length > 0 || a.current_index > 0 || a.time_taken_seconds > 0;
+        setResume(practiceAttempts.find(hasProgress) ?? practiceAttempts[0] ?? null);
       }
       setLoading(false);
     })();
@@ -89,8 +97,17 @@ export default function TestRunner() {
         mode={mode}
         userId={user?.id}
         shuffle={shuffle}
-        key={activeResume?.id ?? `new-${mode}`}
-        onExit={() => navigate(-1)}
+        key={reviewAttempt?.id ?? activeResume?.id ?? `new-${mode}`}
+        reviewAttempt={reviewAttempt ?? undefined}
+        saveAttempt={!reviewAttempt}
+        autoRecord={!reviewAttempt}
+        onExit={() => {
+          if (reviewAttempt) {
+            setStarted(false);
+            setReviewAttempt(null);
+            setMode(null);
+          } else navigate(-1);
+        }}
         resume={activeResume ? {
           attemptId: activeResume.id,
           answers: activeResume.answers ?? {},
@@ -121,12 +138,37 @@ export default function TestRunner() {
         </div>
       </div>
 
+      <Button
+        className="min-h-12 w-full"
+        onClick={() => {
+          setReviewAttempt(null);
+          setActiveResume(null);
+          setMode("practice");
+          setStarted(true);
+        }}
+      >
+        {attempts.some((attempt) => attempt.status === "completed") ? "🔄 Reattempt Test" : "▶ Start Test"}
+      </Button>
+
       <PreTestDashboard
         testId={test.id}
         userId={user?.id}
         totalMarks={test.total_marks ?? questions.length}
         totalQuestions={questions.length}
         userName={user?.user_metadata?.display_name || user?.email}
+      />
+
+      <TestAttemptHistory
+        attempts={attempts}
+        totalMarks={test.total_marks ?? questions.length}
+        onViewSolution={(attempt) => {
+          setReviewAttempt(attempt);
+          setActiveResume(null);
+          setShuffle(attempt.shuffle_mode);
+          setMode(attempt.mode);
+          setStarted(true);
+          window.scrollTo(0, 0);
+        }}
       />
 
       {resume && (

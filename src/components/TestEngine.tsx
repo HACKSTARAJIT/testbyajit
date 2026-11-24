@@ -15,6 +15,7 @@ import {
 import { recordAttempt } from "@/lib/revisionEngine";
 import { TopAccuracyRanking } from "@/components/test-ui/TopAccuracyRanking";
 import { RepeatMistakePanel } from "@/components/test-ui/RepeatMistakePanel";
+import { formatAttemptTime, type NumberedAttempt } from "@/lib/attemptHistory";
 import {
   shuffleArray, shuffleForAttempt, buildOptionOrder, displayLetter, OPTION_LETTERS, type OptionLetter,
 } from "@/lib/shuffleMode";
@@ -68,6 +69,7 @@ export function TestEngine({
   onSubmit,
   onExit,
   resume,
+  reviewAttempt,
 }: {
   test: EngineTest;
   questions: EngineQuestion[];
@@ -87,9 +89,13 @@ export function TestEngine({
     marked: Record<string, MarkState>;
     elapsed_seconds?: number;
   };
+  /** A completed attempt opened from history. Always read-only. */
+  reviewAttempt?: NumberedAttempt;
 }) {
+  const isReview = !!reviewAttempt;
+  const initialAnswers = reviewAttempt?.answers ?? resume?.answers ?? {};
   // A saved attempt must present the same shuffled question and option sequence.
-  const [shuffleSeed] = useState(() => resume?.attemptId ?? crypto.randomUUID());
+  const [shuffleSeed] = useState(() => reviewAttempt?.id ?? resume?.attemptId ?? crypto.randomUUID());
   const shuffleSeedRef = useRef(shuffleSeed);
   // Shuffle is applied only to the display order of this session; question IDs,
   // option texts and correct answers are never modified.

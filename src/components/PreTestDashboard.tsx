@@ -74,10 +74,8 @@ export function PreTestDashboard({ testId, userId, totalMarks, totalQuestions, u
         supabase.from("wrong_questions").select("status")
           .eq("user_id", userId).eq("test_id", testId),
       ]);
-      const done = (attRes.data as Attempt[] | null ?? []).filter((a) => {
-        const hasData = (a.correct_count || 0) > 0 || (a.incorrect_count || 0) > 0 || Number(a.marks_obtained || 0) > 0;
-        return a.status !== "in_progress" || hasData;
-      });
+      const done = (attRes.data as Attempt[] | null ?? [])
+        .filter((a) => a.status === "completed");
       setAttempts(done);
       setMistake(mistRes.data ?? null);
       setWrongCount(wrongRes.count ?? (wrongRes.data?.length ?? 0));
