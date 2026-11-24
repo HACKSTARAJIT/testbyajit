@@ -310,13 +310,13 @@ export function OptionCard({
       disabled={disabled}
       aria-pressed={state === "selected" || state === "correct" || state === "wrong"}
       className={cn(
-        "test-option whitespace-normal font-normal",
+        "test-option whitespace-normal font-normal disabled:opacity-100",
         state === "selected" && "test-option-selected",
         state === "correct" && "test-option-correct",
         state === "wrong" && "test-option-wrong",
         reaction === "correct" && "answer-new-correct",
         reaction === "wrong" && "animate-test-shake answer-new-wrong",
-        state === "dim" && "test-option-dim",
+        state === "dim" && "test-option-dim disabled:opacity-50",
       )}
     >
       <span

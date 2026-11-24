@@ -13,13 +13,13 @@ export function AnswerCelebration() {
   return <span className="answer-celebration" aria-hidden="true">
     {Array.from({ length: 24 }, (_, i) => {
       const angle = (i % 12) * Math.PI / 6;
-      const distance = 22 + (i % 4) * 9;
+      const distance = 16 + (i % 4) * 3;
       return <i key={i} className={`answer-particle answer-particle-${i % 4}`} style={{
         "--particle-x": `${Math.cos(angle) * distance}px`,
         "--particle-y": `${Math.sin(angle) * distance}px`,
         "--particle-delay": `${300 + (i % 3) * 45}ms`,
         "--particle-turn": `${90 + i * 37}deg`,
-        left: i < 12 ? "12%" : "88%",
+        left: i < 12 ? "24px" : "calc(100% - 20px)",
       } as CSSProperties} />;
     })}
   </span>;
