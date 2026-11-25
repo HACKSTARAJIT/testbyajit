@@ -16,6 +16,7 @@ export const lovable = {
         redirect_uri: opts?.redirect_uri,
         extraParams: {
           ...opts?.extraParams,
+        },
       });
 
       if (result.redirected) {

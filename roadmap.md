@@ -1,8 +1,8 @@
 
 ## Current tasks
-- [ ] Add unlimited completed-attempt cards with stable attempt numbers and per-attempt Solution Mode
-- [ ] Keep reattempts fresh, submissions idempotent, incomplete resume separate and solution reviews read-only
-- [ ] Verify multiple saved attempts, independent answers/stats/filters and App Test Mistakes submission integration
+- [x] Add unlimited completed-attempt cards with stable attempt numbers and per-attempt Solution Mode
+- [x] Keep reattempts fresh, submissions idempotent, incomplete resume separate and solution reviews read-only
+- [x] Verify two saved attempts, independent answers/stats/filters, fresh-session persistence, 390px layouts, saved-answer resume and App Test Mistakes submission integration; 51 tests pass
 - [x] Add event-only correct fireworks, wrong shake and opt-in sound to shared Practice UI; 16 tests and read-only real-question browser checks verify non-replay, Exam/Solution safety, reduced motion and 320–1280px layouts
 - [x] Add read-only Solution Mode filters, original numbering and filtered navigation; verify counts and mobile/desktop behavior
 - [x] Audit and integrate the three preparation routes without replacing existing modules
@@ -20,5 +20,5 @@
 - [x] Redesign the shared test interface for competitive-exam desktop and mobile use
 - [x] Add persistent five-level test content sizing
 - [x] Verify Practice and Exam modes across 320px–1920px
-- [ ] Verify signed-in Practice Pause → leave → Resume restores the exact question and time
+- [x] Verify signed-in Practice Pause → leave → Resume restores the exact saved answer and elapsed time
 - [x] Show the existing AI Chapters option for MP Police Mock Mistakes

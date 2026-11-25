@@ -43,6 +43,13 @@
       "when": 1795497083869,
       "tag": "0005_restrict_direct_branding_file_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795589513767,
+      "tag": "0006_protect_completed_test_attempts",
+      "breakpoints": true
     }
   ]
 }

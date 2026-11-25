@@ -174,7 +174,7 @@ export default function TestRunner() {
       {resume && (
         <Button
           variant="outline"
-          onClick={() => { setActiveResume(resume); setShuffle(!!resume.shuffle_mode); setMode(resume.mode); setStarted(true); }}
+          onClick={() => { setReviewAttempt(null); setActiveResume(resume); setShuffle(!!resume.shuffle_mode); setMode(resume.mode); setStarted(true); }}
           className="btn-ripple h-auto min-h-16 w-full justify-start gap-3 border-2 border-primary bg-primary/5 p-4 text-left"
         >
           <PlayCircle className="h-6 w-6 text-primary" />
@@ -192,7 +192,7 @@ export default function TestRunner() {
 
         <div className="grid gap-3">
           <Button
-            onClick={() => { setActiveResume(resume?.mode === "practice" ? resume : null); setShuffle(resume?.mode === "practice" ? !!resume.shuffle_mode : shuffle); setMode("practice"); setStarted(true); }}
+            onClick={() => { setReviewAttempt(null); setActiveResume(resume?.mode === "practice" ? resume : null); setShuffle(resume?.mode === "practice" ? !!resume.shuffle_mode : shuffle); setMode("practice"); setStarted(true); }}
             variant="default"
             className="btn-ripple flex items-center gap-4 rounded-2xl bg-gradient-practice p-5 text-left text-white shadow-md"
           >
@@ -203,7 +203,7 @@ export default function TestRunner() {
             </div>
           </Button>
           <Button
-            onClick={() => { setActiveResume(null); setMode("exam"); setStarted(true); }}
+            onClick={() => { setReviewAttempt(null); setActiveResume(null); setMode("exam"); setStarted(true); }}
             variant="default"
             className="btn-ripple flex items-center gap-4 rounded-2xl bg-gradient-exam p-5 text-left text-white shadow-md"
           >

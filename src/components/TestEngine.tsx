@@ -105,37 +105,48 @@ export function TestEngine({
   const [optionOrder, setOptionOrder] = useState<Record<string, OptionLetter[]>>(() =>
     buildOptionOrder(questions.map((x) => x.id), shuffle, shuffleSeedRef.current)
   );
-  const [current, setCurrent] = useState(resume?.current_index ?? 0);
-  const [answers, setAnswers] = useState<Record<string, string>>(resume?.answers ?? {});
-  const [marked, setMarked] = useState<Record<string, MarkState>>(resume?.marked ?? {});
+  const [current, setCurrent] = useState(isReview ? 0 : (resume?.current_index ?? 0));
+  const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers);
+  const [marked, setMarked] = useState<Record<string, MarkState>>(reviewAttempt?.marked ?? resume?.marked ?? {});
   // Guess Intelligence — per-question guess flag, does not affect scoring.
   // `guessArmed` = toggle state before answering; `guesses` = frozen at answer time.
   const [guessArmed, setGuessArmed] = useState<Record<string, boolean>>({});
-  const [guesses, setGuesses] = useState<Record<string, { guess: true; selected: string; timeMs: number }>>({});
+  const [guesses, setGuesses] = useState<Record<string, { guess: true; selected: string; timeMs: number }>>(reviewAttempt?.guesses ?? {});
   const [revealed, setRevealed] = useState<Record<string, boolean>>(
-    mode === "practice" ? Object.fromEntries(Object.keys(resume?.answers ?? {}).map((k) => [k, true])) : {}
+    mode === "practice" ? Object.fromEntries(Object.keys(initialAnswers).map((k) => [k, true])) : {}
   );
-  const [submitted, setSubmitted] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [submitted, setSubmitted] = useState(isReview);
+  const [result, setResult] = useState<any>(() => reviewAttempt ? {
+    correct: reviewAttempt.correct_count,
+    incorrect: reviewAttempt.incorrect_count,
+    score: Number(reviewAttempt.marks_obtained),
+    totalMarks: sessionQs.reduce((sum, item) => sum + (item.marks ?? 1), 0),
+    skipped: reviewAttempt.skipped_count ?? reviewAttempt.unattempted_count,
+    accuracy: Number(reviewAttempt.accuracy),
+    attempted: reviewAttempt.correct_count + reviewAttempt.incorrect_count,
+    timeTaken: reviewAttempt.time_taken_seconds,
+  } : null);
   const [secondsLeft, setSecondsLeft] = useState((test.duration_minutes ?? 30) * 60);
   const isPractice = mode === "practice";
   // Practice Mode stopwatch: counts only active (visible, unsubmitted) time.
-  const [elapsed, setElapsed] = useState<number>(isPractice ? (resume?.elapsed_seconds ?? 0) : 0);
+  const [elapsed, setElapsed] = useState<number>(isPractice ? (reviewAttempt?.time_taken_seconds ?? resume?.elapsed_seconds ?? 0) : 0);
   const elapsedRef = useRef(elapsed);
   elapsedRef.current = elapsed;
   const startTime = useRef<number>(Date.now());
   const qStartTime = useRef<number>(Date.now());
-  const attemptId = useRef<string | null>(resume?.attemptId ?? null);
+  const attemptId = useRef<string | null>(reviewAttempt?.id ?? resume?.attemptId ?? null);
   const pendingInsert = useRef<Promise<string> | null>(null);
   const pendingSave = useRef<Promise<void>>(Promise.resolve());
   const saveGeneration = useRef(0);
   const [pausing, setPausing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const savedWrong = useRef<Set<string>>(new Set());
   // Completed attempts of this test (oldest first) — each row is one attempt's history.
   const [history, setHistory] = useState<Array<{ id: string; answers: Record<string, string> | null; created_at: string }>>([]);
-  // Read-only Solution Mode for a completed Practice attempt (reuses the test screen).
-  const [solutionView, setSolutionView] = useState(false);
-  const [submittedAnswers, setSubmittedAnswers] = useState<Record<string, string>>({});
+  // Read-only Solution Mode for a completed attempt (reuses the test screen).
+  const [solutionView, setSolutionView] = useState(isReview);
+  const [submittedAnswers, setSubmittedAnswers] = useState<Record<string, string>>(initialAnswers);
   const [solutionFilter, setSolutionFilter] = useState<SolutionFilter>("all");
   const solution = solutionView && submitted;
   const filteredIndices = useMemo(() => solutionIndices(sessionQs, submittedAnswers, solutionFilter), [sessionQs, submittedAnswers, solutionFilter]);
@@ -148,7 +159,11 @@ export function TestEngine({
   const previousIndex = solution ? adjacentSolutionIndex(filteredIndices, current, -1) : current > 0 ? current - 1 : undefined;
   const nextIndex = solution ? adjacentSolutionIndex(filteredIndices, current, 1) : current < sessionQs.length - 1 ? current + 1 : undefined;
   const openSolution = () => { setSolutionFilter("all"); setCurrent(0); setSolutionView(true); window.scrollTo(0, 0); };
-  const closeSolution = () => { setSolutionView(false); window.scrollTo(0, 0); };
+  const closeSolution = () => {
+    if (isReview) onExit();
+    else setSolutionView(false);
+    window.scrollTo(0, 0);
+  };
   const { focus, toggle: toggleFocus } = useFocusMode();
   const textSize = useTestTextSize();
 
@@ -178,7 +193,7 @@ export function TestEngine({
   }, [answers, sessionQs]);
 
   // ---- attempt persistence ----
-  const canSave = !!userId && !isPreview && saveAttempt;
+  const canSave = !!userId && !isPreview && saveAttempt && !isReview;
 
   const persist = useCallback(async (status: "in_progress" | "completed", finalStats?: typeof stats, timeTaken?: number) => {
     if (!canSave) return true;
@@ -224,26 +239,29 @@ export function TestEngine({
     try { await task; return true; }
     catch (error) {
       console.error("Could not save test progress", error);
-      toast.error("Could not save your progress. Please try Pause again.");
+      toast.error(status === "completed"
+        ? "Could not save your completed attempt. Please submit again."
+        : "Could not save your progress. Please try Pause again.");
       return false;
     }
   }, [canSave, userId, test.id, stats, sessionQs.length, mode, shuffle, current, answers, marked, guesses]);
 
-  // create/resume attempt on mount
+  // Create a durable attempt on first start and immediately after every reattempt.
   useEffect(() => {
-    if (canSave && !attemptId.current) void persist("in_progress");
+    if (canSave && !submitted && !attemptId.current) void persist("in_progress");
+    // The latest state is used when a reattempt changes submitted back to false.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [canSave, submitted]);
 
   // Reset per-question timer on navigation
   useEffect(() => { qStartTime.current = Date.now(); }, [current]);
 
   // autosave every 8s
   useEffect(() => {
-    if (!canSave || submitted) return;
+    if (!canSave || submitted || submitting) return;
     const t = setInterval(() => persist("in_progress"), 8000);
     return () => clearInterval(t);
-  }, [canSave, submitted, persist]);
+  }, [canSave, submitted, submitting, persist]);
 
   // Practice-mode immediate UI cue only; the durable bank update happens on submit
   const saveWrongQuestion = useCallback((item: EngineQuestion) => {
@@ -252,31 +270,40 @@ export function TestEngine({
   }, [canSave]);
 
   const submit = useCallback(async () => {
-    if (submitted) return;
-    setSubmittedAnswers({ ...answers });
-    setSubmitted(true);
+    if (submitted || submittingRef.current || isReview) return;
+    submittingRef.current = true;
+    setSubmitting(true);
     const timeTaken = isPractice ? elapsedRef.current : Math.round((Date.now() - startTime.current) / 1000);
     const final = { ...stats };
-    setResult({ ...final, timeTaken });
-    await persist("completed", final, timeTaken);
-    if (canSave) {
-      const { data: past } = await supabase
-        .from("test_attempts")
-        .select("id, answers, created_at")
-        .eq("user_id", userId!).eq("test_id", test.id).eq("mode", "practice").eq("status", "completed")
-        .order("created_at", { ascending: true }).limit(50);
-      setHistory((past as any) ?? []);
-      const saved = past?.find((attempt) => attempt.id === attemptId.current);
-      if (saved?.answers) setSubmittedAnswers(saved.answers as Record<string, string>);
+    try {
+      // Never show a result or feed the mistake pipeline until its durable save succeeds.
+      const saved = await persist("completed", final, timeTaken);
+      if (!saved) return;
+      setSubmittedAnswers({ ...answers });
+      setResult({ ...final, timeTaken });
+      setSubmitted(true);
+      if (canSave) {
+        const { data: past } = await supabase
+          .from("test_attempts")
+          .select("id, answers, created_at")
+          .eq("user_id", userId!).eq("test_id", test.id).eq("mode", "practice").eq("status", "completed")
+          .order("created_at", { ascending: true });
+        setHistory((past as any) ?? []);
+        const savedAttempt = past?.find((attempt) => attempt.id === attemptId.current);
+        if (savedAttempt?.answers) setSubmittedAnswers(savedAttempt.answers as Record<string, string>);
+      }
+      // A real submission updates App Test Mistakes once; solution reviews never reach this path.
+      if (userId && !isPreview && !isReview) {
+        try {
+          if (onSubmit) await onSubmit(answers, sessionQs);
+          else if (autoRecord) await recordAttempt(userId, test, sessionQs, answers, { marked, guesses });
+        } catch (e) { console.error(e); }
+      }
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
-    // Auto-update the smart wrong-question bank & regenerate the revision test
-    if (userId && !isPreview) {
-      try {
-        if (onSubmit) await onSubmit(answers, sessionQs);
-        else if (autoRecord) await recordAttempt(userId, test, sessionQs, answers, { marked, guesses });
-      } catch (e) { console.error(e); }
-    }
-  }, [submitted, stats, persist, userId, isPreview, onSubmit, autoRecord, test, sessionQs, answers]);
+  }, [submitted, isReview, isPractice, stats, persist, canSave, userId, test, sessionQs, answers, isPreview, onSubmit, autoRecord, marked, guesses]);
 
   // Practice stopwatch — no limit, no auto-submit; pauses while the tab is hidden.
   useEffect(() => {
@@ -353,16 +380,16 @@ export function TestEngine({
     const base = onlyIncorrect
       ? questions.filter((item) => answers[item.id] !== item.correct_option)
       : questions;
-    // Full reattempt keeps the same question order; incorrect-only gets a fresh order.
-    if (onlyIncorrect) {
-      const nextSeed = crypto.randomUUID();
-      shuffleSeedRef.current = nextSeed;
-      setSessionQs(shuffle ? shuffleForAttempt(base, nextSeed) : base);
-      setOptionOrder(buildOptionOrder(base.map((x) => x.id), shuffle, nextSeed));
-    }
+    // Full reattempts always restore the full paper; incorrect-only gets a fresh order.
+    const nextSeed = onlyIncorrect ? crypto.randomUUID() : shuffleSeedRef.current;
+    shuffleSeedRef.current = nextSeed;
+    setSessionQs(shuffle ? shuffleForAttempt(base, nextSeed) : base);
+    setOptionOrder(buildOptionOrder(base.map((x) => x.id), shuffle, nextSeed));
     setHistory([]);
     celebration.reset();
     setSolutionView(false);
+    setSolutionFilter("all");
+    setSubmittedAnswers({});
 
     setAnswers({});
     setMarked({});
@@ -371,6 +398,8 @@ export function TestEngine({
     setGuesses({});
     setCurrent(0);
     setSubmitted(false);
+    setSubmitting(false);
+    submittingRef.current = false;
     setResult(null);
     setSecondsLeft((test.duration_minutes ?? 30) * 60);
     setElapsed(0);
@@ -617,6 +646,9 @@ export function TestEngine({
     return { cur, best };
   })();
 
+  const currentAttemptNumber = reviewAttempt?.attemptNumber ??
+    (attemptId.current ? history.findIndex((attempt) => attempt.id === attemptId.current) + 1 : 0);
+
   return (
     <div className="test-shell" data-test-text-size={textSize.size}>
       <TestHeader
@@ -625,11 +657,13 @@ export function TestEngine({
         current={current + 1}
         total={sessionQs.length}
         progress={((current + 1) / sessionQs.length) * 100}
-        subtitle={`${solution ? "📖 Solution Mode" : mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}${shuffle ? " · 🔀 Shuffled" : ""}`}
+        subtitle={`${solution ? `📖 ${currentAttemptNumber > 0 ? `Attempt ${currentAttemptNumber} · ` : ""}Solution Mode` : mode === "practice" ? "⚡ Practice Mode" : "🎯 Exam Mode"}${shuffle ? " · 🔀 Shuffled" : ""}`}
         section={test.test_part || test.subjectName}
-        timer={isPractice
-          ? <Stopwatch seconds={elapsed} />
-          : <CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
+        timer={solution
+          ? <Stopwatch seconds={result?.timeTaken ?? 0} />
+          : isPractice
+            ? <Stopwatch seconds={elapsed} />
+            : <CircularTimer secondsLeft={secondsLeft} totalSeconds={(test.duration_minutes ?? 30) * 60} />}
         textSizeControl={<TestTextSizeControl {...textSize} />}
         mobileTools={
           <>
@@ -637,7 +671,7 @@ export function TestEngine({
               total={sessionQs.length}
               current={current}
               statusFor={navStatus}
-              hideCorrectness={mode === "exam"}
+              hideCorrectness={mode === "exam" && !solution}
               solutionNavigation={solutionNavigation}
               onJump={goto}
               triggerClassName="h-10"
@@ -659,7 +693,7 @@ export function TestEngine({
         }
         // EXAM MODE: never pass correctness/score data to the header.
         stats={
-          mode === "practice"
+          mode === "practice" && !solution
             ? {
                 correct: stats.correct,
                 wrong: stats.incorrect,
@@ -695,13 +729,34 @@ export function TestEngine({
             total={sessionQs.length}
             current={current}
             statusFor={navStatus}
-            hideCorrectness={mode === "exam"}
+            hideCorrectness={mode === "exam" && !solution}
             solutionNavigation={solutionNavigation}
             onJump={goto}
           />
         }
       >
-        {mode === "practice" ? (
+        {solution && result && (
+          <section className="rounded-2xl border border-primary/25 bg-card/70 p-4" data-testid="solution-attempt-summary">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                  {currentAttemptNumber > 0 ? `Attempt ${currentAttemptNumber}` : "Completed Attempt"}
+                </p>
+                <h2 className="text-lg font-bold">Solution Summary</h2>
+              </div>
+              <Badge variant="secondary">Read only</Badge>
+            </div>
+            <ResultStatGrid items={[
+              { label: "Score", value: `${result.score}/${result.totalMarks || sessionQs.length}` },
+              { label: "Correct", value: result.correct },
+              { label: "Wrong", value: result.incorrect },
+              { label: "Skipped", value: result.skipped },
+              { label: "Accuracy", value: `${result.accuracy}%` },
+              { label: "Time Taken", value: formatAttemptTime(result.timeTaken) },
+            ]} />
+          </section>
+        )}
+        {!solution && (mode === "practice" ? (
           <LivePerformancePanel
             className="md:hidden"
             stats={{
@@ -723,7 +778,7 @@ export function TestEngine({
             skipped={sessionQs.length - answeredCount}
             marked={Object.values(marked).filter(Boolean).length}
           />
-        )}
+        ))}
         {solution && (
           <p className="text-sm text-muted-foreground" aria-live="polite">
             {filteredIndices.length === 0 ? "No questions found in this category." :
@@ -907,13 +962,14 @@ export function TestEngine({
         ) : (
           <Button
             className="h-12 min-w-0 rounded-md px-2 md:px-4"
+            disabled={submitting}
             onClick={() => {
               if (mode === "exam" && answeredCount < sessionQs.length &&
                 !confirm(`${sessionQs.length - answeredCount} unanswered. Submit anyway?`)) return;
               submit();
             }}
           >
-            Submit Test
+            {submitting ? "Saving…" : "Submit Test"}
           </Button>
         )}
       </TestBottomNav>

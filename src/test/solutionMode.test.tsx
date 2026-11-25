@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { TestEngine } from "@/components/TestEngine";
+import { supabase } from "@/integrations/supabase/client";
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: vi.fn() } }));
 vi.mock("@/components/test-ui/TopAccuracyRanking", () => ({ TopAccuracyRanking: () => null }));
@@ -40,5 +41,44 @@ describe("Solution Mode navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "All 4" }));
     await waitFor(() => expect(screen.getByText("Question content 1")).toBeInTheDocument());
     expect(screen.getAllByRole("button", { name: /^Question \d, / })).toHaveLength(4);
+  });
+
+  it("opens only the selected completed attempt with stored stats and no database writes", async () => {
+    window.scrollTo = vi.fn();
+    vi.mocked(supabase.from).mockClear();
+    const questions = Array.from({ length: 3 }, (_, i) => ({
+      id: `q${i + 1}`, question_text: `Question content ${i + 1}`,
+      option_a: "Answer A", option_b: "Answer B", option_c: "Answer C", option_d: "Answer D", correct_option: "A",
+    }));
+    const reviewAttempt = {
+      id: "attempt-1", attemptNumber: 1, test_id: "test", user_id: "user", status: "completed", mode: "practice" as const,
+      answers: { q1: "B", q2: "A" }, marked: {}, guesses: {}, correct_count: 1, incorrect_count: 1,
+      unattempted_count: 1, skipped_count: 1, marks_obtained: 1, total_questions: 3, accuracy: 50,
+      time_taken_seconds: 125, current_index: 2, shuffle_mode: false,
+      created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:02:05Z",
+    };
+    render(<MemoryRouter><TestEngine
+      test={{ id: "test", title: "Historical test" }} questions={questions} mode="practice" userId="user"
+      reviewAttempt={reviewAttempt} onExit={vi.fn()}
+    /></MemoryRouter>);
+
+    const summary = within(screen.getByTestId("solution-attempt-summary"));
+    expect(summary.getByText("Attempt 1")).toBeInTheDocument();
+    expect(summary.getByText("1/3")).toBeInTheDocument();
+    expect(summary.getByText("50%")).toBeInTheDocument();
+    expect(summary.getByText("02:05")).toBeInTheDocument();
+    expect(screen.getByText("Question content 1")).toBeInTheDocument();
+    expect(screen.getByText("❌ B")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Answer/ }).every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Correct 1" }));
+    expect(screen.getByText("Question content 2")).toBeInTheDocument();
+    expect(screen.getAllByText("✅ A").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Skipped 1" }));
+    expect(screen.getByText("Question content 3")).toBeInTheDocument();
+    expect(screen.getAllByText("⚪ Skipped").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Wrong 1" }));
+    expect(screen.getByText("Question content 1")).toBeInTheDocument();
+    expect(supabase.from).not.toHaveBeenCalled();
   });
 });
